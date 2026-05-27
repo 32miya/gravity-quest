@@ -548,9 +548,10 @@ const characterData = [
             document.querySelector('.table-responsive').scrollTop = 0;
         }
 
-        initTabs();
-        // ★初期表示を「サムライ(index 8)」に変更
-        selectCharacter(8);
+        if (document.getElementById('tab-container')) {
+            initTabs();
+            selectCharacter(8);
+        }
 window.EXT_GROWTH = { characterData, baseStats, magicTable };
 </script>
 <script>
