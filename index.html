@@ -1569,7 +1569,11 @@ function generateDQStyleMaps() {
     }
 }
 
-async function fetchExternalMap(url) { const loading = document.getElementById('loading-indicator'); loading.style.display = 'block'; loading.innerText = '世界を構築中...'; try { let targetUrl = url; if (url.includes('id=36783')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260410/game_1775804192420659288.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const imgRegex = /const\s+([a-zA-Z0-9_]+)Img\s*=\s*new\s+Image\(\).*?\.src\s*=\s*["']([^"']+)["']/g; let imgMatch; while ((imgMatch = imgRegex.exec(html2)) !== null) { let img = new Image(); img.crossOrigin = "Anonymous"; img.src = imgMatch[2]; externalImages[imgMatch[1]] = img; } const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); const scriptTag = doc.getElementById('map-data'); if (scriptTag) { const jsonData = JSON.parse(scriptTag.textContent); externalEntitiesData = jsonData.entities_definitions || {}; if (externalEntitiesData) { Object.keys(externalEntitiesData).forEach(key => { let ent = externalEntitiesData[key]; if (ent.type === "boss" || ent.is_boss) { if (!masterData.monsters[key]) { masterData.monsters[key] = { name: ent.name, max_hp: 200, atk: 30, def: 15, spd: 20, exp: 500, gold: 300 }; } } }); } if (jsonData.monsters) Object.assign(masterData.monsters, jsonData.monsters); if (jsonData.maps) { externalMapData = {}; jsonData.maps.forEach(m => { let mapData = convertMapData(m); Object.keys(mapData.npcs).forEach(k => { let npcId = mapData.npcs[k].id; if (externalEntitiesData[npcId] && externalEntitiesData[npcId].name) mapData.npcs[k].name = externalEntitiesData[npcId].name; }); externalMapData[m.map_id] = mapData; }); generateFieldMapsForGravityQuest(); let mapB3FKey = Object.keys(externalMapData).find(k => k.includes('dungeon_b3f')); if (mapB3FKey) { let b3f = externalMapData[mapB3FKey]; let warpA_x = 2, warpA_y = 2; let exitKeys = Object.keys(b3f.exits); if(exitKeys.length > 0) { let [ex, ey] = exitKeys[0].split(',').map(Number); warpA_x = ex; warpA_y = ey + 2; if (warpA_y >= b3f.height - 1) warpA_y = ey - 2; } let warpB_x = Math.floor(b3f.width / 2); let warpB_y = Math.floor(b3f.height / 2); let npcKeys = Object.keys(b3f.npcs); if(npcKeys.length > 0) { let targetNpc = npcKeys[npcKeys.length - 1]; let [nx, ny] = targetNpc.split(',').map(Number); warpB_x = nx; warpB_y = ny + 2; if (warpB_y >= b3f.height - 1) warpB_y = ny - 2; } if (Math.abs(warpA_x - warpB_x) < 3 && Math.abs(warpA_y - warpB_y) < 3) { warpB_x = b3f.width - 3; warpB_y = b3f.height - 3; } const setWarp = (wx, wy, destX, destY) => { wx = Math.max(1, Math.min(wx, b3f.width - 2)); wy = Math.max(1, Math.min(wy, b3f.height - 2)); destX = Math.max(1, Math.min(destX, b3f.width - 2)); destY = Math.max(1, Math.min(destY, b3f.height - 2)); b3f.tiles[wy * b3f.width + wx] = 8; b3f.exits[`${wx},${wy}`] = { map: mapB3FKey, x: destX, y: destY }; b3f.tiles[destY * b3f.width + destX] = 0; if(destY+1 < b3f.height) b3f.tiles[(destY+1) * b3f.width + destX] = 0; if(destX+1 < b3f.width) b3f.tiles[destY * b3f.width + (destX+1)] = 0; if(destX-1 >= 0) b3f.tiles[destY * b3f.width + (destX-1)] = 0; }; setWarp(warpA_x, warpA_y, warpB_x, warpB_y + 1); setWarp(warpB_x, warpB_y, warpA_x, warpA_y + 1); } let mapTown1Key = Object.keys(externalMapData).find(k => k.includes('town_01')); if (mapTown1Key) { let town1 = externalMapData[mapTown1Key]; town1.npcs["12,16"] = { id: "npc_casino_bunny", name: "バニーガール" }; if (16 * town1.width + 12 < town1.tiles.length) { town1.tiles[16 * town1.width + 12] = 9; } if (!externalEntitiesData["npc_casino_bunny"]) { externalEntitiesData["npc_casino_bunny"] = { id: "npc_casino_bunny", name: "バニーガール", type: "casino", msg: "ようこそ カジノへ！" }; } } for (let mapKey in externalMapData) { let map = externalMapData[mapKey]; let isSafeMap = mapKey.includes('town') || mapKey.includes('village') || mapKey.includes('market') || mapKey.includes('castle') || mapKey.includes('shrine'); if (isSafeMap && !mapKey.includes('demon') && !mapKey.includes('death')) { let hasPriest = false; for (let k in map.npcs) { if (map.npcs[k].id.includes('priest') || map.npcs[k].id.includes('church')) { hasPriest = true; break; } } if (!hasPriest) { let placed = false; let startY = Math.floor(map.height / 2) - 2; if (startY < 1) startY = 1; for (let y = startY; y < map.height - 1 && !placed; y++) { for (let x = 2; x < map.width - 2 && !placed; x++) { let tile = map.tiles[y * map.width + x]; let key = `${x},${y}`; if ((tile === 0 || tile === 10 || tile === 11 || tile === 23) && !map.exits[key] && !map.npcs[key]) { map.npcs[key] = { id: "npc_priest", name: "神父" }; placed = true; } } } } } } injectSubStoryData(); if (externalMapData["map_field_0_4"]) externalMapData["map_field_0_4"].npcs["3,12"] = { id: "npc_sub_smith", name: "伝説の鍛冶屋" }; if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["7,3"] = { id: "obj_chest_star_frag", name: "光る地面" }; if (externalMapData["map_field_2_4"]) externalMapData["map_field_2_4"].npcs["7,7"] = { id: "npc_sub_richman", name: "大富豪" }; if (externalMapData["map_field_4_4"]) externalMapData["map_field_4_4"].npcs["12,12"] = { id: "npc_sub_mage", name: "大魔導士" }; if (externalMapData["map_town_01"]) externalMapData["map_town_01"].npcs["8,14"] = { id: "npc_sub_rumor", name: "町人" }; 
+async function fetchExternalMap(url) { const loading = document.getElementById('loading-indicator'); loading.style.display = 'block'; loading.innerText = '世界を構築中...'; try { let targetUrl = url; if (url.includes('id=36783')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260410/game_1775804192420659288.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const imgRegex = /const\s+([a-zA-Z0-9_]+)Img\s*=\s*new\s+Image\(\).*?\.src\s*=\s*["']([^"']+)["']/g; let imgMatch; while ((imgMatch = imgRegex.exec(html2)) !== null) { let img = new Image(); img.crossOrigin = "Anonymous"; img.src = imgMatch[2]; externalImages[imgMatch[1]] = img; } const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); const scriptTag = doc.getElementById('map-data'); if (scriptTag) { const jsonData = JSON.parse(scriptTag.textContent); externalEntitiesData = jsonData.entities_definitions || {}; if (externalEntitiesData) { Object.keys(externalEntitiesData).forEach(key => { let ent = externalEntitiesData[key]; if (ent.type === "boss" || ent.is_boss) { if (!masterData.monsters[key]) { masterData.monsters[key] = { name: ent.name, max_hp: 200, atk: 30, def: 15, spd: 20, exp: 500, gold: 300 }; } } }); } if (jsonData.monsters) Object.assign(masterData.monsters, jsonData.monsters); if (jsonData.maps) { externalMapData = {}; jsonData.maps.forEach(m => { let mapData = convertMapData(m); Object.keys(mapData.npcs).forEach(k => { let npcId = mapData.npcs[k].id; if (externalEntitiesData[npcId] && externalEntitiesData[npcId].name) mapData.npcs[k].name = externalEntitiesData[npcId].name; }); externalMapData[m.map_id] = mapData; }); generateFieldMapsForGravityQuest(); let mapB3FKey = Object.keys(externalMapData).find(k => k.includes('dungeon_b3f')); if (mapB3FKey) { let b3f = externalMapData[mapB3FKey]; let warpA_x = 2, warpA_y = 2; let exitKeys = Object.keys(b3f.exits); if(exitKeys.length > 0) { let [ex, ey] = exitKeys[0].split(',').map(Number); warpA_x = ex; warpA_y = ey + 2; if (warpA_y >= b3f.height - 1) warpA_y = ey - 2; } let warpB_x = Math.floor(b3f.width / 2); let warpB_y = Math.floor(b3f.height / 2); let npcKeys = Object.keys(b3f.npcs); if(npcKeys.length > 0) { let targetNpc = npcKeys[npcKeys.length - 1]; let [nx, ny] = targetNpc.split(',').map(Number); warpB_x = nx; warpB_y = ny + 2; if (warpB_y >= b3f.height - 1) warpB_y = ny - 2; } if (Math.abs(warpA_x - warpB_x) < 3 && Math.abs(warpA_y - warpB_y) < 3) { warpB_x = b3f.width - 3; warpB_y = b3f.height - 3; } const setWarp = (wx, wy, destX, destY) => { wx = Math.max(1, Math.min(wx, b3f.width - 2)); wy = Math.max(1, Math.min(wy, b3f.height - 2)); destX = Math.max(1, Math.min(destX, b3f.width - 2)); destY = Math.max(1, Math.min(destY, b3f.height - 2)); b3f.tiles[wy * b3f.width + wx] = 8; b3f.exits[`${wx},${wy}`] = { map: mapB3FKey, x: destX, y: destY }; b3f.tiles[destY * b3f.width + destX] = 0; if(destY+1 < b3f.height) b3f.tiles[(destY+1) * b3f.width + destX] = 0; if(destX+1 < b3f.width) b3f.tiles[destY * b3f.width + (destX+1)] = 0; if(destX-1 >= 0) b3f.tiles[destY * b3f.width + (destX-1)] = 0; }; setWarp(warpA_x, warpA_y, warpB_x, warpB_y + 1); setWarp(warpB_x, warpB_y, warpA_x, warpA_y + 1); } let mapTown1Key = Object.keys(externalMapData).find(k => k.includes('town_01')); if (mapTown1Key) { let town1 = externalMapData[mapTown1Key]; town1.npcs["12,16"] = { id: "npc_casino_bunny", name: "バニーガール" }; if (16 * town1.width + 12 < town1.tiles.length) { town1.tiles[16 * town1.width + 12] = 9; } if (!externalEntitiesData["npc_casino_bunny"]) { externalEntitiesData["npc_casino_bunny"] = { id: "npc_casino_bunny", name: "バニーガール", type: "casino", msg: "ようこそ カジノへ！" }; } } for (let mapKey in externalMapData) { let map = externalMapData[mapKey]; let isSafeMap = mapKey.includes('town') || mapKey.includes('village') || mapKey.includes('market') || mapKey.includes('castle') || mapKey.includes('shrine'); if (isSafeMap && !mapKey.includes('demon') && !mapKey.includes('death')) { let hasPriest = false; for (let k in map.npcs) { if (map.npcs[k].id.includes('priest') || map.npcs[k].id.includes('church')) { hasPriest = true; break; } } if (!hasPriest) { let placed = false; let startY = Math.floor(map.height / 2) - 2; if (startY < 1) startY = 1; for (let y = startY; y < map.height - 1 && !placed; y++) { for (let x = 2; x < map.width - 2 && !placed; x++) { let tile = map.tiles[y * map.width + x]; let key = `${x},${y}`; if ((tile === 0 || tile === 10 || tile === 11 || tile === 23) && !map.exits[key] && !map.npcs[key]) { map.npcs[key] = { id: "npc_priest", name: "神父" }; placed = true; } } } } } } injectSubStoryData(); if (externalMapData["map_field_0_4"]) externalMapData["map_field_0_4"].npcs["3,12"] = { id: "npc_sub_smith", name: "伝説の鍛冶屋" }; if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["7,3"] = { id: "obj_chest_star_frag", name: "光る地面" }; if (externalMapData["map_field_2_4"]) externalMapData["map_field_2_4"].npcs["7,7"] = { id: "npc_sub_richman", name: "大富豪" }; if (externalMapData["map_field_4_4"]) externalMapData["map_field_4_4"].npcs["12,12"] = { id: "npc_sub_mage", name: "大魔導士" }; if (externalMapData["map_town_01"]) externalMapData["map_town_01"].npcs["8,14"] = { id: "npc_sub_rumor", name: "マルコ" };
+            let _castleKey = Object.keys(externalMapData).find(k => k.includes('castle_01') && !k.includes('demon')); if (_castleKey) { let _cM = externalMapData[_castleKey]; let _cp = false; for (let _y = 2; _y < Math.floor(_cM.height * 0.55) && !_cp; _y++) { for (let _x = 2; _x < _cM.width - 2 && !_cp; _x++) { let _ct = _cM.tiles[_y * _cM.width + _x]; let _ck = `${_x},${_y}`; if ((_ct === 0 || _ct === 9 || _ct === 10) && !_cM.exits[_ck] && !_cM.npcs[_ck]) { _cM.npcs[_ck] = { id: "npc_story_advisor", name: "宮廷賢者バルダック" }; _cp = true; } } } }
+            if (externalMapData["map_town_01"]) { let _tM = externalMapData["map_town_01"]; let _ac = false, _av = false; for (let _y = 2; _y < _tM.height - 1 && (!_ac || !_av); _y++) { for (let _x = 2; _x < _tM.width - 2 && (!_ac || !_av); _x++) { let _tt = _tM.tiles[_y * _tM.width + _x]; let _tk = `${_x},${_y}`; if ((_tt === 0 || _tt === 10 || _tt === 11 || _tt === 9) && !_tM.exits[_tk] && !_tM.npcs[_tk]) { if (!_ac) { _tM.npcs[_tk] = { id: "npc_story_citizen", name: "心配性の市民" }; _ac = true; } else { _tM.npcs[_tk] = { id: "npc_story_veteran", name: "引退した冒険者" }; _av = true; } } } } }
+            if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["4,8"] = { id: "npc_story_wounded", name: "傷ついた旅人" };
+            if (externalMapData["map_field_4_0"]) externalMapData["map_field_4_0"].npcs["10,5"] = { id: "npc_story_hermit", name: "野の賢者" }; 
         
         // 転職の神父
         if (externalMapData["map_field_2_4"]) {
@@ -1821,32 +1825,32 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
     const fr = (c, rx, ry, rw, rh) => { ctx.fillStyle = c; ctx.fillRect(px + rx, py + ry, rw, rh); };
     const ln = (c, lw, x1, y1, x2, y2) => { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(px + x1, py + y1); ctx.lineTo(px + x2, py + y2); ctx.stroke(); };
 
-    if (tile === 11) { // 草 / 町では石製プランター
+    if (tile === 11) { // 草 / 町ではDQスタイル草地
         if (town) {
-            // 石製プランターボックス
-            fr('#b0a088', 0, 0, T, T); // 石のベース
-            // 外枠の石ブロック
-            fr('#c8b898', 0, 0, T, 4); fr('#c8b898', 0, T - 4, T, 4);
-            fr('#c8b898', 0, 0, 4, T); fr('#c8b898', T - 4, 0, 4, T);
-            fr('#a89878', 0, 0, T, 2); fr('#a89878', 0, T - 2, T, 2);
-            fr('#a89878', 0, 0, 2, T); fr('#a89878', T - 2, 0, 2, T);
-            // 土の内側
-            fr('#5a3e20', 4, 4, T - 8, T - 8);
-            fr('#6a4a28', 5, 5, T - 10, T - 10);
-            // 花を配置（種類ごとに色分け）
-            let flowers = [
-                [7, 9, '#ff4466', '#ffe0e8'], [15, 7, '#ff8800', '#ffeecc'],
-                [23, 10, '#ff4466', '#ffe0e8'], [10, 18, '#ffdd00', '#fffacc'],
-                [20, 17, '#aa44ff', '#e8d0ff'], [16, 23, '#ff88bb', '#ffe0f0']
-            ];
-            flowers.forEach(([fx, fy, c1, c2]) => {
-                ctx.fillStyle = c1; ctx.beginPath(); ctx.arc(px + fx, py + fy, 3.5, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(px + fx, py + fy, 1.8, 0, Math.PI*2); ctx.fill();
-                fr('#4a9020', fx - 1, fy + 3, 2, 4); // 茎
-            });
-            // コーナーに石の突起
-            fr('#d0c0a8', 0, 0, 5, 5); fr('#d0c0a8', T - 5, 0, 5, 5);
-            fr('#d0c0a8', 0, T - 5, 5, 5); fr('#d0c0a8', T - 5, T - 5, 5, 5);
+            // DQスタイル: 緑ドット草地 + 丸い木
+            let gc = rand < 0.3 ? '#2e6428' : rand > 0.7 ? '#3a7030' : '#346830';
+            fr(gc, 0, 0, T, T);
+            // 小ドットテクスチャ（DQらしい）
+            ctx.fillStyle = 'rgba(20,70,10,0.55)';
+            for (let di = 0; di < 14; di++) {
+                ctx.fillRect(px + fl((rand * 11.3 + di * 3.7) % (T - 1)) + 0, py + fl((rand * 9.1 + di * 2.9) % (T - 1)) + 0, 1, 1);
+            }
+            ctx.fillStyle = 'rgba(80,140,40,0.3)';
+            for (let di = 0; di < 6; di++) {
+                ctx.fillRect(px + fl((rand * 7.8 + di * 5.2) % (T - 2)) + 1, py + fl((rand * 6.4 + di * 4.1) % (T - 2)) + 1, 2, 2);
+            }
+            // 丸い木（確率で描画）
+            if (rand < 0.30) {
+                fr('#5a3010', T/2 - 2, T - 10, 4, 8); // 幹
+                ctx.fillStyle = '#1a4e0e'; ctx.beginPath(); ctx.arc(px + T/2, py + T/2, 11, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#266018'; ctx.beginPath(); ctx.arc(px + T/2 - 3, py + T/2 - 3, 8, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#307020'; ctx.beginPath(); ctx.arc(px + T/2 + 2, py + T/2 - 4, 7, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#3a7828'; ctx.beginPath(); ctx.arc(px + T/2, py + T/2 - 7, 5, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'rgba(10,40,5,0.45)';
+                for (let di = 0; di < 9; di++) {
+                    ctx.fillRect(px + fl((rand * 8.3 + di * 3.1) % 18) + T/2 - 9, py + fl((rand * 7.1 + di * 2.8) % 16) + T/2 - 12, 1, 1);
+                }
+            }
         } else {
         let g = rand < 0.28 ? '#4a9e40' : rand > 0.72 ? '#3c9035' : '#45973c';
         fr(g, 0, 0, T, T);
@@ -1886,28 +1890,25 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
         if (tile === 23) {
             fr('#a8d8fc', 0, 0, T, T); fr('rgba(255,255,255,0.45)', 3, 3, T - 6, T - 6); fr('rgba(180,230,255,0.5)', 7, 7, T - 14, T - 14);
         } else if (town) {
-            // 石畳の広場：4枚の石板を目地で区切る
-            fr('#a09278', 0, 0, T, T); // 目地（暗い灰褐色）
-            let sv = rand < 0.3 ? 8 : rand > 0.65 ? 0 : 4;
-            let sc = [
-                sv === 8 ? '#cec0a8' : '#d0bea0',
-                sv === 0 ? '#c4b492' : '#c8b898',
-                sv === 4 ? '#cabbA0' : '#c6b29a',
-                '#c2ae92'
-            ];
-            // 石板4枚（2×2）
-            fr(sc[0], 1, 1, 14, 14); fr(sc[1], 17, 1, 14, 14);
-            fr(sc[2], 1, 17, 14, 14); fr(sc[3], 17, 17, 14, 14);
-            // 石板のハイライト（上端・左端）
-            for (const [ox, oy, w2, h2] of [[1,1,14,1],[1,1,1,14],[17,1,14,1],[17,1,1,14],[1,17,14,1],[1,17,1,14],[17,17,14,1],[17,17,1,14]]) {
-                fr('rgba(255,255,255,0.22)', ox, oy, w2, h2);
+            // DQスタイル赤レンガ道路
+            fr('#561410', 0, 0, T, T); // 目地（暗い赤褐色）
+            let bcs = ['#8c3028','#963828','#843020','#9e3c30'];
+            for (let row = 0; row < 4; row++) {
+                let off = row % 2 === 0 ? 0 : 4;
+                let by2 = row * 8 + 1;
+                for (let col = 0; col < 5; col++) {
+                    let bx2 = col * 8 + off;
+                    if (bx2 >= T) break;
+                    let bw2 = Math.min(7, T - bx2 - 1);
+                    if (bw2 <= 0) break;
+                    let bc = bcs[(fl(rand * 3) + row + col) % 4];
+                    fr(bc, bx2, by2, bw2, 6);
+                    fr('rgba(255,255,255,0.18)', bx2, by2, bw2, 1);
+                    fr('rgba(0,0,0,0.22)', bx2, by2 + 5, bw2, 1);
+                }
             }
-            // 石板の影（下端・右端）
-            for (const [ox, oy, w2, h2] of [[1,14,14,1],[14,1,1,14],[17,14,14,1],[30,1,1,14],[1,30,14,1],[14,17,1,14],[17,30,14,1],[30,17,1,14]]) {
-                fr('rgba(0,0,0,0.15)', ox, oy, w2, h2);
-            }
-            // 苔・汚れ（たまに）
-            if (rand < 0.06) fr('rgba(80,110,40,0.22)', fl(rand*12)+2, fl(rand*10)+2, 4, 3);
+            // 汚れ（たまに）
+            if (rand < 0.08) fr('rgba(0,0,0,0.15)', fl(rand*16)+2, fl(rand*16)+2, 3, 2);
         } else if (castle || tower || shrine) {
             let ev = (fl(px / T) + fl(py / T)) % 2;
             fr(ev ? '#8898a8' : '#9aaabe', 0, 0, T, T);
@@ -1923,43 +1924,33 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
         }
     } else if (tile === 1 || tile === 4) {
         if (town) {
-            // 建物ファサード：明確な目地+カラフルレンガ
-            fr('#c4a880', 0, 0, T, T); // 明るい目地色
+            // DQスタイルグレー石壁
+            fr('#404040', 0, 0, T, T); // 目地（暗いグレー）
+            let gsc = ['#787878','#6e6e6e','#747474','#666666','#717171'];
             for (let row = 0; row < 4; row++) {
-                let off = row % 2 === 0 ? 0 : 7;
-                let variant = (fl(rand * 7) + row) % 3;
-                let bc = variant === 0 ? '#b85535' : variant === 1 ? '#a84830' : '#c46042';
-                for (let col = -1; col <= 3; col++) {
-                    let bx = col * 14 + off + 1, by = row * 8 + 1;
-                    fr(bc, bx, by, 12, 6);
-                    fr('rgba(255,255,255,0.18)', bx, by, 12, 1); // 上面ハイライト
-                    fr('rgba(0,0,0,0.22)', bx, by + 5, 12, 1);  // 下面影
+                let off = (row % 2) * 8;
+                let by2 = row * 8 + 1;
+                for (let col = -1; col <= 2; col++) {
+                    let bx2 = col * 16 + off;
+                    let x1 = Math.max(0, bx2), x2 = Math.min(T, bx2 + 14);
+                    if (x2 <= x1) continue;
+                    let bc = gsc[(fl(rand * 4) + row * 2 + col + 8) % 5];
+                    fr(bc, x1, by2, x2 - x1, 6);
+                    fr('rgba(255,255,255,0.15)', x1, by2, x2 - x1, 1);
+                    fr('rgba(0,0,0,0.18)', x1, by2 + 5, x2 - x1, 1);
                 }
             }
-            // 窓（rand > 0.6 で表示）
-            if (rand > 0.60 && rand < 0.82) {
-                fr('#3a2010', 8, 4, 16, 22); // 窓枠外
-                fr('#2a4870', 9, 5, 6, 9);   // ガラス左上
-                fr('#3a5888', 16, 5, 7, 9);  // ガラス右上
-                fr('#2a4870', 9, 15, 6, 9);  // ガラス左下
-                fr('#3a5888', 16, 15, 7, 9); // ガラス右下
-                fr('#4a3018', 14, 5, 2, 19); // 縦桟
-                fr('#4a3018', 9, 13, 14, 2); // 横桟
-                fr('#c8a860', 6, 25, 20, 3); // 窓台
-                // 窓台の花箱（rand > 0.72）
-                if (rand > 0.72) {
-                    fr('#7a4820', 6, 27, 20, 4);
-                    let colors2 = ['#ff4466','#ffcc00','#ff88cc','#ee4400'];
-                    for (let fi = 0; fi < 4; fi++) { ctx.fillStyle = colors2[fi]; ctx.beginPath(); ctx.arc(px + 9 + fi * 5, py + 29, 2.5, 0, Math.PI*2); ctx.fill(); }
-                }
-            } else if (rand >= 0.82) {
-                // 看板付き
-                fr('#6a4010', 3, 5, 26, 4);  // 看板の棒
-                fr('#5a3010', T/2 - 2, 2, 4, 9);
-                fr('#dd5522', 2, 9, 28, 14); // 看板本体
-                fr('#ffee88', 4, 11, 24, 10); // 看板地
-                ctx.fillStyle = '#330800'; ctx.font = 'bold 6px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText('屋', px + T/2, py + 16);
+            // たまにドアや看板
+            if (rand > 0.88) {
+                fr('#6a3a10', T/2 - 5, T - 14, 10, 13);
+                fr('#8a5020', T/2 - 4, T - 13, 8, 11);
+                fr('#e8c060', T/2 - 1, T - 10, 2, 2);
+            } else if (rand > 0.76) {
+                fr('#3a2008', 4, 8, 24, 2);
+                fr('#c07030', 4, 10, 24, 12);
+                fr('#e8e070', 6, 12, 20, 8);
+                ctx.fillStyle = '#3a1400'; ctx.font = 'bold 5px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('INN', px + T/2, py + 16);
             }
         } else if (castle || tower) {
             fr('#3f5060', 0, 0, T, T);
@@ -2117,6 +2108,12 @@ function drawMap() {
                 if (externalImages['demonKing'] && externalImages['demonKing'].complete && externalImages['demonKing'].naturalHeight > 0) { drawDragonLocal(ctx, externalImages['demonKing'], px, py, 70, 10); }
                 else { ctx.fillStyle='rgba(120,0,60,0.3)'; ctx.beginPath(); ctx.arc(px+TILE_SIZE/2,py+TILE_SIZE/2,20,0,Math.PI*2); ctx.fill(); ctx.font='28px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👿',px+TILE_SIZE/2,py+TILE_SIZE/2+2); }
 
+            } else if(npc.id.includes('story_advisor') || npc.id.includes('story_hermit')) {
+                if(externalImages['priest']) { ctx.save(); ctx.filter = 'hue-rotate(30deg) brightness(1.1)'; drawSpriteLocal(ctx, externalImages['priest'], px, py, 48); ctx.restore(); }
+                else if(externalImages['oldMan']) drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48);
+            } else if(npc.id.includes('story_citizen') || npc.id.includes('story_veteran') || npc.id.includes('story_wounded')) {
+                if(externalImages['oldMan']) drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48);
+                else { ctx.fillStyle='#a8d060'; ctx.beginPath(); ctx.arc(px+TILE_SIZE/2,py+TILE_SIZE/2-4,8,0,Math.PI*2); ctx.fill(); ctx.fillRect(px+TILE_SIZE/2-6,py+TILE_SIZE/2+4,12,9); }
             } else if(npc.id.includes('guide') || npc.id.includes('flavor') || npc.id.includes('elder') || npc.id.includes('ship') || npc.id.includes('sub_smith') || npc.id.includes('sub_richman') || npc.id.includes('sub_rumor') || npc.id.includes('sub_2ndloop')) {
                 if((npc.id.includes('village') || npc.id.includes('dungeon') || npc.id.includes('cave') || npc.id.includes('elder') || npc.id.includes('ship') || npc.id === 'bazaar_guide_1' || npc.id.includes('sub_smith') || npc.id.includes('sub_richman') || npc.id.includes('sub_rumor')) && externalImages['oldMan']) { drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); }
                 else if(npc.id.includes('sub_2ndloop') && externalImages['priest']) { drawSpriteLocal(ctx, externalImages['priest'], px, py, 48); }
@@ -2309,7 +2306,13 @@ async function checkAction() {
             if (partyData.flags.last_boss_defeated) {
                 if (npc.id.includes('maou_castle_gate')) { partyData.flags.gate_removed = true; delete currentMap.npcs[key]; state = 'FIELD'; hideAllWindows(); drawMap(); return; }
                 if (npc.id.includes('king')) {
-                    AudioManager.playBGM('victory'); await typeMessage(`【王様】\nおお ${partyData.members[0].name}よ！\nまおうを たおしてくれたのだな！`); await typeMessage(`【王様】\nこれで せかいに へいわが もどった！\nほんとうに ありがとう！`); await typeMessage(`【王様】\nお前たちの なは\nえいえんに かたりつがれるであろう！`); await typeMessage(`【THE END】`);
+                    AudioManager.playBGM('victory');
+                    await typeMessage(`【国王グラード】\n……お前たちが 戻ったか。\n（しばし 沈黙）\nやはり……やはり お前たちは\n本物の 勇者だったのだな！`);
+                    await typeMessage(`【国王グラード】\n今日この日 大魔王が 滅び\n百年に わたる 闇の 時代が\nついに 終わったのだ……！`);
+                    await typeMessage(`【国王グラード】\nわが 騎士団が 壊滅した時\nわしは 絶望した。\nしかし……お前たちは あきらめなかった。`);
+                    let allNames = partyData.members.map(m => m.name).join('、');
+                    await typeMessage(`【国王グラード】\n${allNames}よ！\nお前たちの 名は グラマニアの 歴史に\nえいえんに 刻まれるであろう！！`);
+                    await typeMessage(`＊　＊　ゲームクリア！　＊　＊\nプレイしてくれて ありがとう！`);
                     window.parent.postMessage({ type: 'gameOver', score: partyData.gold }, '*');
                     partyData.flags.is_second_loop_unlocked = true; localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
                     let clearCode = packSaveData(partyData);
@@ -2414,30 +2417,31 @@ async function checkAction() {
             
             // ★大富豪イベントのバグ修正
             if (npc.id === "npc_sub_richman") {
-                await typeMessage("【大富豪】\nヒィィッ！ たすけてくれぇー！！"); 
+                await typeMessage("【大富豪 カリバン】\nひーっ！ たすけてくれぇーっ！！\nまものに 囲まれて しまって……！！");
                 hideGoldWindow(); 
                 let isWin = await executeBattle(["boss_desert_killer"]); 
                 showGoldWindow(); updateGoldWindow();
                 if(isWin) {
-                    await typeMessage("【大富豪】\nおお…… たすかった！\nわたしは 商人の 大富豪ですじゃ。\nお礼に これを 差し上げましょう！"); AudioManager.playSE('item_get'); await typeMessage("『星降る腕輪』を てにいれた！\n（そうびすると すばやさが 大幅に あがるぞ！）");
+                    await typeMessage("【大富豪 カリバン】\nはあ……はあ……たすかった……\nわたしは グラマニアの 大富豪\nカリバンと 申します。"); await typeMessage("【大富豪 カリバン】\nまさか こんな 荒野で\n命拾いを するとは……\nこのご恩は 一生 忘れません！"); AudioManager.playSE('item_get'); await typeMessage("【大富豪 カリバン】\nほんのお礼ですが\nこれを 受け取ってください。\n先祖 代々の 家宝ですが\nあなた方に ふさわしい。"); await typeMessage("『星降る腕輪』を てにいれた！\n（そうびすると すばやさが 大幅に あがるぞ！）");
                     let target = partyData.members.find(m => m.inventory.length < 8 && m.hp > 0) || partyData.members[0]; if(target.inventory.length < 8) target.inventory.push("acc_star_bracelet"); else target.inventory[0] = "acc_star_bracelet";
-                    await typeMessage("【大富豪】\nグラマニアの町に 新たな店（カジノ）を\nオープンする 予定ですじゃ。\nまた お会いしましょう！"); partyData.flags.flag_saved_richman = true; delete currentMap.npcs[key];
+                    await typeMessage("【大富豪 カリバン】\nグラマニアの 町に\n新しい カジノを 開く 予定でしてね。\nぜひ また 遊びに 来てくださいよ！"); partyData.flags.flag_saved_richman = true; delete currentMap.npcs[key];
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             
             // ★大魔導士イベントのバグ修正
             if (npc.id === "npc_sub_mage") {
-                if (partyData.flags.flag_mage_trial_cleared) { await typeMessage("【大魔導士】\nみごとな 戦いであった。\nお前たちなら この先も 大丈夫だろう。"); } else {
-                    await typeMessage("【大魔導士】\nふぉっふぉっふぉ。 わしは 大魔導士。\nわしの 試練を 乗り越えられれば\n究極の魔法を 授けよう。\n挑戦する かね？"); let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
+                if (partyData.flags.flag_mage_trial_cleared) { await typeMessage("【大魔導士 ラムダス】\n百年 生きてきたが\nここまで 強い 者を 見たのは 初めてじゃ。\nお主たちなら 魔王城でも 互角に 渡り合えるはず。\n……世界を 救ってくれ。"); } else {
+                    if (!partyData.flags.flag_mage_met) { await typeMessage("【大魔導士 ラムダス】\n……来たか。\nわしは この 世界の 果てで\n百年 修行を 積んできた 魔導士じゃ。"); await typeMessage("【大魔導士 ラムダス】\nお前たちが 魔王を 倒す 器かどうか\nわしが 試してやろう。\n我が 幻の 試練を 乗り越えれば\n究極の 魔法を 授けよう。\n挑戦するかね？"); partyData.flags.flag_mage_met = true; } else { await typeMessage("【大魔導士 ラムダス】\nふぉっふぉっ。\n準備は できておるかの？\n試練は いつでも 受けられるぞ。"); }
+                    let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
                     if(yesno === 0) {
                         hideGoldWindow(); 
                         let isWin = await executeBattle(["boss_trial_phantom"]); 
                         showGoldWindow(); updateGoldWindow();
                         if(isWin) { 
-                            await typeMessage("【大魔導士】\nみごとだ！ 約束通り\n究極の魔法を 授けよう！"); AudioManager.playSE('level_up'); let mage = partyData.members.find(m => m.job === "魔法使い" || m.job === "賢者") || partyData.members[0]; if(!mage.spells.includes("spl_ultima")) mage.spells.push("spl_ultima"); await typeMessage(`${mage.name}は 究極魔法『アルテマ』を\nおぼえた！`); partyData.flags.flag_mage_trial_cleared = true; 
+                            await typeMessage("【大魔導士 ラムダス】\nみごとだ……！！\n約束通り 究極の 魔法を 授けよう。\nこれは わしの 魔力の 全てじゃ。\n大切に 使いなさい。"); AudioManager.playSE('level_up'); let mage = partyData.members.find(m => m.job === "魔法使い" || m.job === "賢者") || partyData.members[0]; if(!mage.spells.includes("spl_ultima")) mage.spells.push("spl_ultima"); await typeMessage(`${mage.name}は 究極魔法『アルテマ』を\nおぼえた！`); partyData.flags.flag_mage_trial_cleared = true; 
                         }
-                    } else { await typeMessage("【大魔導士】\nそうか、自信が ついたら\nまた 来るがよい。"); }
+                    } else { await typeMessage("【大魔導士 ラムダス】\nまだ 力が 足りぬようじゃ……\n鍛えて また 来るがよい。"); }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -2463,6 +2467,68 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
 
+            // ★王様（魔王討伐前の初回・進行状況別）
+            if (npc.id && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && !partyData.flags.last_boss_defeated) {
+                if (!partyData.flags.flag_king_met) {
+                    await typeMessage("【国王グラード】\nおお……勇者よ。\nよくぞ グラマニア城に 参った。");
+                    await typeMessage("【国王グラード】\n今から 一年前……\n世界の東に 大魔王が 目覚め\n各地を 闇に 染めはじめた。");
+                    await typeMessage("【国王グラード】\nわが 騎士団は 壊滅した。\n商人の 道は 断たれ\n民は 恐怖の 中で 生きている。");
+                    await typeMessage("【国王グラード】\n星占い師が こう 告げた。\n「東の天空の塔に 眠る 光の力を\n手に入れた 者のみが 魔王を 滅ぼせる」と。");
+                    await typeMessage("【国王グラード】\nまずは 北の試練の洞窟で 力を試せ。\nそして 東へ 向かい\n天空の塔の 頂を 目指すのだ！");
+                    await typeMessage("【国王グラード】\n勇者よ……\nこの国の 命運を\nお前たちに 託す。");
+                    partyData.flags.flag_king_met = true;
+                } else if (partyData.flags.flag_mage_trial_cleared) {
+                    await typeMessage("【国王グラード】\n天空の力と 究極の魔法を 手に入れたか！\nあとは 東の魔王城へ 乗り込むのみ！\n……決して 油断するな！");
+                } else if (partyData.flags.flag_weapon_forged) {
+                    await typeMessage("【国王グラード】\n星砕きの剣を 手に入れたか！\nその剣は 伝説の 武具……\n頼もしいぞ、勇者よ。");
+                } else {
+                    await typeMessage("【国王グラード】\n頼む……勇者よ。\n世界の 命運は\nお前たちの 肩に かかっておる。");
+                }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ★宮廷賢者バルダック
+            if (npc.id === "npc_story_advisor") {
+                if (!partyData.flags.flag_king_met) { await typeMessage("【宮廷賢者バルダック】\nまず 玉座の間の 王様に\nご挨拶を するのじゃ。\n大切な お話が あるはずじゃ。"); }
+                else if (partyData.flags.flag_mage_trial_cleared) { await typeMessage("【宮廷賢者バルダック】\n究極の魔法まで 手に入れたか。\nあとは 魔王城のみ。\n……どうか 生きて 戻ってきてくれ。"); }
+                else if (partyData.flags.flag_weapon_forged) { await typeMessage("【宮廷賢者バルダック】\n伝説の鍛冶屋に 会ったのじゃな。\n次は 東の果てにある 大魔導士を\n訪ねるとよい。\n究極の 魔法を 授けてくれるかもしれぬ。"); }
+                else { await typeMessage("【宮廷賢者バルダック】\n魔王の 力は 闇の 呪いで 守られておる。\n西の大森林の 奥の 伝説の鍛冶屋に\n会いに 行くのじゃ。\n北山岳の『ほしのカケラ』が あれば\n最強の剣を 鍛えてくれるという……"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ★心配性の市民
+            if (npc.id === "npc_story_citizen") {
+                if (partyData.flags.flag_saved_richman) { await typeMessage("【心配性の市民】\nよかった……\nカリバンさんが 無事に 帰ってきたよ！\nあなたたちが 助けてくれたんでしょ！\nほんとうに ありがとう！"); }
+                else if (partyData.flags.flag_king_met) { await typeMessage("【心配性の市民】\nまものが 出て 道が 危険に なってから\nもう どのくらい たつのかな……\n南の砂漠に 向かった カリバンさん、\nもう 三日も 帰ってこない……"); }
+                else { await typeMessage("【心配性の市民】\nここ最近 旅人たちが\nボロボロの 姿で 町に たどりつく……\n魔王様が どこかに いるのだろうか……"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ★引退した冒険者
+            if (npc.id === "npc_story_veteran") {
+                if (partyData.flags.flag_weapon_forged) {
+                    await typeMessage("【引退した冒険者 ゴル】\n伝説の鍛冶屋の 剣を 手に入れたか！\nワシが 現役の頃は 夢のまた夢……\nお前さまたちが うらやましい。");
+                    await typeMessage("【引退した冒険者 ゴル】\n東の 極果てに\n伝説の 魔法使いが 住んでいると\n昔 聞いたことがある。\n究極の 魔法を 授けてくれると いうぞ。");
+                } else {
+                    await typeMessage("【引退した冒険者 ゴル】\nワシは かつて 冒険者じゃった。\n試練の洞窟の 最奥まで たどりついたが\nそこの ボスに 完敗……\n今も トラウマじゃよ。");
+                    await typeMessage("【引退した冒険者 ゴル】\n西の大森林の 奥に\n伝説の 鍛冶屋が 住んでいると いうぞ。\n北の 山岳地帯の 鉱石を\n持っていけば 最強の剣を 作ってくれるらしい。");
+                }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ★傷ついた旅人（dungeon入口付近）
+            if (npc.id === "npc_story_wounded") {
+                await typeMessage("【傷ついた旅人】\nぐ……っ！ここで 一息ついて……");
+                await typeMessage("【傷ついた旅人】\nあの洞窟には 気をつけろ……！\n奥に いる ボスは……普通じゃない……\n仲間たちは みな やられてしまった……！");
+                await typeMessage("【傷ついた旅人】\nせめて 体力と 呪文を\n十分に 整えてから 挑んでくれ……頼む……");
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ★野の賢者（tower方面）
+            if (npc.id === "npc_story_hermit") {
+                if (partyData.flags.flag_mage_trial_cleared) { await typeMessage("【野の賢者 ガンダ】\nお主たちの 眼が 変わった。\n究極の魔法まで 手に入れたか。\n魔王城は もうすぐ そこじゃ……ご武運を。"); }
+                else {
+                    await typeMessage("【野の賢者 ガンダ】\n……魔王を 滅ぼしたいのなら\n天空の 力が 必要じゃ。");
+                    await typeMessage("【野の賢者 ガンダ】\n天空の塔の 頂には\n太古の 守護者が 眠っておる。\n倒せれば その 力が お前たちに 宿るだろう。");
+                    await typeMessage("【野の賢者 ガンダ】\nしかし 守護者は 強い……\n十分に 力を 蓄えてから\n挑むのじゃぞ。");
+                }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
             if (extDef) {
                 if (extDef.name === "宝箱" || npc.id.includes('chest')) {
                     let chestFlag = `chest_${partyData.pos.map}_${tx}_${ty}`;
@@ -2508,7 +2574,8 @@ async function checkAction() {
                     
                     if(isWin) {
                         if(isMaou && !bossId.includes('final') && bossId !== guraFinalId) {
-                            await typeMessage(`【${extDef.name}】\nグフフ... まさか このワシを ここまで おいつめるとはな...\nだが... これで かったと おもうなよ！\n真の おそろしさを あじわうがよい！！`);
+                            await typeMessage(`【${extDef.name}】\nくっ……！\nここまで 来るとは 思わなかったぞ……人間よ。`);
+                            await typeMessage(`【${extDef.name}】\n今こそ 真の 力を 解き放つ！\n大地よ 嘆け、空よ 歪め！\n覚悟するがいい！！`);
                             let finalId = bossId + "_final"; if (guraFinalId) finalId = guraFinalId;
                             
                             if (isMaou) {
@@ -2526,7 +2593,9 @@ async function checkAction() {
                         delete currentMap.npcs[key];
                         if(extDef.defeat_flag) partyData.flags[extDef.defeat_flag] = true;
                         if(extDef.defeat_flag === "maou_defeated" || isMaou) {
-                            AudioManager.playBGM('victory'); await typeMessage(`まおうを たおした！！\nせかいに へいわが おとずれた！`); await typeMessage(`（まものが でなくなりました！\nはじまりの おしろの 王様のもとへ\nがいせん しましょう！）`);
+                            AudioManager.playBGM('victory');
+                            await typeMessage(`まおうを たおした！！\n長い 闘いが ついに 終わった！\nせかいに ひかりが もどってきた！`);
+                            await typeMessage(`（まものが でなくなりました！\nグラマニア城の 王様のもとへ\nがいせん しましょう！）`);
                             partyData.flags.last_boss_defeated = true;
                         }
                     } else {
@@ -2595,9 +2664,10 @@ async function checkAction() {
                     if (_bw) {
                         delete currentMap.npcs[key];
                         if (_isFinal) {
-                            await typeMessage(`【${_bn}】\nぐわーっ！！ ありえぬ！\nこんなニンゲンごときに……！`);
-                            AudioManager.playBGM('victory'); await typeMessage(`まおうを たおした！！\nせかいに へいわが おとずれた！`);
-                            await typeMessage(`（まものが でなくなりました！\nはじまりの おしろの 王様のもとへ\nがいせん しましょう！）`);
+                            await typeMessage(`【${_bn}】\nあ……ありえぬ……！！\nわれが……人間ごときに……！！`);
+                            AudioManager.playBGM('victory');
+                            await typeMessage(`まおうを たおした！！\n長い 闘いが ついに 終わった！\nせかいに ひかりが もどってきた！`);
+                            await typeMessage(`（まものが でなくなりました！\nグラマニア城の 王様のもとへ\nがいせん しましょう！）`);
                             partyData.flags.last_boss_defeated = true;
                         } else { await typeMessage(`${_bn}を たおした！\nみちが ひらけた！`); }
                     }
@@ -2605,17 +2675,21 @@ async function checkAction() {
                 else if (npc.id === 'npc_tower_gate' || npc.id === 'npc_maou_castle_gate') {
                     let _isT = npc.id === 'npc_tower_gate';
                     let _dm = _isT ? 'map_tower_1f' : 'map_demon_castle_1f';
-                    await typeMessage(_isT ? "【天空の塔】\nここは 伝説の 天空の塔。\n頂に 天空の城が あると いわれる。\nのぼって みるか？" : "【魔王城の門】\nここは 魔王 ガルラの居城。\nひきかえせ。さもなくば 死あるのみ！");
+                    if (_isT) {
+                    await typeMessage("【天空の塔・入口】\nここは 伝説の 天空の塔。\n頂には 太古の 守護者が 眠るという……\nのぼって みるか？");
+                } else {
+                    await typeMessage("【魔王城の門】\nここは 大魔王の 居城——\n闇が 漂い 空気さえ 澱んでいる。\nここから 先に 足を 踏み入れれば\n生きては 帰れぬかもしれぬ……\nそれでも 進むか？");
+                }
                     let _yn2 = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
                     if (_yn2 === 0 && externalMapData[_dm]) {
                         partyData.pos.map = _dm; partyData.pos.x = _isT ? 7 : 9; partyData.pos.y = _isT ? 12 : 17;
                         currentMap = await loadExternalData('map-' + _dm); moveHistory = []; drawMap(); updateBGM();
                     } else { await typeMessage("またの おこしを おまちしております！"); }
                 }
-                else if (npc.id === 'npc_tower_sage') { await typeMessage("【賢者】\nここは 天空の塔の 1階。\n頂には 天空の城が あると 言われておる。\n強き者のみが たどりつけると いうが……\nお主には その 力が あるとみた！\nきを つけて いくのじゃぞ！"); }
-                else if (npc.id === 'npc_sky_guard') { await typeMessage("【天空の守護者】\nよく ここまで たどりついた。\nこの 先に 天空の王が おわします。\nかくごは よいか？"); }
+                else if (npc.id === 'npc_tower_sage') { await typeMessage("【塔の番人】\nここは 天空の塔の 1階。\n太古の 守護者が 頂に 眠っておる……\nその 力を 受け継ぐに ふさわしい 者のみが\n先へ 進めると いうぞ。\nご武運を！"); }
+                else if (npc.id === 'npc_sky_guard') { await typeMessage("【天空の守護者】\nよく ここまで たどりついた……\nその 眼に 本物の 意志を 感じる。\nこの 先に 天空の王が おわします。\n全力で ぶつかるがよい！"); }
                 else if (npc.id === 'npc_guard_demon') {
-                    await typeMessage("【魔族の兵士】\nここは 魔王様の しろだ！\n人間ごとき が よく ここまで……\nこえを 通すわけには いかぬ！！");
+                    await typeMessage("【魔族の兵士】\nよく ここまで 来たな 人間ども……！\nだが ここから 先には\nただでは 通さぬ！\n魔王様の 御名において\nここを 守りきる！！");
                     let _gid = 'death_knight'; if (!masterData.monsters[_gid]) masterData.monsters[_gid] = { name: '魔族の兵士', max_hp: 180, atk: 38, def: 22, spd: 18, exp: 350, gold: 180 };
                     hideGoldWindow(); let _gw = await executeBattle([_gid]); showGoldWindow(); updateGoldWindow();
                     if (_gw) { delete currentMap.npcs[key]; await typeMessage("魔族の兵士を たおした！"); }
