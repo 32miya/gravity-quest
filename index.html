@@ -2238,14 +2238,28 @@ function drawMap() {
     const _mc = { castle: isCastle && !_isDemon, town: isTown, cave: isCave, demon: _isDemon, tower: _isTower, shrine: _isShrine };
     const _drawNow = Date.now();
     let lights = [];
-    const startX = Math.max(0, Math.floor(camX / TILE_SIZE) - 1);
-    const endX = Math.min(currentMap.width, Math.ceil((camX + cWidth) / TILE_SIZE) + 1);
-    const startY = Math.max(0, Math.floor(camY / TILE_SIZE) - 1);
-    const endY = Math.min(currentMap.height, Math.ceil((camY + cHeight) / TILE_SIZE) + 1);
-    
-    for(let y = startY; y < endY; y++) {
-        for(let x = startX; x < endX; x++) {
-            const tile = currentMap.tiles[y * currentMap.width + x]; const px = x*TILE_SIZE - camX; const py = y*TILE_SIZE - camY;
+    const _fieldMatch = _mapId && _mapId.match(/^map_field_(\d)_(\d)$/);
+    const _isFieldMap = !!_fieldMatch;
+    const _fgx = _isFieldMap ? parseInt(_fieldMatch[1]) : -1;
+    const _fgy = _isFieldMap ? parseInt(_fieldMatch[2]) : -1;
+    const _mapsToRender = [];
+    if (_isFieldMap && externalMapData) {
+        for (let _ndy = -1; _ndy <= 1; _ndy++) { for (let _ndx = -1; _ndx <= 1; _ndx++) {
+            const _ngx = _fgx + _ndx, _ngy = _fgy + _ndy;
+            if (_ngx < 0 || _ngy < 0 || _ngx >= 5 || _ngy >= 5) continue;
+            const _nMapId2 = `map_field_${_ngx}_${_ngy}`;
+            const _nMap2 = externalMapData[_nMapId2];
+            if (_nMap2) _mapsToRender.push({ map: _nMap2, mapId: _nMapId2, offX: _ndx * 15, offY: _ndy * 15 });
+        }}
+    } else {
+        _mapsToRender.push({ map: currentMap, mapId: _mapId, offX: 0, offY: 0 });
+    }
+
+    for (const { map: _rMap, mapId: _rMapId, offX: _rOX, offY: _rOY } of _mapsToRender) {
+    for(let y = 0; y < _rMap.height; y++) {
+        for(let x = 0; x < _rMap.width; x++) {
+            const vx = x+_rOX, vy = y+_rOY;
+            const tile = _rMap.tiles[y * _rMap.width + x]; const px = vx*TILE_SIZE - camX; const py = vy*TILE_SIZE - camY;
             if (px < -TILE_SIZE || px > cWidth || py < -TILE_SIZE || py > cHeight) continue;
             let bgImg = null; let fgImg = null; let color = getTileColor(tile);
             // 文脈別フォールバックカラー（外部画像が読めない時の補正）
@@ -2276,23 +2290,25 @@ function drawMap() {
             } else if (tile === 22) { bgImg = null; color = '#aaa'; if(externalImages['fieldShrineIcon']) fgImg = externalImages['fieldShrineIcon']; else if(externalImages['caveIcon']) fgImg = externalImages['caveIcon']; else if(externalImages['shrineIcon']) fgImg = externalImages['shrineIcon'];
             } else if (tile === 23) { bgImg = null; color = '#cff'; }
 
-            const _rand = getMapRandom(x, y, _mapId);
+            const _rand = getMapRandom(x, y, _rMapId);
             let drawnCustom = false;
             if (bgImg && bgImg.complete && bgImg.naturalHeight > 0) { ctx.drawImage(bgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
             if (fgImg && fgImg.complete && fgImg.naturalHeight > 0) { if (!drawnCustom && color) { ctx.fillStyle = color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); } ctx.drawImage(fgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
             if (!drawnCustom) { drawProceduralTile(ctx, tile, px, py, _rand, _drawNow, _mc, lights); drawnCustom = true; }
         }
     }
-    
-    if (currentMap.npcs) {
-        Object.keys(currentMap.npcs).forEach(key => {
-            const [nx, ny] = key.split(','); const npc = currentMap.npcs[key]; const _basePx = parseInt(nx)*TILE_SIZE - camX; const _basePy = parseInt(ny)*TILE_SIZE - camY;
+    }
+
+    for (const { map: _rMap, mapId: _rMapId, offX: _rOX, offY: _rOY } of _mapsToRender) {
+    if (_rMap.npcs) {
+        Object.keys(_rMap.npcs).forEach(key => {
+            const [nx, ny] = key.split(','); const npc = _rMap.npcs[key]; const _basePx = (parseInt(nx)+_rOX)*TILE_SIZE - camX; const _basePy = (parseInt(ny)+_rOY)*TILE_SIZE - camY;
             const _noAnim = npc.id.includes('chest') || npc.id.includes('obj_') || npc.id.includes('king') || npc.id.includes('demon') || npc.id.includes('dragon');
             const _nBob = _noAnim ? 0 : Math.round(Math.sin(Date.now() / 900 + parseInt(nx) * 2.3 + parseInt(ny) * 1.7) * 1.5);
             const px = _basePx; const py = _basePy + _nBob;
             if (px < -TILE_SIZE*2 || px > cWidth || py < -TILE_SIZE*2 || py > cHeight) return;
             if(npc.id.includes('chest') || npc.id.includes('obj_chest')) {
-                let chestFlag = `chest_${partyData.pos.map}_${nx}_${ny}`; let isOpened = partyData.flags[chestFlag]; ctx.globalAlpha = isOpened ? 0.5 : 1.0;
+                let chestFlag = `chest_${_rMapId}_${nx}_${ny}`; let isOpened = partyData.flags[chestFlag]; ctx.globalAlpha = isOpened ? 0.5 : 1.0;
                 let chestImg = externalImages['chest'] || externalImages['treasure'] || externalImages['treasureBox'];
                 if (npc.id === "obj_chest_star_frag") { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("✨", px + TILE_SIZE/2, py + TILE_SIZE/2); }
                 else if(chestImg && chestImg.complete && chestImg.naturalHeight > 0) { ctx.drawImage(chestImg, px, py, TILE_SIZE, TILE_SIZE); } else { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(isOpened ? "🧳" : "🎁", px + TILE_SIZE/2, py + TILE_SIZE/2); } ctx.globalAlpha = 1.0;
@@ -2353,7 +2369,8 @@ function drawMap() {
                 drawNpcSign(ctx, _scx, _basePy, '🔥', '魔王城', '#622');
         });
     }
-    
+    }
+
     let displayOrder = []; partyData.members.forEach(m => { if(m.hp > 0) displayOrder.push(m); }); partyData.members.forEach(m => { if(m.hp <= 0) displayOrder.push(m); });
     const _wNow = Date.now(); const _isWalking = (_wNow - _lastMoveTime) < 350;
     for(let i = displayOrder.length - 1; i >= 0; i--) {
@@ -2436,7 +2453,7 @@ function drawMap() {
 
 async function moveParty(dx, dy) {
     const nx = partyData.pos.x + dx, ny = partyData.pos.y + dy; if(nx<0 || ny<0 || nx>=currentMap.width || ny>=currentMap.height) return;
-    const tile = currentMap.tiles[ny * currentMap.width + nx]; const solidTiles = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
+    const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const solidTiles = _onField ? [1, 2, 4, 5, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
     const key = `${nx},${ny}`; if (currentMap.npcs && currentMap.npcs[key]) return;
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
     _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
@@ -2454,13 +2471,14 @@ async function moveParty(dx, dy) {
     partyData.members.forEach(m => { if(m.hp > 1 && m.isPoisoned) { m.hp -= 1; pDamaged = true; } });
     if(pDamaged && tile !== 6 && tile !== 7) AudioManager.playSE('poison');
 
+    if (_onField) partyData.last_field_pos = { map: partyData.pos.map, x: partyData.pos.x, y: partyData.pos.y };
     drawMap();
     if(currentMap.exits && currentMap.exits[key]) {
         AudioManager.playSE('stair'); const exit = currentMap.exits[key]; let nextMapId = 'map-' + exit.map; let nextMap = await loadExternalData(nextMapId);
         if (nextMap) {
             currentMap = nextMap; partyData.pos.map = exit.map;
             let _lx = exit.x, _ly = exit.y;
-            const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
+            const _solid = exit.map && /^map_field_/.test(exit.map) ? [1, 2, 4, 5, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
             const _isBlocked = (x, y) => {
                 if (x<0||y<0||x>=nextMap.width||y>=nextMap.height) return true;
                 const _t = nextMap.tiles[y*nextMap.width+x];
@@ -3122,8 +3140,12 @@ async function openMainMenu() {
                     updatePartyStatus(); 
                 }
             } else if(spellData.type === 'field' || spellData.id.includes('rula') || spellData.id.includes('remi') || spellData.id.includes('tohe') || spellData.id.includes('trama')) {
-                if(spellData.id.includes('rula')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.pos.map = "map_town_01"; partyData.pos.x = 10; partyData.pos.y = 18; currentMap = await loadExternalData('map-map_town_01'); await typeMessage(`まちへ もどってきた！`); hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; } 
-                else if(spellData.id.includes('remi')) { let mId = partyData.pos.map; if (mId.includes('dungeon') || mId.includes('cave') || mId.includes('tower')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.pos.map = "map_town_01"; partyData.pos.x = 10; partyData.pos.y = 18; currentMap = await loadExternalData('map-map_town_01'); await typeMessage(`ダンジョンから だしゅつした！`); hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; } else { await typeMessage(`しかし ここでは つかえなかった。`); } } 
+                if(spellData.id.includes('rula')) {
+                    let _rMapId = partyData.pos.map || '';
+                    if (_rMapId.includes('dungeon') || _rMapId.includes('tower') || _rMapId.includes('demon') || _rMapId.includes('castle') || _rMapId.includes('shrine')) { await typeMessage(`しかし ここでは つかえなかった。\nルーラは フィールドや まちで つかえます。`); }
+                    else { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.pos.map = "map_town_01"; partyData.pos.x = 10; partyData.pos.y = 18; currentMap = await loadExternalData('map-map_town_01'); await typeMessage(`グラマニアの まちへ もどってきた！`); hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; }
+                }
+                else if(spellData.id.includes('remi')) { let _rMapId2 = partyData.pos.map || ''; if (_rMapId2.includes('dungeon') || _rMapId2.includes('cave') || _rMapId2.includes('tower') || _rMapId2.includes('demon') || _rMapId2.includes('shrine')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); const _lfp = partyData.last_field_pos; if (_lfp && externalMapData && externalMapData[_lfp.map]) { partyData.pos.map = _lfp.map; partyData.pos.x = _lfp.x; partyData.pos.y = _lfp.y; currentMap = await loadExternalData('map-' + _lfp.map); } else { partyData.pos.map = "map_field_2_2"; partyData.pos.x = 7; partyData.pos.y = 7; currentMap = await loadExternalData('map-map_field_2_2'); } await typeMessage(`ダンジョンから だしゅつした！`); hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; } else { await typeMessage(`しかし ここでは つかえなかった。\nレミトは ダンジョンや たいせつな しせつの 中で つかえます。`); } } 
                 else if(spellData.id.includes('tohe')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.tohero_steps = 100; await typeMessage(`まものが ちかづかなくなった！`); }
                 else if(spellData.id.includes('trama')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.tramana_steps = 100; await typeMessage(`ダメージゾーンから みをまもる じゅもんを はった！`); }
             } else { await typeMessage("ここでは つかえない！"); }
@@ -3135,6 +3157,7 @@ async function openMainMenu() {
             if(actIdx === 0) {
                 if(itemData.type === 'tool') {
                     if(itemData.id === 'i_star_frag' || itemData.id === 'acc_star_bracelet' || itemData.id === 'w_star_sword') { await typeMessage("しかし なにも おこらなかった。"); continue; }
+                    if(itemData.effect === 'warp_town' || itemData.id === 'i04') { char.inventory.splice(itemIdx, 1); AudioManager.playSE('magic_cast'); await typeMessage(`${char.name}は キメラのつばさを つかった！`); await typeMessage(`まぶしい ひかりに つつまれ\nグラマニアの まちへ もどってきた！`); partyData.pos.map = "map_town_01"; partyData.pos.x = 10; partyData.pos.y = 18; currentMap = await loadExternalData('map-map_town_01'); hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); break; }
                     if(char.hp <= 0) { await typeMessage(`${char.name}は しんでいる！`); continue; }
                     await typeMessage("だれに つかう？"); let tIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true);
                     if(tIdx !== -1) { 
@@ -3186,8 +3209,13 @@ async function openMainMenu() {
 
 async function executeBattle(fixedEnemies = null) {
     state = 'BATTLE'; partyData.members.forEach(m => { m._zenryokuUsed = false; }); document.getElementById('screen').style.display = 'none'; const bScreen = document.getElementById('battle-screen'); bScreen.style.display = 'flex';
-    let mapId = partyData.pos.map || ""; let bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/81d36868-2c8b-4bee-aaae-28d51fab8810.jpeg"; 
-    if (mapId.includes('demon') || mapId.includes('death') || mapId.includes('maou')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/2afa8b0a-bae3-41ce-9603-c4aeffb287b0.jpeg"; } else if (mapId.includes('dungeon') || mapId.includes('cave')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5c2cab8a-3220-4176-ab5d-e82bbd10a455.jpeg"; } else if (mapId.includes('tower') || mapId.includes('shrine')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5d96c8b0-7b34-40a5-aef8-e4ee76069d52.jpeg"; } else if (mapId.includes('desert') || mapId.includes('sabaku') || mapId.includes('east') || mapId.startsWith('map_field_4_')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/c7ffe62e-dfb7-4de1-9068-2c22160b7384.jpeg"; } else if (mapId.includes('mountain') || mapId === 'map_field_north_2') { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/7d62c7d2-a042-44ee-bfe9-1759a6abbbd5.jpeg"; }
+    let mapId = partyData.pos.map || ""; let bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/81d36868-2c8b-4bee-aaae-28d51fab8810.jpeg";
+    if (mapId.includes('demon') || mapId.includes('death') || mapId.includes('maou')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/2afa8b0a-bae3-41ce-9603-c4aeffb287b0.jpeg"; } else if (mapId.includes('dungeon') || mapId.includes('cave')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5c2cab8a-3220-4176-ab5d-e82bbd10a455.jpeg"; } else if (mapId.includes('tower') || mapId.includes('shrine')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5d96c8b0-7b34-40a5-aef8-e4ee76069d52.jpeg"; } else if (/^map_field_/.test(mapId) && currentMap && currentMap.tiles) {
+        const _bt = currentMap.tiles[partyData.pos.y * currentMap.width + partyData.pos.x];
+        if (_bt === 0) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/c7ffe62e-dfb7-4de1-9068-2c22160b7384.jpeg"; }
+        else if (_bt === 19) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/81d36868-2c8b-4bee-aaae-28d51fab8810.jpeg"; }
+        else if (_bt === 20) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/7d62c7d2-a042-44ee-bfe9-1759a6abbbd5.jpeg"; }
+    } else if (mapId.includes('desert') || mapId.includes('sabaku') || mapId.startsWith('map_field_4_')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/c7ffe62e-dfb7-4de1-9068-2c22160b7384.jpeg"; } else if (mapId.includes('mountain') || mapId === 'map_field_north_2') { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/7d62c7d2-a042-44ee-bfe9-1759a6abbbd5.jpeg"; }
     if (fixedEnemies) { if (fixedEnemies.some(id => id.includes('demon') || id.includes('maou') || id === 'npc_boss_maou' || id.includes('_final') || (masterData.monsters[id] && masterData.monsters[id].name.includes('グラ王')))) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/c4878090-88c8-4dcc-bb32-068ac77df005.jpeg"; } }
     bScreen.style.backgroundImage = `url('${bgUrl}')`; bScreen.style.backgroundSize = "cover"; bScreen.style.backgroundPosition = "bottom center"; bScreen.style.backgroundRepeat = "no-repeat";
     showWindow('party-status'); updatePartyStatus();
