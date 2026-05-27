@@ -757,46 +757,85 @@ window.SOUND_DATABASE = {
 window.isGuraKingBattle = false;
 
 function packSaveData(pData) {
-    let minObj = {
+    // ① unescape trick: 日本語名がBase64で膨張しない
+    // ③ v:2マーカー + 装備5スロットを|結合で圧縮
+    const minObj = {
+        v: 2,
         g: pData.gold,
-        p: [pData.pos.map.replace('map_',''), pData.pos.x, pData.pos.y],
-        f: Object.keys(pData.flags||{}).filter(k => pData.flags[k] === true),
+        p: [pData.pos.map.replace(/^map_/, ''), pData.pos.x, pData.pos.y],
+        f: Object.keys(pData.flags || {}).filter(k => pData.flags[k] === true),
         c: pData.members.map(mb => [
             mb.name, mb.job, mb.lv, mb.exp,
-            mb.equipment.weapon||"", mb.equipment.armor||"", mb.equipment.shield||"", mb.equipment.helmet||"", mb.equipment.accessory||"",
-            mb.inventory.join(','), mb.spells.join(',')
+            [mb.equipment.weapon||'', mb.equipment.armor||'', mb.equipment.shield||'', mb.equipment.helmet||'', mb.equipment.accessory||''].join('|'),
+            mb.inventory.join('|'),
+            mb.spells.join('|')
         ])
     };
-    return btoa(encodeURIComponent(JSON.stringify(minObj)));
+    return btoa(unescape(encodeURIComponent(JSON.stringify(minObj))));
 }
 
 function unpackSaveData(pwd) {
     pwd = pwd.replace(/\s+/g, '');
-    let decoded;
-    try { decoded = decodeURIComponent(atob(pwd)); } catch(e) { return null; }
-    if (decoded.startsWith("CLEAR_")) { let inner = decoded.substring(6); return { type: 'clear', data: JSON.parse(inner) }; }
-    let obj; try { obj = JSON.parse(decoded); } catch(e) { return null; }
-    if (obj.members && obj.pos) return { type: 'normal', data: obj }; 
-    let flags = {}; if (obj.f) obj.f.forEach(k => flags[k] = true);
-    let members = obj.c.map(mb => {
+    if (!pwd) return null;
+
+    // CLEAR_プレフィックス: 後続のbase64部分を再帰デコードしてtype:'clear'で返す
+    if (pwd.startsWith('CLEAR_')) {
+        const _r = unpackSaveData(pwd.slice(6));
+        if (_r && _r.type === 'normal') return { type: 'clear', data: _r.data };
+        return _r;
+    }
+
+    // デコード: 新形式(unescape trick)→旧形式の順で試みる
+    const _tryDec = (b64) => {
+        try { return decodeURIComponent(escape(atob(b64))); } catch(e) {}
+        try { return decodeURIComponent(atob(b64)); } catch(e) {}
+        return null;
+    };
+    const decoded = _tryDec(pwd);
+    if (!decoded) return null;
+
+    let obj;
+    try { obj = JSON.parse(decoded); } catch(e) { return null; }
+
+    // 旧形式: 生のpartyDataオブジェクト
+    if (obj.members && obj.pos) return { type: 'normal', data: obj };
+
+    const _mapName = (s) => s.startsWith('map_') ? s : 'map_' + s;
+    const _buildMember = (mb, isV2) => {
         let bs = { hp: 50, max_hp: 50, mp: 20, max_mp: 20, atk: 10, def: 10, spd: 10 };
         if (masterData && masterData.growth && masterData.growth[mb[1]]) {
-            let g = masterData.growth[mb[1]].find(g => g.level === mb[2]);
+            const g = masterData.growth[mb[1]].find(g => g.level === mb[2]);
             if (g) bs = { hp: g.hp, max_hp: g.hp, mp: g.mp||0, max_mp: g.mp||0, atk: g.atk||10, def: g.def||10, spd: g.spd||10 };
         }
-        return {
-            id: "p" + Math.random(), name: mb[0], job: mb[1], lv: mb[2], exp: mb[3],
-            ...bs,
-            equipment: { weapon: mb[4]||null, armor: mb[5]||null, shield: mb[6]||null, helmet: mb[7]||null, accessory: mb[8]||null },
-            inventory: mb[9] ? mb[9].split(',') : [],
-            spells: mb[10] ? mb[10].split(',') : []
-        };
-    });
-    let mapName = obj.p[0];
-    if(!mapName.startsWith('map_') && !mapName.includes('town') && !mapName.includes('castle') && !mapName.includes('dungeon')) mapName = 'map_' + mapName;
-    else if (!mapName.startsWith('map_')) mapName = 'map_' + mapName;
-    let pData = { gold: obj.g||0, steps_to_encounter: 15, tohero_steps: 0, tramana_steps: 0, members: members, flags: flags, pos: { map: mapName, x: obj.p[1], y: obj.p[2] }, dir: 2 };
-    return { type: 'normal', data: pData };
+        if (isV2) {
+            // v:2: 装備は"|"結合文字列、インベントリ/呪文も"|"区切り
+            const eq = (mb[4] || '').split('|');
+            return {
+                id: 'p' + Math.random(), name: mb[0], job: mb[1], lv: mb[2], exp: mb[3], ...bs,
+                equipment: { weapon: eq[0]||null, armor: eq[1]||null, shield: eq[2]||null, helmet: eq[3]||null, accessory: eq[4]||null },
+                inventory: mb[5] ? mb[5].split('|').filter(Boolean) : [],
+                spells:    mb[6] ? mb[6].split('|').filter(Boolean) : []
+            };
+        } else {
+            // 旧形式: 装備は個別インデックス、","区切り
+            return {
+                id: 'p' + Math.random(), name: mb[0], job: mb[1], lv: mb[2], exp: mb[3], ...bs,
+                equipment: { weapon: mb[4]||null, armor: mb[5]||null, shield: mb[6]||null, helmet: mb[7]||null, accessory: mb[8]||null },
+                inventory: mb[9]  ? mb[9].split(',')  : [],
+                spells:    mb[10] ? mb[10].split(',') : []
+            };
+        }
+    };
+
+    if (obj.c) {
+        const isV2 = obj.v === 2;
+        const flags = {};
+        if (obj.f) obj.f.forEach(k => { flags[k] = true; });
+        const members = obj.c.map(mb => _buildMember(mb, isV2));
+        return { type: 'normal', data: { gold: obj.g||0, steps_to_encounter: 15, tohero_steps: 0, tramana_steps: 0, members, flags, pos: { map: _mapName(obj.p[0]), x: obj.p[1], y: obj.p[2] }, dir: 2 } };
+    }
+
+    return null;
 }
 
 function injectSubStoryData() {
