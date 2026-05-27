@@ -884,7 +884,338 @@ function injectSafeScript(code, debugName) { let safeCode = code; safeCode = saf
 async function loadExternalAudioDatabase(url) { try { let targetUrl = url; if (url.includes('id=37967')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260416/game_1776339312498957168.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); let scriptFound = false; doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('window.SOUND_DATABASE')) { injectSafeScript(s.textContent, 'Audio DB'); scriptFound = true; } }); if (scriptFound) { await new Promise(r => setTimeout(r, 100)); if (window.SOUND_DATABASE) AudioManager.db = window.SOUND_DATABASE; } } catch(e) { console.error(e); } }
 function updateBGM() { let mapId = partyData.pos.map; if(!mapId) return; if (partyData.flags && partyData.flags.last_boss_defeated) { AudioManager.playBGM('ending'); return; } if (mapId.includes('castle')) { if(mapId.includes('demon') || mapId.includes('death')) AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); else if(mapId.includes('sky')) AudioManager.playBGM(AudioManager.db.bgm['sky_castle'] ? 'sky_castle' : 'castle'); else AudioManager.playBGM('castle'); } else if (mapId.includes('town') || mapId.includes('village')) { AudioManager.playBGM('town'); } else if (mapId.includes('market') || mapId.includes('bazaar')) { AudioManager.playBGM('market'); } else if (mapId.includes('shrine')) { AudioManager.playBGM('shrine'); } else if (mapId.includes('dungeon') || mapId.includes('cave')) { AudioManager.playBGM('dungeon'); } else if (mapId.includes('tower')) { AudioManager.playBGM('tower'); } else { if (mapId.includes('death') || mapId.includes('demon')) AudioManager.playBGM('field_late'); else AudioManager.playBGM('field_early'); } }
 
-async function playSpellEffect(spellData, targetObj) { const layer = document.getElementById('global-effect-layer'); layer.innerHTML = ""; let duration = 800; let emojis = ['✨']; let color = '#fff'; let animClass = 'eff-burst'; const sid = spellData.id || ''; const stype = spellData.type || ''; const elem = spellData.element || ''; if(stype === 'heal') { if(sid.includes('zao')) { emojis = ['👼', '✨', '🌟']; color = '#ff8'; animClass = 'eff-float-up'; duration = 1200; } else { emojis = ['✨', '💚', '🌟']; color = '#8f8'; animClass = 'eff-float-up'; } } else if(elem === 'fire' || sid.includes('mera')) { emojis = ['🔥', '💥', '🧨']; color = '#f44'; animClass = 'eff-burst'; } else if(elem === 'ice' || sid.includes('hya')) { emojis = ['❄️', '🧊', '✨']; color = '#4cf'; animClass = 'eff-shatter'; } else if(elem === 'wind' || sid.includes('bagi')) { emojis = ['🌪️', '💨', '🍃']; color = '#8c8'; animClass = 'eff-slash'; } else if(elem === 'lightning' || sid.includes('gira')) { emojis = ['⚡', '🌩️', '💥']; color = '#ff0'; animClass = 'eff-flash'; duration = 600; } else if(stype === 'support' || stype === 'debuff' || stype === 'buff' || stype === 'status') { if(sid.includes('ruka') || sid.includes('down') || sid.includes('sleep') || sid.includes('stop') || sid.includes('rari') || sid.includes('poi')) { emojis = ['🔽', '💧', '⏬', '💤']; color = '#a4f'; animClass = 'eff-shatter'; } else { emojis = ['🛡️', '🔷', '✨', '⚔️']; color = '#aaf'; animClass = 'eff-aura'; } } else if(stype === 'field' || sid.includes('rula') || sid.includes('remi') || sid.includes('tohe')) { emojis = ['🌀', '✨', '💨']; color = '#aaf'; animClass = 'eff-float-up'; duration = 1000; } for(let i=0; i<15; i++) { let span = document.createElement('span'); span.innerText = emojis[Math.floor(Math.random()*emojis.length)]; span.style.position = 'absolute'; span.style.fontSize = (Math.random()*30 + 30) + 'px'; let tx = 50, ty = 40; if(state === 'BATTLE') { if(targetObj === 'enemies' || stype === 'attack' || stype === 'debuff' || stype === 'status' || sid.includes('ruka') || sid.includes('rari')) { tx = 20 + Math.random()*60; ty = 30 + Math.random()*40; } else { tx = 40 + Math.random()*20; ty = 40 + Math.random()*20; } } span.style.left = tx + '%'; span.style.top = ty + '%'; span.style.transform = `translate(-50%, -50%)`; if(animClass === 'eff-burst' || animClass === 'eff-shatter' || animClass === 'eff-float-up') { span.style.marginLeft = ((Math.random()-0.5)*120) + 'px'; span.style.marginTop = ((Math.random()-0.5)*120) + 'px'; } else if (animClass === 'eff-slash') { span.style.marginTop = ((Math.random()-0.5)*80) + 'px'; } span.className = animClass; span.style.animationDuration = duration + 'ms'; span.style.animationDelay = (Math.random()*150) + 'ms'; layer.appendChild(span); } const flash = document.createElement('div'); flash.style.position = 'absolute'; flash.style.top = 0; flash.style.left = 0; flash.style.width = '100%'; flash.style.height = '100%'; flash.style.backgroundColor = color; flash.style.opacity = '0.3'; flash.className = 'eff-screen-flash'; layer.appendChild(flash); await new Promise(r => setTimeout(r, duration + 100)); layer.innerHTML = ""; }
+async function playSpellEffect(spellData, targetObj) {
+    const layer = document.getElementById('global-effect-layer');
+    layer.innerHTML = '';
+    const sid = (spellData.id || '').toLowerCase();
+    const stype = spellData.type || '';
+    const elem = (spellData.element || '').toLowerCase();
+    const sval = spellData.value || spellData.power || 0;
+
+    // Tier (spell power) detection: 1=weak, 2=medium, 3=strong, 4=ultimate
+    let tier = 1;
+    if (sval >= 200 || (spellData.mp || 0) >= 28 || /zun$|zoma$|mahyado|gon$|kuro$|naz$|zaorn$|deinn$|min$|ultima/.test(sid)) tier = 4;
+    else if (sval >= 100 || (spellData.mp || 0) >= 16 || /ra$|zon$|don$|behoma$|behoima$|begirama$/.test(sid)) tier = 3;
+    else if (sval >= 40 || (spellData.mp || 0) >= 7 || /mi$|ma$|daruko|darko|behoimi$|imi$/.test(sid)) tier = 2;
+
+    // Element detection
+    let etype = 'generic';
+    if (stype === 'heal' || /hoi|beho|zaorn|kiari|shana/.test(sid) || (sid.includes('zao') && !sid.includes('zaorn'))) etype = 'heal';
+    else if (elem === 'fire' || sid.includes('mera')) etype = 'fire';
+    else if (elem === 'ice' || sid.includes('hya')) etype = 'ice';
+    else if (elem === 'lightning' || sid.includes('gira') || sid.includes('begi')) etype = 'lightning';
+    else if (elem === 'wind' || sid.includes('bagi')) etype = 'wind';
+    else if (sid.includes('io') || elem === 'explosion') etype = 'explosion';
+    else if (sid.includes('doru') || sid.includes('dol') || elem === 'dark') etype = 'dark';
+    else if (stype === 'buff') etype = 'buff';
+    else if (stype === 'debuff' || stype === 'status') etype = 'debuff';
+    else if (stype === 'field' || sid.includes('rula') || sid.includes('remi') || sid.includes('tohe')) etype = 'warp';
+
+    // Canvas setup
+    const gc = document.getElementById('game-container');
+    const W = gc.offsetWidth || 360, H = gc.offsetHeight || 560;
+    const cvs = document.createElement('canvas');
+    cvs.width = W; cvs.height = H;
+    Object.assign(cvs.style, {position:'absolute',top:'0',left:'0',width:'100%',height:'100%',pointerEvents:'none'});
+    layer.appendChild(cvs);
+    const ctx = cvs.getContext('2d');
+
+    const isEnemy = targetObj === 'enemies' || stype === 'attack' || stype === 'debuff' || stype === 'status';
+    const tcx = W * 0.5, tcy = isEnemy ? H * 0.35 : H * 0.65;
+    const dur = [700, 900, 1100, 1400][tier - 1];
+    const N = [18, 30, 50, 75][tier - 1];
+
+    // Screen shake for powerful spells
+    if (tier >= 3 && (etype === 'explosion' || etype === 'lightning' || etype === 'fire' || etype === 'dark')) {
+        let sk = 0, maxSk = tier === 4 ? 8 : 5;
+        const gcEl = gc;
+        const iv = setInterval(() => {
+            sk++;
+            gcEl.style.transform = sk % 2 === 0 ? `translate(${(Math.random()-0.5)*8}px,${(Math.random()-0.5)*5}px)` : 'none';
+            if (sk >= maxSk) { clearInterval(iv); gcEl.style.transform = 'none'; }
+        }, 60);
+    }
+
+    // Deterministic per-particle RNG (stable across frames)
+    const rng = (s) => { let x = ((s + 1) * 1664525 + 1013904223) & 0x7fffffff; return x / 0x7fffffff; };
+    const parts = Array.from({length: N}, (_, i) => ({
+        angle: rng(i*7+1) * Math.PI * 2,
+        spd: 0.5 + rng(i*7+2) * 0.5,
+        phase: rng(i*7+3) * 0.25,
+        size: 0.5 + rng(i*7+4) * 0.5,
+        hue: rng(i*7+5),
+        wobble: (rng(i*7+6) - 0.5) * 2,
+    }));
+
+    const clearGlow = () => { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; };
+    const rg = (cx,cy,r,c1,c2) => { const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r); g.addColorStop(0,c1); g.addColorStop(1,c2); return g; };
+    const lg = (x1,y1,x2,y2,c1,c2) => { const g=ctx.createLinearGradient(x1,y1,x2,y2); g.addColorStop(0,c1); g.addColorStop(1,c2); return g; };
+
+    const drawFire = (t) => {
+        for (const p of parts) {
+            const pt = Math.max(0, (t - p.phase) / (1 - p.phase));
+            if (pt <= 0) continue;
+            const spd = 80 + p.spd * (80 + tier * 50);
+            const lx = tcx + Math.cos(p.angle)*spd*pt*0.4 + p.wobble*18*pt;
+            const ly = tcy - spd*pt*0.85 + 200*pt*pt*(0.3+p.spd*0.4);
+            const sz = (4+p.size*8*tier*0.3) * Math.max(0,1-pt*0.9);
+            const alpha = pt < 0.25 ? pt/0.25 : Math.max(0,1-(pt-0.25)/0.75);
+            if (sz<=0||alpha<=0) continue;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = rg(lx,ly,sz,'#ffffff',`hsla(${15+p.hue*30},100%,50%,0)`);
+            ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
+        }
+        // Core fireball
+        const ct = Math.min(1,t*3);
+        const coreR = (15+tier*25)*(ct<0.5?ct*2:Math.max(0,2-ct*2));
+        if (coreR>0) {
+            ctx.globalAlpha = 0.9;
+            ctx.fillStyle = rg(tcx,tcy,coreR*1.5,'#ffffff','rgba(255,100,0,0)');
+            ctx.fillRect(tcx-coreR*1.5,tcy-coreR*1.5,coreR*3,coreR*3);
+        }
+        // Fire pillar (tier3+)
+        if (tier>=3 && t<0.75) {
+            const ph = (0.75-t)/0.75*(100+tier*80), pw = 10+tier*8;
+            ctx.globalAlpha = (0.75-t)/0.75*0.7;
+            ctx.fillStyle = lg(tcx,tcy,tcx,tcy-ph,'rgba(255,200,0,0.9)','rgba(255,50,0,0)');
+            ctx.fillRect(tcx-pw/2,tcy-ph,pw,ph);
+            ctx.globalAlpha = (0.75-t)/0.75*0.35;
+            for (let s=-1;s<=1;s+=2) { ctx.fillStyle=lg(tcx,tcy,tcx,tcy-ph*0.7,'rgba(255,120,0,0.6)','transparent'); ctx.fillRect(tcx-pw/2+s*pw*0.8,tcy-ph*0.7,pw*0.6,ph*0.7); }
+        }
+        const stA = Math.max(0,0.3*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#ff2200';ctx.fillRect(0,0,W,H);}
+        ctx.globalAlpha=1;
+    };
+
+    const drawIce = (t) => {
+        for (const p of parts) {
+            const pt = Math.max(0,(t-p.phase)/(1-p.phase));
+            if (pt<=0) continue;
+            const spd = 60+p.spd*(60+tier*40);
+            const lx = tcx+Math.cos(p.angle)*spd*pt, ly = tcy+Math.sin(p.angle)*spd*pt;
+            const sz = (3+p.size*6)*Math.max(0,1-pt*0.6);
+            const alpha = pt<0.2?pt/0.2:Math.max(0,1-(pt-0.2)/0.8);
+            if (sz<=0||alpha<=0) continue;
+            ctx.globalAlpha = alpha*0.9;
+            ctx.save(); ctx.translate(lx,ly); ctx.rotate(p.angle+pt*Math.PI*1.5);
+            ctx.fillStyle = `hsl(${195+p.hue*25},${60+p.size*40}%,${65+p.hue*20}%)`;
+            ctx.beginPath(); ctx.moveTo(0,-sz); ctx.lineTo(sz*0.5,0); ctx.lineTo(0,sz*1.5); ctx.lineTo(-sz*0.5,0); ctx.closePath(); ctx.fill();
+            ctx.restore();
+        }
+        // Frost rings
+        for (let ri=0; ri<(tier>=3?3:tier>=2?2:1); ri++) {
+            const rp = Math.max(0,t-ri*0.15); if (rp<=0) continue;
+            const r = rp*(70+tier*35), ra = Math.max(0,(1-rp)*0.7);
+            ctx.globalAlpha=ra; ctx.strokeStyle=`rgba(160,220,255,${ra})`; ctx.lineWidth=2+tier-ri;
+            ctx.beginPath(); ctx.arc(tcx,tcy,r,0,Math.PI*2); ctx.stroke();
+        }
+        // Snowflake crystal
+        if (t<0.45) {
+            const ft=1-t/0.45, fSz=(20+tier*15)*ft;
+            ctx.globalAlpha=ft*0.9; ctx.strokeStyle='#c8eeff'; ctx.lineWidth=1.5;
+            for (let a=0;a<6;a++) {
+                const ag=a*Math.PI/3;
+                ctx.beginPath(); ctx.moveTo(tcx,tcy); ctx.lineTo(tcx+Math.cos(ag)*fSz,tcy+Math.sin(ag)*fSz); ctx.stroke();
+                const bx=tcx+Math.cos(ag)*fSz*0.6, by=tcy+Math.sin(ag)*fSz*0.6;
+                for (let b=-1;b<=1;b+=2){ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+Math.cos(ag+b*Math.PI/3)*fSz*0.3,by+Math.sin(ag+b*Math.PI/3)*fSz*0.3);ctx.stroke();}
+            }
+        }
+        const stA=Math.max(0,0.22*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#88ddff';ctx.fillRect(0,0,W,H);}
+        ctx.globalAlpha=1;
+    };
+
+    const _buildBolt = (x1,y1,x2,y2,d,dep,segs) => {
+        if (dep<=0||d<2){segs.push([x1,y1,x2,y2]);return;}
+        const mx=(x1+x2)/2+(Math.random()-0.5)*d, my=(y1+y2)/2+(Math.random()-0.5)*d;
+        _buildBolt(x1,y1,mx,my,d/2,dep-1,segs); _buildBolt(mx,my,x2,y2,d/2,dep-1,segs);
+        if (Math.random()<0.35&&dep>1){const bx=mx+(Math.random()-0.5)*d*1.5,by=my+Math.random()*d*0.6;_buildBolt(mx,my,bx,by,d/3,dep-2,segs);}
+    };
+    const _drawBolt = (x1,y1,x2,y2,d,dep,al) => {
+        const segs=[]; _buildBolt(x1,y1,x2,y2,d,dep,segs);
+        ctx.strokeStyle=`rgba(120,120,255,${al*0.4})`; ctx.lineWidth=(2+dep)*1.5;
+        ctx.beginPath(); segs.forEach(([a,b,c,e])=>{ctx.moveTo(a,b);ctx.lineTo(c,e);}); ctx.stroke();
+        ctx.strokeStyle=`rgba(255,255,255,${al})`; ctx.lineWidth=1+dep*0.4;
+        ctx.beginPath(); segs.forEach(([a,b,c,e])=>{ctx.moveTo(a,b);ctx.lineTo(c,e);}); ctx.stroke();
+    };
+
+    const drawLightning = (t) => {
+        const flashes = tier>=3?6:tier>=2?4:2;
+        const cycleT = (t*flashes)%1;
+        if (cycleT<0.55) {
+            const fa=Math.sin(cycleT/0.55*Math.PI)*0.9;
+            for (let b=0;b<1+tier;b++) {
+                const sx=W*(0.15+b*0.7/(1+tier))+(Math.random()-0.5)*40;
+                const sy=isEnemy?0:H*0.5;
+                _drawBolt(sx,sy,tcx+(Math.random()-0.5)*30,tcy,20+tier*12,4,fa);
+            }
+            ctx.globalAlpha=fa*0.9; ctx.fillStyle='#ffffaa';
+            for (let i=0;i<6+tier*4;i++){const sa=i/(6+tier*4)*Math.PI*2+Math.random()*0.5,sr=15+Math.random()*(30+tier*15);ctx.fillRect(tcx+Math.cos(sa)*sr-1,tcy+Math.sin(sa)*sr-1,2,2);}
+            ctx.globalAlpha=fa*(0.1+tier*0.06); ctx.fillStyle='#ffffd0'; ctx.fillRect(0,0,W,H);
+        }
+        ctx.globalAlpha=1;
+    };
+
+    const drawWind = (t) => {
+        for (let i=0;i<2+tier;i++) {
+            const p=parts[i*2%N], ph=p.phase+i*0.12;
+            const pt=Math.max(0,(t-ph)/(1-ph)); if(pt<=0||pt>=1) continue;
+            const alpha=pt<0.25?pt/0.25:Math.max(0,1-(pt-0.25)/0.75);
+            const yOff=p.wobble*0.5*70;
+            ctx.globalAlpha=alpha*0.85;
+            const hue=85+p.hue*50;
+            ctx.strokeStyle=`hsl(${hue},85%,65%)`; ctx.lineWidth=2+tier*0.7;
+            ctx.shadowColor=`hsl(${hue},100%,70%)`; ctx.shadowBlur=6;
+            ctx.beginPath();
+            const sx=-80+pt*(W+160);
+            ctx.moveTo(sx-50,tcy+yOff-15); ctx.bezierCurveTo(sx,tcy+yOff-35,sx+50,tcy+yOff+35,sx+100,tcy+yOff); ctx.stroke();
+            clearGlow();
+        }
+        if (tier>=2) {
+            for (const p of parts) {
+                const pt=Math.max(0,(t-p.phase*0.5)/(1-p.phase*0.5)); if(pt<=0||pt>=1) continue;
+                const angle=p.angle+t*(3+tier)*Math.PI;
+                const r=(25+p.spd*(40+tier*20))*Math.min(1,pt*4)*Math.max(0,1-pt*0.7);
+                const lx=tcx+Math.cos(angle)*r, ly=tcy+Math.sin(angle)*r*0.55-t*40;
+                const alpha=pt<0.4?pt/0.4:Math.max(0,1-(pt-0.4)/0.6);
+                ctx.globalAlpha=alpha*0.7; ctx.fillStyle=`hsl(${90+p.hue*70},85%,62%)`;
+                ctx.beginPath(); ctx.arc(lx,ly,1.5+p.size*2.5,0,Math.PI*2); ctx.fill();
+            }
+        }
+        const stA=Math.max(0,0.18*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#88dd44';ctx.fillRect(0,0,W,H);}
+        ctx.globalAlpha=1;
+    };
+
+    const drawHeal = (t) => {
+        const isRevive=sid.includes('zao')||sid.includes('zaorn');
+        const gold=isRevive||tier>=4;
+        for (const p of parts) {
+            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0||pt>=1) continue;
+            const lx=tcx+p.wobble*(35+tier*15)+Math.sin(pt*Math.PI*2.5+p.hue*6)*12;
+            const ly=tcy+30-pt*(80+tier*35);
+            const sz=(2.5+p.size*4)*Math.min(1,pt*4)*Math.max(0,1-pt);
+            ctx.globalAlpha=Math.max(0,1-pt*1.1);
+            ctx.fillStyle=rg(lx,ly,sz*1.8,'#ffffff',gold?'rgba(255,220,80,0)':'rgba(100,255,150,0)');
+            ctx.beginPath(); ctx.arc(lx,ly,sz*1.8,0,Math.PI*2); ctx.fill();
+        }
+        const glowT=t<0.35?t/0.35:Math.max(0,1-(t-0.35)/0.65);
+        const glowR=(35+tier*25)*glowT;
+        if (glowR>0) {
+            ctx.globalAlpha=glowT*0.55;
+            ctx.fillStyle=rg(tcx,tcy,glowR*1.5,gold?'rgba(255,240,150,0.9)':'rgba(100,255,150,0.9)','transparent');
+            ctx.fillRect(tcx-glowR*1.5,tcy-glowR*1.5,glowR*3,glowR*3);
+        }
+        if (tier>=3&&t<0.8) {
+            const ph=(0.8-t)/0.8*(120+tier*60), pw=18+tier*6;
+            ctx.globalAlpha=(0.8-t)/0.8*0.5;
+            ctx.fillStyle=lg(tcx,tcy,tcx,tcy-ph,gold?'rgba(255,255,180,0.8)':'rgba(150,255,200,0.8)','transparent');
+            ctx.fillRect(tcx-pw/2,tcy-ph,pw,ph);
+        }
+        if (tier>=4&&t<0.65) {
+            const wt=(0.65-t)/0.65;
+            ctx.globalAlpha=wt*0.8; ctx.strokeStyle=gold?'#ffffaa':'#aaffcc'; ctx.lineWidth=2;
+            ctx.shadowColor=gold?'#ffff44':'#44ff88'; ctx.shadowBlur=8;
+            ctx.beginPath();
+            ctx.moveTo(tcx,tcy-10); ctx.bezierCurveTo(tcx-50,tcy-75,tcx-90,tcy-30,tcx-70,tcy+15);
+            ctx.moveTo(tcx,tcy-10); ctx.bezierCurveTo(tcx+50,tcy-75,tcx+90,tcy-30,tcx+70,tcy+15);
+            ctx.stroke(); clearGlow();
+        }
+        const stA=Math.max(0,0.15*glowT); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle=gold?'#ffffaa':'#44ff88';ctx.fillRect(0,0,W,H);}
+        ctx.globalAlpha=1;
+    };
+
+    const drawExplosion = (t) => {
+        for (let ri=0;ri<tier;ri++) {
+            const rp=Math.max(0,t-ri*0.12); if(rp<=0) continue;
+            const r=rp*(80+tier*45), alpha=Math.max(0,1-rp*1.3);
+            ctx.globalAlpha=alpha; ctx.strokeStyle=`hsl(${25+ri*20},100%,${55+ri*10}%)`;
+            ctx.lineWidth=Math.max(0.5,4-ri-rp*3); ctx.beginPath(); ctx.arc(tcx,tcy,r,0,Math.PI*2); ctx.stroke();
+        }
+        for (const p of parts) {
+            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0) continue;
+            const spd=50+p.spd*(100+tier*40);
+            const lx=tcx+Math.cos(p.angle)*spd*pt, ly=tcy+Math.sin(p.angle)*spd*pt+180*pt*pt;
+            const sz=(2+p.size*4)*Math.max(0,1-pt*0.8);
+            ctx.globalAlpha=Math.max(0,1-pt);
+            ctx.fillStyle=`hsl(${p.hue*80},100%,${55+p.hue*25}%)`; ctx.fillRect(lx-sz/2,ly-sz/2,sz,sz);
+        }
+        if (t<0.2){ctx.globalAlpha=(0.2-t)/0.2*0.8;const r=(0.2-t)/0.2*(60+tier*40);ctx.fillStyle=rg(tcx,tcy,r,'#ffffff','transparent');ctx.fillRect(tcx-r,tcy-r,r*2,r*2);}
+        if (t<0.12){ctx.globalAlpha=(0.12-t)/0.12*0.65;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);}
+        else{const stA=Math.max(0,0.3*(1-t*2));if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#ff6600';ctx.fillRect(0,0,W,H);}}
+        ctx.globalAlpha=1;
+    };
+
+    const drawDark = (t) => {
+        for (const p of parts) {
+            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0||pt>=1) continue;
+            const startR=80+p.spd*(60+tier*30);
+            const angle=p.angle+t*Math.PI*(2.5+tier*0.5);
+            const curR=startR*(1-Math.min(1,t*1.3)*0.85);
+            const lx=tcx+Math.cos(angle)*curR, ly=tcy+Math.sin(angle)*curR*0.7;
+            const sz=(2+p.size*3)*Math.max(0,t<0.7?1:(1-t)*3.3);
+            const alpha=Math.max(0,(t<0.7?Math.min(1,t*2):(1-t)*3.3)*0.85);
+            ctx.globalAlpha=alpha;
+            ctx.fillStyle=`hsl(${270+p.hue*60},${60+p.hue*30}%,${20+p.size*30}%)`; ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
+        }
+        if (t>0.2){const vt=(t-0.2)/0.8,r=vt*(35+tier*18);ctx.globalAlpha=Math.min(1,vt*1.5)*0.75;ctx.fillStyle=rg(tcx,tcy,r,'#000000','rgba(80,0,120,0)');ctx.fillRect(tcx-r,tcy-r,r*2,r*2);}
+        if (tier>=2){const tc2=2+tier;for(let i=0;i<tc2;i++){const ag=(i/tc2)*Math.PI*2+t*Math.PI,len=(40+tier*20)*Math.min(1,t*2)*Math.max(0,1-t);ctx.globalAlpha=Math.min(1,t*2)*Math.max(0,1-t)*0.6;ctx.strokeStyle='rgba(160,0,200,0.7)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(tcx,tcy);ctx.lineTo(tcx+Math.cos(ag)*len,tcy+Math.sin(ag)*len*0.7);ctx.stroke();}}
+        const stA=Math.max(0,0.22*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#110022';ctx.fillRect(0,0,W,H);}
+        ctx.globalAlpha=1;
+    };
+
+    const drawBuff = (t) => {
+        const isDebuff=etype==='debuff', baseHue=isDebuff?280:60;
+        for (const p of parts) {
+            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0||pt>=1) continue;
+            const orbitR=(25+p.spd*40)*Math.min(1,pt*2.5)*Math.max(0,1-(pt-0.5)*2);
+            const angle=p.angle+t*Math.PI*(isDebuff?-3.5:2.5);
+            const lx=tcx+Math.cos(angle)*orbitR, ly=tcy+Math.sin(angle)*orbitR*0.6+(isDebuff?pt*30:-pt*25);
+            const sz=(2+p.size*3)*Math.max(0,Math.sin(pt*Math.PI));
+            ctx.globalAlpha=Math.max(0,Math.sin(pt*Math.PI)*0.9);
+            ctx.fillStyle=`hsl(${baseHue+p.hue*50},85%,${isDebuff?45+p.hue*20:60+p.hue*20}%)`; ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
+        }
+        const stA=Math.max(0,0.12*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle=isDebuff?'#aa44ff':'#aaff44';ctx.fillRect(0,0,W,H);}
+        ctx.globalAlpha=1;
+    };
+
+    const drawWarp = (t) => {
+        for (const p of parts) {
+            const angle=p.angle+t*Math.PI*5, r=p.spd*100*Math.max(0.1,1-t);
+            const lx=tcx+Math.cos(angle)*r, ly=tcy+Math.sin(angle)*r*0.6;
+            ctx.globalAlpha=(1-t)*0.7; ctx.fillStyle=`hsl(${220+p.hue*60},75%,${50+p.hue*25}%)`;
+            ctx.beginPath(); ctx.arc(lx,ly,2+p.size*3,0,Math.PI*2); ctx.fill();
+        }
+        const pr=20+t*50; ctx.globalAlpha=(1-t)*0.8;
+        ctx.fillStyle=rg(tcx,tcy,pr,'#000000','rgba(80,0,180,0)'); ctx.fillRect(tcx-pr,tcy-pr,pr*2,pr*2);
+        ctx.globalAlpha=1;
+    };
+
+    const drawGeneric = (t) => {
+        for (const p of parts) {
+            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0) continue;
+            const spd=40+p.spd*80, lx=tcx+Math.cos(p.angle)*spd*pt, ly=tcy+Math.sin(p.angle)*spd*pt;
+            ctx.globalAlpha=Math.max(0,1-pt*1.2); ctx.fillStyle=`hsl(${p.hue*360},60%,80%)`;
+            ctx.beginPath(); ctx.arc(lx,ly,(3+p.size*5)*Math.max(0,1-pt),0,Math.PI*2); ctx.fill();
+        }
+        const stA=Math.max(0,0.2*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);}
+        ctx.globalAlpha=1;
+    };
+
+    const drawFns = {fire:drawFire,ice:drawIce,lightning:drawLightning,wind:drawWind,heal:drawHeal,explosion:drawExplosion,dark:drawDark,buff:drawBuff,debuff:drawBuff,warp:drawWarp,generic:drawGeneric};
+    const drawFn = drawFns[etype] || drawGeneric;
+
+    let rafId;
+    const start = performance.now();
+    const animate = (now) => {
+        const t = Math.min(1, (now - start) / dur);
+        ctx.clearRect(0, 0, W, H);
+        drawFn(t);
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+        if (t < 1) { rafId = requestAnimationFrame(animate); } else { layer.innerHTML = ''; }
+    };
+    rafId = requestAnimationFrame(animate);
+    await new Promise(r => setTimeout(r, dur + 80));
+    cancelAnimationFrame(rafId);
+    layer.innerHTML = '';
+}
 
 async function loadExternalItemDatabase(url) { 
     try { 
