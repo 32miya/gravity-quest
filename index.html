@@ -1753,7 +1753,10 @@ async function checkAction() {
                         return; 
                     }
                 }
-                else if (extDef.type === "shop" || npc.id.includes('weapon') || npc.id.includes('item') || npc.id.includes('bazaar')) { await eventShop(npc.id); }
+                else if (extDef.type === "shop" || npc.id.includes('weapon') || npc.id.includes('item') || npc.id.includes('bazaar')) {
+                    if (npc.id.includes('weapon') || npc.id.includes('bazaar') || npc.id.includes('market') || npc.id === 'npc_strong_weapon_shop') await eventWeaponShop(npc.id);
+                    else await eventShop(npc.id);
+                }
                 else if (extDef.type === "church" || npc.id.includes('priest') || npc.id.includes('church')) { await eventPriest(); }
                 else if (extDef.type === "inn" || npc.id.includes('inn')) { await eventInn(npc.id); }
                 else if (extDef.type === "casino" || npc.id.includes('casino') || npc.id.includes('bunny')) { await eventCasino(); }
@@ -1770,7 +1773,7 @@ async function checkAction() {
                 }
             } 
             else {
-                if(npc.id.includes('shop') || npc.id.includes('bazaar')) await eventShop(npc.id);
+                if(npc.id.includes('shop') || npc.id.includes('bazaar')) { if (npc.id.includes('weapon') || npc.id.includes('bazaar') || npc.id === 'npc_strong_weapon_shop') await eventWeaponShop(npc.id); else await eventShop(npc.id); }
                 else if(npc.id.includes('priest') || npc.id.includes('church')) await eventPriest();
                 else if(npc.id.includes('inn')) await eventInn(npc.id);
                 else if(npc.id.includes('casino') || npc.id.includes('bunny')) await eventCasino();
@@ -1872,33 +1875,60 @@ async function eventPriest() {
     }
 }
 
-async function eventShop(npcId) {
-    await typeMessage("いらっしゃいませ。\nどれに しますか？");
-    let shopIds = [];
-    let allItems = Object.values(masterData.items).filter(i => i.price > 0).sort((a, b) => a.price - b.price);
-    
-    if (npcId === "npc_strong_weapon_shop") {
-        shopIds = allItems.filter(i => i.price >= 3000 && i.type !== 'tool').map(i => i.id).slice(-5);
-    } else if (partyData.pos.map.includes('bazaar') || partyData.pos.map.includes('market')) {
-        shopIds = allItems.filter(i => i.price >= 300 && i.price <= 3000).map(i => i.id).slice(0, 6);
-    } else if (partyData.pos.map.includes('town_01') || partyData.pos.map.includes('castle_01')) {
-        shopIds = allItems.filter(i => i.price < 300).map(i => i.id).slice(0, 5);
-    } else {
-        let maxP = Math.max(100, partyData.gold / 1.5);
-        let cands = allItems.filter(i => i.price <= maxP);
-        if(cands.length === 0) cands = allItems;
-        shopIds = cands.slice(-6).map(i => i.id);
+async function eventWeaponShop(npcId) {
+    await typeMessage("いらっしゃいませ！\nぶき や ぼうぐを おとりそろえております！");
+    while (true) {
+        let mainChoice = await selectMenu(["かう", "うる", "やめる"], 'cmd-window', 1, true);
+        if (mainChoice === -1 || mainChoice === 2) { await typeMessage("またの おこしを おまちしております！"); break; }
+        if (mainChoice === 0) {
+            let allEquip = Object.values(masterData.items).filter(i => i.price > 0 && i.type !== 'tool').sort((a, b) => a.price - b.price);
+            let shopIds;
+            if (npcId === "npc_strong_weapon_shop") { shopIds = allEquip.filter(i => i.price >= 3000).map(i => i.id).slice(-6); }
+            else if (partyData.pos.map.includes('bazaar') || partyData.pos.map.includes('market')) { shopIds = allEquip.filter(i => i.price >= 300 && i.price <= 3000).map(i => i.id).slice(0, 7); }
+            else if (partyData.pos.map.includes('town_01') || partyData.pos.map.includes('castle_01')) { shopIds = allEquip.filter(i => i.price < 500).map(i => i.id).slice(0, 6); }
+            else { let maxP = Math.max(200, partyData.gold * 1.5); let cands = allEquip.filter(i => i.price <= maxP); if (cands.length === 0) cands = allEquip; shopIds = cands.slice(-6).map(i => i.id); }
+            if (shopIds.length === 0) shopIds = allEquip.slice(0, 3).map(i => i.id);
+            shopIds = shopIds.filter(id => masterData.items[id]);
+            let buyOpts = shopIds.map(id => { let it = masterData.items[id]; return `${it.name}(${it.price}G)`; }); buyOpts.push("やめる");
+            let buyIdx = await selectMenu(buyOpts, 'cmd-window', 1, true); if (buyIdx === -1 || buyIdx === buyOpts.length - 1) continue;
+            let itemData = masterData.items[shopIds[buyIdx]]; if (partyData.gold < itemData.price) { await typeMessage("おかねが たりないようです。"); continue; }
+            await typeMessage(`${itemData.price}G ですが かいますか？`); let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true); if (yesno !== 0) continue;
+            await typeMessage("だれが もちますか？"); let tIdx = await selectMenu(partyData.members.map(m => m.name), 'cmd-window', 1, true); if (tIdx === -1) continue;
+            let t = partyData.members[tIdx]; if (t.inventory.length >= 8) { await typeMessage("もちものが いっぱいのようです。"); continue; }
+            partyData.gold -= itemData.price; t.inventory.push(itemData.id); updateGoldWindow(); AudioManager.playSE('item_get'); await typeMessage(`${t.name}は ${itemData.name}を うけとった。`);
+        } else {
+            let sellList = [];
+            partyData.members.forEach(m => {
+                m.inventory.forEach((id, idx) => { let it = masterData.items[id]; if (it && it.type !== 'tool' && it.price > 0) sellList.push({ owner: m, itemId: id, invIdx: idx, slot: null, it }); });
+                ['weapon','armor','shield','helmet','accessory'].forEach(slot => { let id = m.equipment[slot]; if (!id) return; let it = masterData.items[id]; if (it && it.price > 0) sellList.push({ owner: m, itemId: id, invIdx: -1, slot, it }); });
+            });
+            if (sellList.length === 0) { await typeMessage("うれるぶき や ぼうぐが ありません。"); continue; }
+            let sellOpts = sellList.map(s => { let half = Math.floor(s.it.price / 2); return `${s.owner.name}: ${s.it.name}${s.slot ? '[装]' : ''}(${half}G)`; }); sellOpts.push("やめる");
+            let sellIdx = await selectMenu(sellOpts, 'cmd-window', 1, true); if (sellIdx === -1 || sellIdx === sellOpts.length - 1) continue;
+            let sel = sellList[sellIdx]; let half = Math.floor(sel.it.price / 2);
+            await typeMessage(`${sel.it.name}を ${half}G で うりますか？`); let yn = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true); if (yn !== 0) continue;
+            if (sel.slot) { sel.owner.equipment[sel.slot] = null; } else { sel.owner.inventory.splice(sel.invIdx, 1); }
+            partyData.gold += half; updateGoldWindow(); AudioManager.playSE('item_get'); await typeMessage(`${sel.it.name}を ${half}G で うった。`);
+        }
     }
-    if (shopIds.length === 0) shopIds = ["i01", "w01", "a01"];
+}
+
+async function eventShop(npcId) {
+    await typeMessage("いらっしゃいませ。\nどうぐを おとりそろえております！");
+    let shopIds = [];
+    let allTools = Object.values(masterData.items).filter(i => i.price > 0 && i.type === 'tool').sort((a, b) => a.price - b.price);
+    if (partyData.pos.map.includes('town_01') || partyData.pos.map.includes('castle_01')) { shopIds = allTools.slice(0, 5).map(i => i.id); }
+    else { let maxP = Math.max(100, partyData.gold / 1.5); let cands = allTools.filter(i => i.price <= maxP); if (cands.length === 0) cands = allTools; shopIds = cands.slice(-6).map(i => i.id); }
+    if (shopIds.length === 0) shopIds = allTools.slice(0, 3).map(i => i.id);
     shopIds = shopIds.filter(id => masterData.items[id]);
-    
+    if (shopIds.length === 0) { await typeMessage("ただいま もちあわせが ございません。"); return; }
     let options = shopIds.map(id => { let item = masterData.items[id]; return `${item.name}(${item.price}G)`; }); options.push("やめる");
     let buyIdx = await selectMenu(options, 'cmd-window', 1, true); if(buyIdx === -1 || buyIdx === options.length - 1) return;
     let itemData = masterData.items[shopIds[buyIdx]]; if(partyData.gold < itemData.price) { await typeMessage("おかねが たりないようです。"); return; }
-    await typeMessage(`${itemData.price}G ですが\nかいますか？`); let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true); if(yesno !== 0) return;
+    await typeMessage(`${itemData.price}G ですが かいますか？`); let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true); if(yesno !== 0) return;
     await typeMessage("だれが もちますか？"); let targetIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true); if(targetIdx===-1) return;
     let target = partyData.members[targetIdx]; if(target.inventory.length >= 8) { await typeMessage("もちものが いっぱいのようです。"); return; }
-    partyData.gold -= itemData.price; target.inventory.push(itemData.id); updateGoldWindow(); AudioManager.playSE('item_get'); await typeMessage(`${target.name}は ${itemData.name}を\nうけとった。`);
+    partyData.gold -= itemData.price; target.inventory.push(itemData.id); updateGoldWindow(); AudioManager.playSE('item_get'); await typeMessage(`${target.name}は ${itemData.name}を うけとった。`);
 }
 
 async function openMainMenu() {
@@ -2337,14 +2367,22 @@ async function executeBattle(fixedEnemies = null) {
     if(!escaped && partyData.members.some(m=>m.hp>0)) {
         AudioManager.playBGM('victory'); await typeMessage(`まものたちを やっつけた！`); partyData.gold += totalGold; await typeMessage(`${totalExp}の けいけんちを かくとく！\n${totalGold}G をてにいれた！`);
         
-        if (Math.random() < 0.15) {
-            let dropItems = Object.values(masterData.items).filter(i => i.price > 0);
-            if (dropItems.length > 0) {
-                let targetPrice = totalExp * 5; let candidates = dropItems.filter(i => i.price <= targetPrice && i.price >= targetPrice / 5);
-                if (candidates.length === 0) candidates = dropItems.filter(i => i.price <= targetPrice);
-                if (candidates.length === 0) candidates = [dropItems[0]];
-                
-                let dropItem = candidates[Math.floor(Math.random() * candidates.length)]; AudioManager.playSE('item_get'); await typeMessage(`まものが たからばこを おとしていった！\n『${dropItem.name}』 をてにいれた！`);
+        const _isEquipDrop = totalExp >= 50 && Math.random() < 0.35;
+        if (Math.random() < 0.18) {
+            let dropPool = Object.values(masterData.items).filter(i => i.price > 0 && (_isEquipDrop ? i.type !== 'tool' : i.type === 'tool'));
+            if (dropPool.length === 0) dropPool = Object.values(masterData.items).filter(i => i.price > 0 && i.type === 'tool');
+            if (dropPool.length > 0) {
+                let targetPrice = totalExp * 5;
+                let candidates = dropPool.filter(i => i.price <= targetPrice && i.price >= targetPrice / 8);
+                if (candidates.length === 0) candidates = dropPool.filter(i => i.price <= Math.max(300, targetPrice));
+                if (candidates.length === 0) candidates = [dropPool[0]];
+                let dropItem;
+                if (_isEquipDrop && candidates.length > 1) {
+                    let weights = candidates.map(i => Math.max(1, Math.floor(3000 / i.price)));
+                    let totalW = weights.reduce((a, b) => a + b, 0); let r = Math.random() * totalW; let cumW = 0; dropItem = candidates[0];
+                    for (let _di = 0; _di < candidates.length; _di++) { cumW += weights[_di]; if (r <= cumW) { dropItem = candidates[_di]; break; } }
+                } else { dropItem = candidates[Math.floor(Math.random() * candidates.length)]; }
+                AudioManager.playSE('item_get'); await typeMessage(`まものが たからばこを おとしていった！\n『${dropItem.name}』 をてにいれた！`);
                 let target = partyData.members.find(m => m.inventory.length < 8 && m.hp > 0); if (!target) target = partyData.members.find(m => m.inventory.length < 8);
                 if (target) { target.inventory.push(dropItem.id); await typeMessage(`${target.name}は ${dropItem.name}を ふくろに いれた。`); } else { await typeMessage(`しかし もちものが いっぱいだ！\nなくなく あきらめた。`); }
             }
