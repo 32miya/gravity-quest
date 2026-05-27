@@ -864,6 +864,7 @@ const unlockAudio = () => { AudioManager.init(); if (state === 'TITLE' && !Audio
 document.addEventListener('click', unlockAudio, { once: true }); document.addEventListener('touchstart', unlockAudio, { once: true });
 
 let state = 'INIT'; let masterData = {}; let partyData = {}; let currentMap = {}; let moveHistory = []; let inputCallback = null; const TILE_SIZE = 32; let externalMapData = null; let externalImages = {}; let externalEntitiesData = {};
+let _walkPhase = 0; let _lastMoveTime = 0;
 const tilesetImg = new Image(); tilesetImg.crossOrigin = "Anonymous"; tilesetImg.src = "https://cdn.gravity.place/aiugc/game/material/2026-04-09/88e120ab-ee16-4c1a-bdfb-4ffad407b6ad.jpeg";
 const bunnyGirlImg = new Image(); bunnyGirlImg.crossOrigin = "Anonymous"; bunnyGirlImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/c1add1db1f1ce5ccad9e1b76fee60b9c_1776406373895474042.png"; externalImages['bunnyGirl'] = bunnyGirlImg;
 const bossKillerImg = new Image(); bossKillerImg.crossOrigin = "Anonymous"; bossKillerImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/6ff181fac171a736632e5c47176aac74_1776417245054740369.png"; externalImages['boss_desert_killer'] = bossKillerImg;
@@ -1210,7 +1211,7 @@ function drawLargeSpriteLocal(ctx, img, px, py, targetWidth) { if (!img || !img.
 function drawNpcSign(ctx, cx, ty, emoji, label, bgColor) {
     ctx.font = 'bold 7px sans-serif';
     let lw = ctx.measureText(label).width, ew = 11, pad = 3, h = 12, w = ew + lw + pad * 2;
-    let rx = cx - w / 2, ry = ty - h - 2;
+    let rx = cx - w / 2, ry = ty - h - 26;
     ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(rx - 1, ry - 1, w + 2, h + 2);
     ctx.fillStyle = bgColor; ctx.fillRect(rx, ry, w, h);
     ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 0.5; ctx.strokeRect(rx, ry, w, h);
@@ -1338,7 +1339,10 @@ function drawMap() {
     
     if (currentMap.npcs) {
         Object.keys(currentMap.npcs).forEach(key => {
-            const [nx, ny] = key.split(','); const npc = currentMap.npcs[key]; const px = parseInt(nx)*TILE_SIZE - camX; const py = parseInt(ny)*TILE_SIZE - camY;
+            const [nx, ny] = key.split(','); const npc = currentMap.npcs[key]; const _basePx = parseInt(nx)*TILE_SIZE - camX; const _basePy = parseInt(ny)*TILE_SIZE - camY;
+            const _noAnim = npc.id.includes('chest') || npc.id.includes('obj_') || npc.id.includes('king') || npc.id.includes('demon') || npc.id.includes('dragon');
+            const _nBob = _noAnim ? 0 : Math.round(Math.sin(Date.now() / 900 + parseInt(nx) * 2.3 + parseInt(ny) * 1.7) * 1.5);
+            const px = _basePx; const py = _basePy + _nBob;
             if (px < -TILE_SIZE*2 || px > cWidth || py < -TILE_SIZE*2 || py > cHeight) return;
             if(npc.id.includes('chest') || npc.id.includes('obj_chest')) {
                 let chestFlag = `chest_${partyData.pos.map}_${nx}_${ny}`; let isOpened = partyData.flags[chestFlag]; ctx.globalAlpha = isOpened ? 0.5 : 1.0;
@@ -1369,29 +1373,40 @@ function drawMap() {
             } else if((npc.id.includes('weapon_shop') || npc.id.includes('bazaar') || npc.id.includes('market') || npc.id === 'npc_strong_weapon_shop') && externalImages['weaponShop']) { drawLargeSpriteLocal(ctx, externalImages['weaponShop'], px, py, 64);
             } else if((npc.id.includes('item_shop') || npc.id.includes('shop') || npc.id === 'npc_border_shop') && externalImages['itemShop']) { drawSpriteLocal(ctx, externalImages['itemShop'], px, py, 48);
             } else { if(externalImages['oldMan']) { drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); } }
-            const _scx = px + TILE_SIZE / 2;
+            const _scx = _basePx + TILE_SIZE / 2;
             if (npc.id.includes('weapon_shop') || npc.id.includes('bazaar') || npc.id.includes('market') || npc.id === 'npc_strong_weapon_shop')
-                drawNpcSign(ctx, _scx, py, '⚔', '武器屋', '#933');
+                drawNpcSign(ctx, _scx, _basePy, '⚔', '武器屋', '#933');
             else if (npc.id.includes('item_shop') || npc.id.includes('shop') || npc.id === 'npc_border_shop')
-                drawNpcSign(ctx, _scx, py, '🧪', '道具屋', '#337');
+                drawNpcSign(ctx, _scx, _basePy, '🧪', '道具屋', '#337');
             else if (npc.id.includes('inn') || npc.id === 'npc_border_inn')
-                drawNpcSign(ctx, _scx, py, '🛏', '宿屋', '#664');
+                drawNpcSign(ctx, _scx, _basePy, '🛏', '宿屋', '#664');
             else if ((npc.id.includes('church') || npc.id.includes('priest')) && npc.id !== 'npc_class_change')
-                drawNpcSign(ctx, _scx, py, '✝', '教会', '#447');
+                drawNpcSign(ctx, _scx, _basePy, '✝', '教会', '#447');
         });
     }
     
     let displayOrder = []; partyData.members.forEach(m => { if(m.hp > 0) displayOrder.push(m); }); partyData.members.forEach(m => { if(m.hp <= 0) displayOrder.push(m); });
+    const _wNow = Date.now(); const _isWalking = (_wNow - _lastMoveTime) < 350;
     for(let i = displayOrder.length - 1; i >= 0; i--) {
         let member = displayOrder[i]; let px = partyData.pos.x, py = partyData.pos.y, pDir = partyData.dir;
         if(i > 0 && moveHistory[i-1]) { px = moveHistory[i-1].x; py = moveHistory[i-1].y; pDir = moveHistory[i-1].dir; }
-        if(member.hp <= 0) { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("⚰️", px*TILE_SIZE - camX + TILE_SIZE/2, py*TILE_SIZE - camY + TILE_SIZE/2); } 
+        const _mPhase = (_walkPhase + (displayOrder.length - 1 - i) * 2) % 8;
+        const _bobY = _isWalking ? [0,-2,0,-4,0,-2,0,-4][_mPhase] : Math.round(Math.sin(_wNow / 1200 + i * 1.5) * 1);
+        if(member.hp <= 0) { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("⚰️", px*TILE_SIZE - camX + TILE_SIZE/2, py*TILE_SIZE - camY + TILE_SIZE/2); }
         else {
+            if (_isWalking) {
+                const _sfx = px*TILE_SIZE - camX + TILE_SIZE/2;
+                const _sfy = py*TILE_SIZE - camY + TILE_SIZE - 3;
+                const _lfoot = _mPhase < 4;
+                ctx.fillStyle = 'rgba(0,0,0,0.18)';
+                ctx.beginPath(); ctx.ellipse(_sfx + (_lfoot ? -5 : 5), _sfy, 4, 2, 0, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(_sfx + (_lfoot ? 5 : -5), _sfy, 3, 1.5, 0, 0, Math.PI*2); ctx.fill();
+            }
             let _drawn = false;
             if (member.extId) {
                 let dirStr = pDir === 0 ? 'up' : pDir === 2 ? 'down' : 'left'; let imgKey = 'sprite_' + member.extId + '_' + dirStr;
                 if(externalImages[imgKey] && externalImages[imgKey].complete && externalImages[imgKey].naturalHeight > 0) {
-                    ctx.save(); let targetX = px*TILE_SIZE - camX; let targetY = py*TILE_SIZE - camY;
+                    ctx.save(); let targetX = px*TILE_SIZE - camX; let targetY = py*TILE_SIZE - camY + _bobY;
                     let isBaseRight = (member.extId === 'priest' || member.extId === 'mage'); let needsFlip = false;
                     if (pDir === 1 || pDir === 3) { if (isBaseRight) { needsFlip = (pDir === 3); } else { needsFlip = (pDir === 1); } }
                     if(needsFlip) { ctx.translate(targetX + TILE_SIZE, targetY); ctx.scale(-1, 1); drawSpriteLocal(ctx, externalImages[imgKey], 0, 0, 42); } else { drawSpriteLocal(ctx, externalImages[imgKey], targetX, targetY, 42); }
@@ -1399,7 +1414,7 @@ function drawMap() {
                 }
             }
             if (!_drawn) {
-                let _fx = px*TILE_SIZE - camX + TILE_SIZE/2; let _fy = py*TILE_SIZE - camY + TILE_SIZE/2;
+                let _fx = px*TILE_SIZE - camX + TILE_SIZE/2; let _fy = py*TILE_SIZE - camY + TILE_SIZE/2 + _bobY;
                 let _job = member.job || '';
                 let _color = _job.includes('戦士') ? '#e88' : _job.includes('僧侶') ? '#8be' : _job.includes('魔法') ? '#b8e' : '#ee8';
                 ctx.fillStyle = _color; ctx.beginPath(); ctx.arc(_fx, _fy - 4, 8, 0, Math.PI*2); ctx.fill();
@@ -1455,6 +1470,7 @@ async function moveParty(dx, dy) {
     const tile = currentMap.tiles[ny * currentMap.width + nx]; const solidTiles = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
     const key = `${nx},${ny}`; if (currentMap.npcs && currentMap.npcs[key]) return;
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
+    _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
     partyData.pos.x = nx; partyData.pos.y = ny;
     
     onStep();
