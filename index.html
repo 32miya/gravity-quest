@@ -1070,9 +1070,39 @@ function updatePartyStatus() {
         return `<div class="${m.hp<=0?'dead':''}">${statIcon}${m.name} LV.${m.lv}<br><span style="color:${hpCol}">H ${Math.max(0, m.hp)}/${m.max_hp}</span><br><span style="color:${mpCol}">M ${m.mp}/${m.max_mp}</span></div>`; 
     }).join(''); 
 }
-function getAtk(char) { let atk = char.atk; if(char.equipment && char.equipment.weapon && masterData.items[char.equipment.weapon]) atk += masterData.items[char.equipment.weapon].power || 0; return Math.max(0, atk); }
-function getDef(char) { let def = char.def; if(char.equipment) { if(char.equipment.armor && masterData.items[char.equipment.armor]) def += masterData.items[char.equipment.armor].power || 0; if(char.equipment.shield && masterData.items[char.equipment.shield]) def += masterData.items[char.equipment.shield].power || 0; if(char.equipment.helmet && masterData.items[char.equipment.helmet]) def += masterData.items[char.equipment.helmet].power || 0; if(char.equipment.accessory && masterData.items[char.equipment.accessory]) def += masterData.items[char.equipment.accessory].power || 0; } return Math.max(0, def); }
-function getSpd(char) { let spd = char.spd; if(char.equipment && char.equipment.accessory && masterData.items[char.equipment.accessory]) { let acc = masterData.items[char.equipment.accessory]; if (acc.effect === 'speed_up' || acc.id === 'acc_star_bracelet') spd += 50; } return Math.max(0, spd); }
+function getAtk(char) {
+    let atk = char.atk;
+    if(char.equipment && char.equipment.weapon && masterData.items[char.equipment.weapon]) atk += masterData.items[char.equipment.weapon].power || 0;
+    if(char.equipment && char.equipment.accessory && masterData.items[char.equipment.accessory]) {
+        let acc = masterData.items[char.equipment.accessory];
+        if(acc.effect === 'str_up') atk += 40;
+    }
+    return Math.max(0, atk);
+}
+function getDef(char) {
+    let def = char.def;
+    if(char.equipment) {
+        if(char.equipment.armor && masterData.items[char.equipment.armor]) def += masterData.items[char.equipment.armor].power || 0;
+        if(char.equipment.shield && masterData.items[char.equipment.shield]) def += masterData.items[char.equipment.shield].power || 0;
+        if(char.equipment.helmet && masterData.items[char.equipment.helmet]) def += masterData.items[char.equipment.helmet].power || 0;
+        if(char.equipment.accessory && masterData.items[char.equipment.accessory]) {
+            let acc = masterData.items[char.equipment.accessory];
+            if(acc.effect === 'atk_up_crit') return 0; // 魔神の指輪: 守備力0
+            def += acc.power || 0;
+        }
+    }
+    return Math.max(0, def);
+}
+function getSpd(char) {
+    let spd = char.spd;
+    if(char.equipment && char.equipment.accessory && masterData.items[char.equipment.accessory]) {
+        let acc = masterData.items[char.equipment.accessory];
+        if(acc.effect === 'speed_double' || acc.effect === 'agi_double') spd *= 2;
+        else if(acc.effect === 'speed_up' || acc.id === 'acc_star_bracelet') spd += 50;
+        else if(acc.effect === 'agi_up') spd += 30;
+    }
+    return Math.max(0, spd);
+}
 
 function calculateDamage(attacker, defender) {
     let atkMod = attacker.tmpAtk > 0 ? 1.5 : attacker.tmpAtk < 0 ? 0.5 : 1.0;
@@ -1090,6 +1120,8 @@ function calculateDamage(attacker, defender) {
     } else if (attacker.job === "パンダ" || attacker.job === "ネコ") {
         criticalRate = 0.1;
     }
+    if (attacker.equipment && attacker.equipment.weapon === 'w13') criticalRate = 0.4; // まじんのカナヅチ
+    if (attacker.equipment && attacker.equipment.accessory && masterData.items[attacker.equipment.accessory]?.effect === 'atk_up_crit') criticalRate = Math.min(0.8, criticalRate + 0.3);
     
     const isCritical = Math.random() < criticalRate && attacker.job;
 
@@ -1806,20 +1838,30 @@ async function openMainMenu() {
                     await typeMessage("だれに つかう？"); let tIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true);
                     if(tIdx !== -1) { 
                         let target = partyData.members[tIdx]; 
-                        if(target.hp <= 0) await typeMessage("しんでいる なかまには きかない！"); 
-                        else { 
-                            char.inventory.splice(itemIdx, 1); AudioManager.playSE('heal'); 
+                        if(itemData.effect === 'revive' && target.hp <= 0) {
+                            char.inventory.splice(itemIdx, 1); AudioManager.playSE('heal');
+                            target.hp = Math.floor(target.max_hp / 2);
+                            await typeMessage(`${target.name}は いきかえった！`); updatePartyStatus();
+                        } else if(target.hp <= 0) { await typeMessage("しんでいる なかまには きかない！"); }
+                        else {
+                            char.inventory.splice(itemIdx, 1); AudioManager.playSE('heal');
                             if(itemData.id.includes('antidote') || itemData.effect === 'cure_poison') {
                                 target.isPoisoned = false;
                                 await typeMessage(`${target.name}の どくが きえた！`);
+                            } else if(itemData.effect === 'mp_recovery') {
+                                let mv = parseInt(itemData.value||15); target.mp = Math.min(target.max_mp, target.mp + mv);
+                                await typeMessage(`${target.name}の MPが ${mv} かいふくした！`);
+                            } else if(itemData.effect === 'at_plus') {
+                                target.atk = (target.atk||0) + 3;
+                                await typeMessage(`${target.name}の ちからが あがった！`);
                             } else {
-                                let val = itemData.value; 
-                                if(val === 'max' || itemData.effect === 'full_heal' || isNaN(parseInt(val))) { target.hp = target.max_hp; } 
-                                else { target.hp = Math.min(target.max_hp, target.hp + parseInt(val || 30)); } 
-                                await typeMessage(`${target.name}の HPが かいふくした！`); 
+                                let val = itemData.value;
+                                if(val === 'max' || itemData.effect === 'full_heal' || isNaN(parseInt(val))) { target.hp = target.max_hp; }
+                                else { target.hp = Math.min(target.max_hp, target.hp + parseInt(val || 30)); }
+                                await typeMessage(`${target.name}の HPが かいふくした！`);
                             }
-                            updatePartyStatus(); 
-                        } 
+                            updatePartyStatus();
+                        }
                     }
                 } else { await typeMessage("ここでは つかえない！"); }
             } else if(actIdx === 1) { await typeMessage("だれに わたす？"); let tIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true); if(tIdx !== -1) { let target = partyData.members[tIdx]; if(target.inventory.length >= 8) { await typeMessage("もちものが いっぱいだ！"); } else { target.inventory.push(itemData.id); char.inventory.splice(itemIdx, 1); await typeMessage(`${target.name}に わたした。`); } } } 
@@ -1965,34 +2007,45 @@ async function executeBattle(fixedEnemies = null) {
             }
 
             if(act.type === 'attack') {
-                await typeMessage(`${act.actor.name}の こうげき！`); 
+                let _wId = act.actor.equipment && act.actor.equipment.weapon;
+                let _w   = _wId ? masterData.items[_wId] : null;
+                let _allHitWeapons = ['w14','w32','w35'];
+                let _attackTargets = (_w && _allHitWeapons.includes(_wId)) ? [...enemies] : [act.target];
+
+                await typeMessage(`${act.actor.name}の こうげき！`);
                 if (act.actor.tmpBlind > 0 && Math.random() < 0.5) {
                     await typeMessage(`しかし まぼろしに つつまれて こうげきが あたらない！`);
+                } else if (_wId === 'w13' && Math.random() < 0.35) {
+                    await typeMessage(`しかし からぶってしまった！`);
                 } else {
-                    let dmgResult = calculateDamage(act.actor, act.target);
-                    let dmg = dmgResult.value;
-                    
-                    if (act.target.voidBarrierTurns > 0) {
-                        dmg = Math.max(1, Math.floor(dmg * 0.7));
+                    let _hits = (_wId === 'w20' || _wId === 'w29') ? 2 : 1;
+                    let _lastDmg = 0;
+                    for (let _h = 0; _h < _hits; _h++) {
+                        for (let _t of _attackTargets.filter(e => e.hp > 0)) {
+                            let dmgResult = calculateDamage(act.actor, _t);
+                            let dmg = dmgResult.value;
+                            if (_t.voidBarrierTurns > 0) dmg = Math.max(1, Math.floor(dmg * 0.7));
+                            if (dmgResult.isCritical) { playCriticalEffect('brightness(3)'); AudioManager.playSE('attack_crit'); await typeMessage(`ぜんりょくの いちげき！！`); } else { AudioManager.playSE('attack_hit'); }
+                            _t.hp = Math.max(0, _t.hp - dmg);
+                            await typeMessage(`${_t.displayName}に ${dmg}の ダメージ！`);
+                            _lastDmg = dmg;
+                            if (_t.isGuraKing && !_t.voidBarrierUsed && _t.hp > 0 && _t.hp <= _t.max_hp / 2) {
+                                _t.voidBarrierUsed = true; _t.voidBarrierTurns = 3;
+                                await typeMessage(`【${_t.displayName}】\nフン…… 少しはやるようだな……`);
+                                await typeMessage(`${_t.displayName}は 虚無のバリアを 張った！\n（3ターンの間 ダメージを軽減し 自動回復する！）`);
+                                updateEnemiesDisplay();
+                            }
+                            if (_t.hp <= 0) { _t.isPoisoned = false; await typeMessage(`${_t.displayName}を たおした！`); addReward(_t); enemies = enemies.filter(e => e !== _t); updateEnemiesDisplay(); }
+                        }
                     }
-
-                    if(dmgResult.isCritical) {
-                        playCriticalEffect('brightness(3)'); AudioManager.playSE('attack_crit'); await typeMessage(`ぜんりょくの いちげき！！`);
-                    } else {
-                        AudioManager.playSE('attack_hit'); 
+                    // 武器特殊効果
+                    if (_w && act.actor.hp > 0) {
+                        let _pt = _attackTargets.find(e => e.hp > 0) || null;
+                        if (_pt && _wId === 'w11' && Math.random() < 0.25) { _pt.isAsleep = (_pt.isAsleep || 0) + 3; await typeMessage(`${_pt.displayName}は ねむってしまった！`); }
+                        if ((_wId === 'w12' || _wId === 'w_spear_11') && _lastDmg > 0) { let _hv = Math.max(1, Math.floor(_lastDmg * 0.25)); act.actor.hp = Math.min(act.actor.max_hp, act.actor.hp + _hv); AudioManager.playSE('heal'); await typeMessage(`${act.actor.name}の HPが ${_hv} かいふくした！`); updatePartyStatus(); }
+                        if ((_wId === 'w21' || _wId === 'w_spear_10') && Math.random() < 0.5) { let _sd = Math.max(1, Math.floor(getAtk(act.actor) * 0.2)); act.actor.hp = Math.max(0, act.actor.hp - _sd); AudioManager.playSE('damage_hero'); await typeMessage(`しかし ${act.actor.name}も ${_sd}の ダメージを うけた！`); updatePartyStatus(); if(act.actor.hp <= 0) { act.actor.isPoisoned = false; await typeMessage(`${act.actor.name}は しんでしまった！`); } }
+                        if (_pt && (_wId === 'w31' || _wId === 'w_2nd_05') && Math.random() < 0.15) { _pt.hp = 0; _pt.isPoisoned = false; await typeMessage(`${_pt.displayName}を 一撃で たおした！`); addReward(_pt); enemies = enemies.filter(e => e !== _pt); updateEnemiesDisplay(); }
                     }
-                    
-                    act.target.hp = Math.max(0, act.target.hp - dmg); await typeMessage(`${act.target.displayName}に ${dmg}の ダメージ！`);
-                    
-                    if (act.target.isGuraKing && !act.target.voidBarrierUsed && act.target.hp > 0 && act.target.hp <= act.target.max_hp / 2) {
-                        act.target.voidBarrierUsed = true;
-                        act.target.voidBarrierTurns = 3;
-                        await typeMessage(`【${act.target.displayName}】\nフン…… 少しはやるようだな……`);
-                        await typeMessage(`${act.target.displayName}は 虚無のバリアを 張った！\n（3ターンの間 ダメージを軽減し 自動回復する！）`);
-                        updateEnemiesDisplay();
-                    }
-
-                    if(act.target.hp <= 0) { act.target.isPoisoned=false; await typeMessage(`${act.target.displayName}を たおした！`); addReward(act.target); enemies = enemies.filter(e=>e!==act.target); updateEnemiesDisplay(); }
                 }
             } else if(act.type === 'enemy_attack') {
                 if (act.actor.isGuraKing && act.actor.hp <= act.actor.max_hp * 0.2 && Math.random() < 0.4) {
@@ -2122,11 +2175,17 @@ async function executeBattle(fixedEnemies = null) {
                 }
             } else if(act.type === 'item') {
                 await typeMessage(`${act.actor.name}は ${act.item.name}を つかった！`); let t = act.target;
-                if(act.item.id === 'i_star_frag' || act.item.id === 'acc_star_bracelet' || act.item.id === 'w_star_sword') { await typeMessage(`しかし なにも おこらなかった！`); } 
-                else if(t.hp <= 0) { await typeMessage("しんでいる なかまには きかない！"); } 
-                else { 
+                if(act.item.id === 'i_star_frag' || act.item.id === 'acc_star_bracelet' || act.item.id === 'w_star_sword') { await typeMessage(`しかし なにも おこらなかった！`); }
+                else if(act.item.effect === 'revive' && t.hp <= 0) {
+                    if(act.itemIndex >= 0 && act.itemIndex < act.actor.inventory.length) act.actor.inventory.splice(act.itemIndex, 1);
+                    t.hp = Math.floor(t.max_hp / 2); AudioManager.playSE('heal');
+                    await typeMessage(`${t.name}は いきかえった！`); updatePartyStatus();
+                }
+                else if(t.hp <= 0) { await typeMessage("しんでいる なかまには きかない！"); }
+                else {
                     if(act.itemIndex >= 0 && act.itemIndex < act.actor.inventory.length) act.actor.inventory.splice(act.itemIndex, 1); AudioManager.playSE('heal');
-                    if(act.item.id.includes('antidote') || act.item.effect === 'cure_poison') { t.isPoisoned = false; await typeMessage(`${t.name}の どくが きえた！`); } 
+                    if(act.item.id.includes('antidote') || act.item.effect === 'cure_poison') { t.isPoisoned = false; await typeMessage(`${t.name}の どくが きえた！`); }
+                    else if(act.item.effect === 'mp_recovery') { let mv = parseInt(act.item.value||15); t.mp = Math.min(t.max_mp, t.mp + mv); await typeMessage(`${t.name}の MPが ${mv} かいふくした！`); }
                     else { let val = act.item.value; if(val === 'max' || act.item.effect === 'full_heal' || isNaN(parseInt(val))) { t.hp = t.max_hp; } else { t.hp = Math.min(t.max_hp, t.hp + parseInt(val || 30)); } await typeMessage(`${t.name}の HPが かいふくした！`); }
                 }
             }
