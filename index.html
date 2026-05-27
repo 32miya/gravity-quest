@@ -1715,6 +1715,28 @@ function generateDQStyleMaps() {
         externalMapData['map_field_4_4'].exits['7,6'] = { map: 'map_demon_castle_1f', x: 9, y: 17 };
         if (!externalMapData['map_field_4_4'].npcs['7,5']) externalMapData['map_field_4_4'].npcs['7,5'] = { id: 'npc_maou_castle_gate', name: '魔王城の門' };
     }
+
+    // ===== ほこら (map_shrine_warp) — フォールバック実装 =====
+    // 外部JSONにある場合はそちらが優先。なければこの小さな祠を使う
+    if (!externalMapData['map_shrine_warp']) {
+        let sw = mkMap(12, 12,
+            [[1,1,10,9]],
+            [],
+            [],
+            [[6,10]],
+            { '6,10': { map: 'map_field_2_3', x: 7, y: 7 } },
+            { '6,3': { id: 'npc_shrine_priestess', name: '祠の巫女' }, '5,5': { id: 'obj_chest_item', name: '祠の宝箱' } },
+            [], 'ほこら');
+        for (let y = 1; y < 11; y++) for (let x = 1; x < 11; x++) { if (sw.tiles[y*12+x] === 0) sw.tiles[y*12+x] = 9; }
+        sw.tiles[10*12+6] = 22; // 出口タイル
+        sw.tiles[3*12+6] = 0;   // 巫女の前を歩ける
+        externalMapData['map_shrine_warp'] = sw;
+        if (!externalEntitiesData) externalEntitiesData = {};
+        if (!externalEntitiesData['npc_shrine_priestess']) {
+            externalEntitiesData['npc_shrine_priestess'] = { id: 'npc_shrine_priestess', name: '祠の巫女', type: 'npc',
+                msg: 'ここは 聖なる ほこら。\nけがれを はらい\nたびびとに ちからを あたえましょう。' };
+        }
+    }
 }
 
 async function fetchExternalMap(url) { const loading = document.getElementById('loading-indicator'); loading.style.display = 'block'; loading.innerText = '世界を構築中...'; try { let targetUrl = url; if (url.includes('id=36783')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260410/game_1775804192420659288.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const imgRegex = /const\s+([a-zA-Z0-9_]+)Img\s*=\s*new\s+Image\(\).*?\.src\s*=\s*["']([^"']+)["']/g; let imgMatch; while ((imgMatch = imgRegex.exec(html2)) !== null) { let img = new Image(); img.crossOrigin = "Anonymous"; img.src = imgMatch[2]; externalImages[imgMatch[1]] = img; } const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); const scriptTag = doc.getElementById('map-data'); if (scriptTag) { const jsonData = JSON.parse(scriptTag.textContent); externalEntitiesData = jsonData.entities_definitions || {}; if (externalEntitiesData) { Object.keys(externalEntitiesData).forEach(key => { let ent = externalEntitiesData[key]; if (ent.type === "boss" || ent.is_boss) { if (!masterData.monsters[key]) { masterData.monsters[key] = { name: ent.name, max_hp: 200, atk: 30, def: 15, spd: 20, exp: 500, gold: 300 }; } } }); } if (jsonData.monsters) Object.assign(masterData.monsters, jsonData.monsters); if (jsonData.maps) { externalMapData = {}; jsonData.maps.forEach(m => { let mapData = convertMapData(m); Object.keys(mapData.npcs).forEach(k => { let npcId = mapData.npcs[k].id; if (externalEntitiesData[npcId] && externalEntitiesData[npcId].name) mapData.npcs[k].name = externalEntitiesData[npcId].name; }); externalMapData[m.map_id] = mapData; }); generateFieldMapsForGravityQuest(); let mapB3FKey = Object.keys(externalMapData).find(k => k.includes('dungeon_b3f')); if (mapB3FKey) { let b3f = externalMapData[mapB3FKey]; let warpA_x = 2, warpA_y = 2; let exitKeys = Object.keys(b3f.exits); if(exitKeys.length > 0) { let [ex, ey] = exitKeys[0].split(',').map(Number); warpA_x = ex; warpA_y = ey + 2; if (warpA_y >= b3f.height - 1) warpA_y = ey - 2; } let warpB_x = Math.floor(b3f.width / 2); let warpB_y = Math.floor(b3f.height / 2); let npcKeys = Object.keys(b3f.npcs); if(npcKeys.length > 0) { let targetNpc = npcKeys[npcKeys.length - 1]; let [nx, ny] = targetNpc.split(',').map(Number); warpB_x = nx; warpB_y = ny + 2; if (warpB_y >= b3f.height - 1) warpB_y = ny - 2; } if (Math.abs(warpA_x - warpB_x) < 3 && Math.abs(warpA_y - warpB_y) < 3) { warpB_x = b3f.width - 3; warpB_y = b3f.height - 3; } const setWarp = (wx, wy, destX, destY) => { wx = Math.max(1, Math.min(wx, b3f.width - 2)); wy = Math.max(1, Math.min(wy, b3f.height - 2)); destX = Math.max(1, Math.min(destX, b3f.width - 2)); destY = Math.max(1, Math.min(destY, b3f.height - 2)); b3f.tiles[wy * b3f.width + wx] = 8; b3f.exits[`${wx},${wy}`] = { map: mapB3FKey, x: destX, y: destY }; b3f.tiles[destY * b3f.width + destX] = 0; if(destY+1 < b3f.height) b3f.tiles[(destY+1) * b3f.width + destX] = 0; if(destX+1 < b3f.width) b3f.tiles[destY * b3f.width + (destX+1)] = 0; if(destX-1 >= 0) b3f.tiles[destY * b3f.width + (destX-1)] = 0; }; setWarp(warpA_x, warpA_y, warpB_x, warpB_y + 1); setWarp(warpB_x, warpB_y, warpA_x, warpA_y + 1); } let mapTown1Key = Object.keys(externalMapData).find(k => k.includes('town_01')); if (mapTown1Key) { let town1 = externalMapData[mapTown1Key]; town1.npcs["12,16"] = { id: "npc_casino_bunny", name: "バニーガール" }; if (16 * town1.width + 12 < town1.tiles.length) { town1.tiles[16 * town1.width + 12] = 9; } if (!externalEntitiesData["npc_casino_bunny"]) { externalEntitiesData["npc_casino_bunny"] = { id: "npc_casino_bunny", name: "バニーガール", type: "casino", msg: "ようこそ カジノへ！" }; } } for (let mapKey in externalMapData) { let map = externalMapData[mapKey]; let isSafeMap = mapKey.includes('town') || mapKey.includes('village') || mapKey.includes('market') || mapKey.includes('castle') || mapKey.includes('shrine'); if (isSafeMap && !mapKey.includes('demon') && !mapKey.includes('death')) { let hasPriest = false; for (let k in map.npcs) { if (map.npcs[k].id.includes('priest') || map.npcs[k].id.includes('church')) { hasPriest = true; break; } } if (!hasPriest) { let placed = false; let startY = Math.floor(map.height / 2) - 2; if (startY < 1) startY = 1; for (let y = startY; y < map.height - 1 && !placed; y++) { for (let x = 2; x < map.width - 2 && !placed; x++) { let tile = map.tiles[y * map.width + x]; let key = `${x},${y}`; if ((tile === 0 || tile === 10 || tile === 11 || tile === 23) && !map.exits[key] && !map.npcs[key]) { map.npcs[key] = { id: "npc_priest", name: "神父" }; placed = true; } } } } } } injectSubStoryData(); if (externalMapData["map_field_0_4"]) externalMapData["map_field_0_4"].npcs["3,12"] = { id: "npc_sub_smith", name: "伝説の鍛冶屋" }; if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["7,3"] = { id: "obj_chest_star_frag", name: "光る地面" }; if (externalMapData["map_field_2_4"]) externalMapData["map_field_2_4"].npcs["7,7"] = { id: "npc_sub_richman", name: "大富豪" }; if (externalMapData["map_field_4_4"]) externalMapData["map_field_4_4"].npcs["12,12"] = { id: "npc_sub_mage", name: "大魔導士" }; if (externalMapData["map_town_01"]) externalMapData["map_town_01"].npcs["8,14"] = { id: "npc_sub_rumor", name: "マルコ" };
@@ -2693,6 +2715,21 @@ async function checkAction() {
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
+            if (npc.id === "npc_shrine_priestess") {
+                if (!partyData.flags.shrine_healed) {
+                    const _syn = await showYesNo(`【祠の巫女】\nここは 聖なる ほこら。\nけがれを はらい\nパーティを かいふくしましょうか？`);
+                    if (_syn === 0) {
+                        partyData.members.forEach(m => { if(m.hp>0){m.hp=m.max_hp; m.mp=m.max_mp; m.isPoisoned=false; m.isAsleep=0; m.isParalyzed=false;} });
+                        AudioManager.playSE('heal'); await typeMessage(`まばゆい ひかりに つつまれた！\nパーティの きずと まなが すべて かいふくした！`);
+                        partyData.flags.shrine_healed = true;
+                        await typeMessage(`【祠の巫女】\n女神の まもりを。\nゆく道に ひかりが ありますように。`);
+                    } else { await typeMessage(`【祠の巫女】\nいつでも よびかけてください。`); }
+                } else {
+                    await typeMessage(`【祠の巫女】\nお力は すでに ほこらの ひかりで みちて おります。\nまた しばらく すれば ちからが もどるでしょう。`);
+                    if (partyData.flags.flag_weapon_forged) await typeMessage(`【祠の巫女】\nつよき 剣を もつ あなたなら\n魔王にも おくせず むかえましょう。`);
+                }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
             if (extDef) {
                 if (extDef.name === "宝箱" || npc.id.includes('chest')) {
                     let chestFlag = `chest_${partyData.pos.map}_${tx}_${ty}`;
@@ -3282,6 +3319,12 @@ async function executeBattle(fixedEnemies = null) {
                         if ((_wId === 'w12' || _wId === 'w_spear_11') && _lastDmg > 0) { let _hv = Math.max(1, Math.floor(_lastDmg * 0.25)); act.actor.hp = Math.min(act.actor.max_hp, act.actor.hp + _hv); AudioManager.playSE('heal'); await typeMessage(`${act.actor.name}の HPが ${_hv} かいふくした！`); updatePartyStatus(); }
                         if ((_wId === 'w21' || _wId === 'w_spear_10') && Math.random() < 0.5) { let _sd = Math.max(1, Math.floor(getAtk(act.actor) * 0.2)); act.actor.hp = Math.max(0, act.actor.hp - _sd); AudioManager.playSE('damage_hero'); await typeMessage(`しかし ${act.actor.name}も ${_sd}の ダメージを うけた！`); updatePartyStatus(); if(act.actor.hp <= 0) { act.actor.isPoisoned = false; await typeMessage(`${act.actor.name}は しんでしまった！`); } }
                         if (_pt && (_wId === 'w31' || _wId === 'w_2nd_05') && Math.random() < 0.15) { _pt.hp = 0; _pt.isPoisoned = false; await typeMessage(`${_pt.displayName}を 一撃で たおした！`); addReward(_pt); enemies = enemies.filter(e => e !== _pt); updateEnemiesDisplay(); }
+                        if (_pt && _wId === 'w23' && Math.random() < 0.3) { let _fd = Math.max(5, Math.floor(getAtk(act.actor) * 0.4)); _pt.hp = Math.max(0, _pt.hp - _fd); AudioManager.playSE('magic_cast'); await typeMessage(`炎のつるぎが もえあがった！
+${_pt.displayName}に 追加で ${_fd}の ほのおダメージ！`); if (_pt.hp <= 0) { _pt.isPoisoned = false; await typeMessage(`${_pt.displayName}を たおした！`); addReward(_pt); enemies = enemies.filter(e => e !== _pt); updateEnemiesDisplay(); } }
+                        if (_pt && _wId === 'w24' && Math.random() < 0.3) { let _id = Math.max(5, Math.floor(getAtk(act.actor) * 0.45)); _pt.hp = Math.max(0, _pt.hp - _id); AudioManager.playSE('magic_cast'); await typeMessage(`吹雪のつるぎが こおりついた！
+${_pt.displayName}に 追加で ${_id}の こおりダメージ！`); if (_pt.hp <= 0) { _pt.isPoisoned = false; await typeMessage(`${_pt.displayName}を たおした！`); addReward(_pt); enemies = enemies.filter(e => e !== _pt); updateEnemiesDisplay(); } }
+                        if (_wId === 'w27' && Math.random() < 0.2) { act.actor.tmpAtk = (act.actor.tmpAtk || 0) - Math.max(3, Math.floor(getAtk(act.actor) * 0.1)); AudioManager.playSE('damage_hero'); await typeMessage(`魔人のカナヅチの のろい！
+${act.actor.name}の ちからが すいとられた！`); }
                     }
                 }
             } else if(act.type === 'enemy_attack') {
@@ -3494,7 +3537,7 @@ async function executeBattle(fixedEnemies = null) {
         partyData.gold = Math.floor(partyData.gold / 2);
         if(partyData.members[0]) { partyData.members[0].hp = partyData.members[0].max_hp; partyData.members[0].mp = partyData.members[0].max_mp; } for(let i = 1; i < partyData.members.length; i++) { partyData.members[i].hp = 0; partyData.members[i].isPoisoned = false; }
         let savedPos = null; try { let s = localStorage.getItem('gravity_quest_save'); if (s) { let parsed = JSON.parse(s); if (parsed && parsed.pos) savedPos = parsed.pos; } } catch(e) {}
-        if (savedPos) { partyData.pos = { map: savedPos.map, x: savedPos.x, y: savedPos.y }; } else { let startMap = Object.keys(externalMapData)[0]; partyData.pos = { map: startMap, x: 7, y: 7 }; }
+        if (savedPos) { partyData.pos = { map: savedPos.map, x: savedPos.x, y: savedPos.y }; } else { let startMap = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos = { map: startMap, x: 10, y: 18 }; }
         partyData.dir = 2; currentMap = await loadExternalData('map-' + partyData.pos.map);
         bScreen.style.display = 'none'; screen.style.display = 'block'; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM();
         screen.style.opacity = '1'; await new Promise(r => setTimeout(r, 1000)); screen.style.transition = '';
@@ -3518,7 +3561,7 @@ async function startSecondLoop(parsedOldData) {
         });
     }
     partyData = await loadExternalData('party'); partyData.flags = { is_second_loop: true };
-    if(externalMapData) { partyData.pos.map = Object.keys(externalMapData)[0]; partyData.pos.x = 7; partyData.pos.y = 7; }
+    if(externalMapData) { partyData.pos.map = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos.x = 10; partyData.pos.y = 18; }
     applyGrowthDataToParty(true);
     for(let i=0; i<partyData.members.length; i++) {
         let m = partyData.members[i]; let oldM = (parsedOldData && parsedOldData.members) ? parsedOldData.members[i] : null;
@@ -3548,7 +3591,7 @@ async function showTitleScreen() {
         let choiceIdx = await selectMenu(menuOpts, 'title-menu-box'); if(choiceIdx === -1) continue; let choiceStr = menuOpts[choiceIdx];
         if(choiceStr === 'はじめから') {
             partyData = await loadExternalData('party'); partyData.flags = { none: true };
-            if(externalMapData) { partyData.pos.map = Object.keys(externalMapData)[0]; partyData.pos.x = 7; partyData.pos.y = 7; }
+            if(externalMapData) { partyData.pos.map = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos.x = 10; partyData.pos.y = 18; }
             applyGrowthDataToParty(true);
             for(let i=0; i<partyData.members.length; i++) { let m = partyData.members[i]; let input = await showCustomDialog('prompt', `${m.job} の名前を決めてください\n（最大4文字）\n空白で「${m.name}」`, m.name); if(input !== null && input.trim() !== "") { m.name = input.trim().substring(0, 4); } }
             break;
@@ -3563,20 +3606,20 @@ async function showTitleScreen() {
             if(pwd !== null) {
                 pwd = pwd.trim();
                 if(pwd === "GRAVITY最高！") {
-                    partyData = await loadExternalData('party'); partyData.flags = { none: true }; if(externalMapData) { partyData.pos.map = Object.keys(externalMapData)[0]; partyData.pos.x = 7; partyData.pos.y = 7; } applyGrowthDataToParty(true);
+                    partyData = await loadExternalData('party'); partyData.flags = { none: true }; if(externalMapData) { partyData.pos.map = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos.x = 10; partyData.pos.y = 18; } applyGrowthDataToParty(true);
                     let weps = Object.values(masterData.items).filter(i=>i.type==='weapon').sort((a,b)=>b.power-a.power); let arms = Object.values(masterData.items).filter(i=>i.type==='armor').sort((a,b)=>b.power-a.power); let shds = Object.values(masterData.items).filter(i=>i.type==='shield').sort((a,b)=>b.power-a.power); let hlms = Object.values(masterData.items).filter(i=>i.type==='helmet').sort((a,b)=>b.power-a.power);
                     partyData.members.forEach(m => { m.equipment.weapon=weps[0]?.id; m.equipment.armor=arms[0]?.id; m.equipment.shield=shds[0]?.id; m.equipment.helmet=hlms[0]?.id; });
                     for(let i=0; i<partyData.members.length; i++) { let m = partyData.members[i]; let input = await showCustomDialog('prompt', `${m.job} の名前を決めてください\n空白で「${m.name}」`, m.name); if(input !== null && input.trim() !== "") m.name = input.trim().substring(0, 4); }
                     await showCustomDialog('alert', "【裏技成功】\n全員が 最強の装備 を手に入れた\n状態で始まります！"); break;
                 }
                 else if(pwd === "グラちゃんすきすき") {
-                    partyData = await loadExternalData('party'); partyData.flags = { none: true }; if(externalMapData) { partyData.pos.map = Object.keys(externalMapData)[0]; partyData.pos.x = 7; partyData.pos.y = 7; } applyGrowthDataToParty(true);
+                    partyData = await loadExternalData('party'); partyData.flags = { none: true }; if(externalMapData) { partyData.pos.map = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos.x = 10; partyData.pos.y = 18; } applyGrowthDataToParty(true);
                     partyData.members.forEach(m => { m.lv = 25; m.exp = 99999; if (masterData.growth && masterData.growth[m.job]) { let gt = masterData.growth[m.job]; let lvD = gt.find(g => g.level === 25) || gt[gt.length-1]; if(lvD) { m.max_hp=lvD.hp; m.max_mp=lvD.mp; m.atk=lvD.atk; m.def=lvD.def; m.spd=lvD.spd; m.hp=m.max_hp; m.mp=m.max_mp; m.spells=[]; for(let lvl=1; lvl<=25; lvl++) { let d = gt.find(g => g.level === lvl); if(d?.learnMagic) { d.learnMagic.forEach(name => { const fd = Object.values(masterData.spells).find(s => s.name === name); if(fd && !m.spells.includes(fd.id)) m.spells.push(fd.id); }); } } } } });
                     for(let i=0; i<partyData.members.length; i++) { let m = partyData.members[i]; let input = await showCustomDialog('prompt', `${m.job} の名前を決めてください\n空白で「${m.name}」`, m.name); if(input !== null && input.trim() !== "") m.name = input.trim().substring(0, 4); }
                     await showCustomDialog('alert', "【裏技成功】\n全員の レベルが25 の状態で\n始まります！"); break;
                 }
                 else if(pwd === "ようきな壺") {
-                    partyData = await loadExternalData('party'); partyData.flags = { none: true }; if(externalMapData) { partyData.pos.map = Object.keys(externalMapData)[0]; partyData.pos.x = 7; partyData.pos.y = 7; } applyGrowthDataToParty(true); partyData.gold = 10000;
+                    partyData = await loadExternalData('party'); partyData.flags = { none: true }; if(externalMapData) { partyData.pos.map = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos.x = 10; partyData.pos.y = 18; } applyGrowthDataToParty(true); partyData.gold = 10000;
                     for(let i=0; i<partyData.members.length; i++) { let m = partyData.members[i]; let input = await showCustomDialog('prompt', `${m.job} の名前を決めてください\n空白で「${m.name}」`, m.name); if(input !== null && input.trim() !== "") m.name = input.trim().substring(0, 4); }
                     await showCustomDialog('alert', "【裏技成功】\n所持金が 10000G の状態で\n始まります！"); break;
                 }
