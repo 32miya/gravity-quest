@@ -994,7 +994,53 @@ function applyGrowthDataToParty(isNewGame = false) {
 function convertMapData(extMap) { let tiles = []; for (let y = 0; y < extMap.height; y++) { for (let x = 0; x < extMap.width; x++) tiles.push(extMap.terrain_layer[y][x]); } let exits = {}; if (extMap.warp_points) extMap.warp_points.forEach(w => { exits[`${w.x},${w.y}`] = { map: w.target_map, x: w.target_x, y: w.target_y }; }); let npcs = {}; if (extMap.objects) extMap.objects.forEach(obj => { npcs[`${obj.x},${obj.y}`] = { id: obj.entity_id, name: obj.entity_id }; }); let isSafe = extMap.map_id.includes('town') || extMap.map_id.includes('market') || extMap.map_id.includes('village') || extMap.map_id.includes('shrine') || extMap.map_id.includes('port'); if (extMap.map_id.includes('castle') && !extMap.map_id.includes('death')) { isSafe = true; } let encounters = extMap.encounters || []; if (!isSafe && encounters.length === 0) { let isCave = extMap.map_id.includes('dungeon') || extMap.map_id.includes('cave'); let isLate = extMap.map_id.includes('death') || extMap.map_id.includes('demon') || extMap.map_id.includes('volcano'); let isMid = extMap.map_id.includes('tower') || extMap.map_id.includes('dungeon_2') || extMap.map_id.includes('mountain') || extMap.map_id.includes('desert'); let pool = []; if (isLate) pool = ["ancient_dragon", "cyclops", "vampire_lord", "death_knight", "behemoth", "lich", "archdemon", "bahamut", "hagure_gura"]; else if (isMid) pool = ["killer_mantis", "dark_mage", "minotaur", "troll", "chimera", "dullahan", "cockatrice", "succubus", "flame_elemental", "gargoyle", "hagure_gura"]; else if (isCave) pool = ["ghost", "skeleton", "giant_bat", "ghost_mushroom", "golem", "dark_mage"]; else pool = ["slime", "goblin", "wild_wolf", "orc", "red_dragon"]; encounters = pool.filter(id => masterData.monsters[id]); if(encounters.length === 0) encounters = isCave ? ["m02"] : ["m01", "m02"]; } else if (isSafe) { encounters = []; } return { width: extMap.width, height: extMap.height, tiles: tiles, encounters: encounters, exits: exits, npcs: npcs, name: extMap.name || extMap.map_name || getMapDisplayName(extMap.map_id) }; }
 
 function generateFieldMapsForGravityQuest() { let encountersPool = ["slime", "goblin", "wild_wolf", "m01", "m02"]; for (let y = 0; y < 5; y++) { for (let x = 0; x < 5; x++) { let mapId = "map_field_" + x + "_" + y; let tiles2D = []; let exits = {}; for (let ty = 0; ty < 15; ty++) { let row = []; for (let tx = 0; tx < 15; tx++) { let tile = 0; if (x === 0 && tx === 0) tile = 4; if (x === 4 && tx === 14) tile = 4; if (y === 0 && ty === 0) tile = 4; if (y === 4 && ty === 14) tile = 4; if ((tx === 0 && ty === 0) || (tx === 14 && ty === 0) || (tx === 0 && ty === 14) || (tx === 14 && ty === 14)) tile = 4; if (x === 2 && y === 2) { if (tx >= 6 && tx <= 8 && ty >= 6 && ty <= 8) tile = 1; if (tx === 7 && ty === 8) tile = 0; if (tx === 7 && ty === 7) tile = 21; } if (x === 2 && y === 0) { if (tx >= 6 && tx <= 8 && ty >= 2 && ty <= 4) tile = 4; if (tx === 7 && ty === 4) tile = 0; if (tx === 7 && ty === 3) tile = 22; } if (tile === 0) { if (tx === 7 || ty === 7 || tx === 1 || tx === 13 || ty === 1 || ty === 13) { tile = Math.random() < 0.7 ? 11 : 12; } else { let rand = Math.random(); if (x === 2 && y === 0) { if(rand < 0.05) tile = 19; else if(rand < 0.20) tile = 20; else tile = rand < 0.8 ? 11 : 12; } else if (x === 0 && y === 2) { if(rand < 0.20) tile = 19; else if(rand < 0.05) tile = 20; else tile = rand < 0.8 ? 11 : 12; } else if (x === 4 && y === 2) { if(rand < 0.10) tile = 19; else if(rand < 0.10) tile = 20; else tile = rand < 0.8 ? 11 : 12; } else if (x === 2 && y === 4) { if(rand < 0.10) tile = 19; else if(rand < 0.10) tile = 20; else tile = rand < 0.8 ? 11 : 12; } else { if(rand < 0.05) tile = 19; else if(rand < 0.05) tile = 20; else tile = rand < 0.8 ? 11 : 12; } } } row.push(tile); } tiles2D.push(row); } for (let i = 1; i < 14; i++) { if (y > 0) exits[`${i},0`] = { map: "map_field_" + x + "_" + (y - 1), x: i, y: 13 }; if (y < 4) exits[`${i},14`] = { map: "map_field_" + x + "_" + (y + 1), x: i, y: 1 }; if (x > 0) exits[`0,${i}`] = { map: "map_field_" + (x - 1) + "_" + y, x: 13, y: i }; if (x < 4) exits[`14,${i}`] = { map: "map_field_" + (x + 1) + "_" + y, x: 1, y: i }; } if (x === 2 && y === 2) exits[`7,7`] = { map: "map_town_01", x: 10, y: 18 }; if (x === 2 && y === 0) exits[`7,3`] = { map: "map_dungeon_1f", x: 7, y: 14 }; if (y === 0 && x === 2) { tiles2D[0][7] = 11; exits[`7,0`] = { map: "map_field_north_2", x: 7, y: 13 }; } if (y === 4 && x === 2) { tiles2D[14][7] = 11; exits[`7,14`] = { map: "map_field_south_2", x: 7, y: 1 }; } if (y === 2 && x === 4) { tiles2D[7][14] = 11; exits[`14,7`] = { map: "map_field_east_2", x: 1, y: 7 }; } if (y === 2 && x === 0) { tiles2D[7][0] = 11; exits[`0,7`] = { map: "map_field_west_2", x: 13, y: 7 }; } if (x === 2 && y === 3) { tiles2D[7][7] = 22; exits[`7,7`] = { map: "map_shrine_warp", x: 7, y: 13 }; } let tiles1D = []; for(let r=0; r<15; r++) for(let c=0; c<15; c++) tiles1D.push(tiles2D[r][c]); let encounters = encountersPool.filter(id => masterData.monsters[id]); if(encounters.length===0) encounters = ["m01"]; externalMapData[mapId] = { width: 15, height: 15, tiles: tiles1D, encounters: encounters, exits: exits, npcs: {}, name: "フィールド" }; } } }
-function fixMapExits() { if(!externalMapData) return; const maps = Object.keys(externalMapData); for(let mapId of maps) { let m1 = externalMapData[mapId]; if(!m1.exits) continue; for(let key in m1.exits) { let exit = m1.exits[key]; let targetMapId = exit.map; let tMapKey = targetMapId; if (!externalMapData[tMapKey]) tMapKey = "map_" + targetMapId; if (!externalMapData[tMapKey]) tMapKey = targetMapId.replace("map_", ""); let targetMap = externalMapData[tMapKey]; if(!targetMap || !targetMap.exits) continue; let [ex, ey] = key.split(',').map(Number); let m1Tile = m1.tiles[ey * m1.width + ex]; let reciprocals = []; for(let tKey in targetMap.exits) { let tExit = targetMap.exits[tKey]; let tExitMapId = tExit.map; if(tExitMapId === mapId || "map_"+tExitMapId === mapId || tExitMapId === mapId.replace("map_","")) { reciprocals.push(tKey); } } if(reciprocals.length === 1) { let [tx, ty] = reciprocals[0].split(',').map(Number); exit.x = tx; exit.y = ty; } else if(reciprocals.length > 1) { for(let tKey of reciprocals) { let [tx, ty] = tKey.split(',').map(Number); let tTile = targetMap.tiles[ty * targetMap.width + tx]; if((m1Tile === 6 && tTile === 7) || (m1Tile === 7 && tTile === 6) || (m1Tile === 3 && tTile === 3)) { exit.x = tx; exit.y = ty; break; } } } } } }
+function fixMapExits() {
+    if(!externalMapData) return;
+    const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
+    // 出口タイル(tx,ty)から1歩「内側」（マップ中心方向で通行可能な隣接タイル）を返す
+    function _inwardTile(map, tx, ty) {
+        let mc_x = Math.floor(map.width/2), mc_y = Math.floor(map.height/2);
+        let dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+        dirs.sort((a,b) => (Math.abs(tx+a[0]-mc_x)+Math.abs(ty+a[1]-mc_y)) - (Math.abs(tx+b[0]-mc_x)+Math.abs(ty+b[1]-mc_y)));
+        for(let [dx,dy] of dirs) {
+            let nx=tx+dx, ny=ty+dy;
+            if(nx<0||ny<0||nx>=map.width||ny>=map.height) continue;
+            let t = map.tiles[ny*map.width+nx];
+            if(!_solid.includes(t) && !map.exits[`${nx},${ny}`]) return {x:nx, y:ny};
+        }
+        return {x:tx, y:ty}; // fallback: そのまま
+    }
+    const maps = Object.keys(externalMapData);
+    for(let mapId of maps) {
+        let m1 = externalMapData[mapId]; if(!m1.exits) continue;
+        for(let key in m1.exits) {
+            let exit = m1.exits[key];
+            let tMapKey = exit.map;
+            if (!externalMapData[tMapKey]) tMapKey = "map_" + exit.map;
+            if (!externalMapData[tMapKey]) tMapKey = exit.map.replace("map_", "");
+            let targetMap = externalMapData[tMapKey]; if(!targetMap || !targetMap.exits) continue;
+            let [ex, ey] = key.split(',').map(Number); let m1Tile = m1.tiles[ey*m1.width+ex];
+            let reciprocals = [];
+            for(let tKey in targetMap.exits) {
+                let tExitMapId = targetMap.exits[tKey].map;
+                if(tExitMapId===mapId || "map_"+tExitMapId===mapId || tExitMapId===mapId.replace("map_","")) reciprocals.push(tKey);
+            }
+            let chosen = null;
+            if(reciprocals.length === 1) { let [tx,ty] = reciprocals[0].split(',').map(Number); chosen={x:tx,y:ty}; }
+            else if(reciprocals.length > 1) {
+                for(let tKey of reciprocals) {
+                    let [tx,ty] = tKey.split(',').map(Number);
+                    let tTile = targetMap.tiles[ty*targetMap.width+tx];
+                    if((m1Tile===6&&tTile===7)||(m1Tile===7&&tTile===6)||(m1Tile===3&&tTile===3)) { chosen={x:tx,y:ty}; break; }
+                }
+            }
+            if(chosen) {
+                let inner = _inwardTile(targetMap, chosen.x, chosen.y);
+                exit.x = inner.x; exit.y = inner.y;
+            }
+        }
+    }
+}
 
 async function fetchExternalMap(url) { const loading = document.getElementById('loading-indicator'); loading.style.display = 'block'; loading.innerText = '世界を構築中...'; try { let targetUrl = url; if (url.includes('id=36783')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260410/game_1775804192420659288.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const imgRegex = /const\s+([a-zA-Z0-9_]+)Img\s*=\s*new\s+Image\(\).*?\.src\s*=\s*["']([^"']+)["']/g; let imgMatch; while ((imgMatch = imgRegex.exec(html2)) !== null) { let img = new Image(); img.crossOrigin = "Anonymous"; img.src = imgMatch[2]; externalImages[imgMatch[1]] = img; } const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); const scriptTag = doc.getElementById('map-data'); if (scriptTag) { const jsonData = JSON.parse(scriptTag.textContent); externalEntitiesData = jsonData.entities_definitions || {}; if (externalEntitiesData) { Object.keys(externalEntitiesData).forEach(key => { let ent = externalEntitiesData[key]; if (ent.type === "boss" || ent.is_boss) { if (!masterData.monsters[key]) { masterData.monsters[key] = { name: ent.name, max_hp: 200, atk: 30, def: 15, spd: 20, exp: 500, gold: 300 }; } } }); } if (jsonData.monsters) Object.assign(masterData.monsters, jsonData.monsters); if (jsonData.maps) { externalMapData = {}; jsonData.maps.forEach(m => { let mapData = convertMapData(m); Object.keys(mapData.npcs).forEach(k => { let npcId = mapData.npcs[k].id; if (externalEntitiesData[npcId] && externalEntitiesData[npcId].name) mapData.npcs[k].name = externalEntitiesData[npcId].name; }); externalMapData[m.map_id] = mapData; }); generateFieldMapsForGravityQuest(); let mapB3FKey = Object.keys(externalMapData).find(k => k.includes('dungeon_b3f')); if (mapB3FKey) { let b3f = externalMapData[mapB3FKey]; let warpA_x = 2, warpA_y = 2; let exitKeys = Object.keys(b3f.exits); if(exitKeys.length > 0) { let [ex, ey] = exitKeys[0].split(',').map(Number); warpA_x = ex; warpA_y = ey + 2; if (warpA_y >= b3f.height - 1) warpA_y = ey - 2; } let warpB_x = Math.floor(b3f.width / 2); let warpB_y = Math.floor(b3f.height / 2); let npcKeys = Object.keys(b3f.npcs); if(npcKeys.length > 0) { let targetNpc = npcKeys[npcKeys.length - 1]; let [nx, ny] = targetNpc.split(',').map(Number); warpB_x = nx; warpB_y = ny + 2; if (warpB_y >= b3f.height - 1) warpB_y = ny - 2; } if (Math.abs(warpA_x - warpB_x) < 3 && Math.abs(warpA_y - warpB_y) < 3) { warpB_x = b3f.width - 3; warpB_y = b3f.height - 3; } const setWarp = (wx, wy, destX, destY) => { wx = Math.max(1, Math.min(wx, b3f.width - 2)); wy = Math.max(1, Math.min(wy, b3f.height - 2)); destX = Math.max(1, Math.min(destX, b3f.width - 2)); destY = Math.max(1, Math.min(destY, b3f.height - 2)); b3f.tiles[wy * b3f.width + wx] = 8; b3f.exits[`${wx},${wy}`] = { map: mapB3FKey, x: destX, y: destY }; b3f.tiles[destY * b3f.width + destX] = 0; if(destY+1 < b3f.height) b3f.tiles[(destY+1) * b3f.width + destX] = 0; if(destX+1 < b3f.width) b3f.tiles[destY * b3f.width + (destX+1)] = 0; if(destX-1 >= 0) b3f.tiles[destY * b3f.width + (destX-1)] = 0; }; setWarp(warpA_x, warpA_y, warpB_x, warpB_y + 1); setWarp(warpB_x, warpB_y, warpA_x, warpA_y + 1); } let mapTown1Key = Object.keys(externalMapData).find(k => k.includes('town_01')); if (mapTown1Key) { let town1 = externalMapData[mapTown1Key]; town1.npcs["12,16"] = { id: "npc_casino_bunny", name: "バニーガール" }; if (16 * town1.width + 12 < town1.tiles.length) { town1.tiles[16 * town1.width + 12] = 9; } if (!externalEntitiesData["npc_casino_bunny"]) { externalEntitiesData["npc_casino_bunny"] = { id: "npc_casino_bunny", name: "バニーガール", type: "casino", msg: "ようこそ カジノへ！" }; } } for (let mapKey in externalMapData) { let map = externalMapData[mapKey]; let isSafeMap = mapKey.includes('town') || mapKey.includes('village') || mapKey.includes('market') || mapKey.includes('castle') || mapKey.includes('shrine'); if (isSafeMap && !mapKey.includes('demon') && !mapKey.includes('death')) { let hasPriest = false; for (let k in map.npcs) { if (map.npcs[k].id.includes('priest') || map.npcs[k].id.includes('church')) { hasPriest = true; break; } } if (!hasPriest) { let placed = false; let startY = Math.floor(map.height / 2) - 2; if (startY < 1) startY = 1; for (let y = startY; y < map.height - 1 && !placed; y++) { for (let x = 2; x < map.width - 2 && !placed; x++) { let tile = map.tiles[y * map.width + x]; let key = `${x},${y}`; if ((tile === 0 || tile === 10 || tile === 11 || tile === 23) && !map.exits[key] && !map.npcs[key]) { map.npcs[key] = { id: "npc_priest", name: "神父" }; placed = true; } } } } } } injectSubStoryData(); if (externalMapData["map_field_0_4"]) externalMapData["map_field_0_4"].npcs["3,12"] = { id: "npc_sub_smith", name: "伝説の鍛冶屋" }; if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["7,3"] = { id: "obj_chest_star_frag", name: "光る地面" }; if (externalMapData["map_field_2_4"]) externalMapData["map_field_2_4"].npcs["7,7"] = { id: "npc_sub_richman", name: "大富豪" }; if (externalMapData["map_field_4_4"]) externalMapData["map_field_4_4"].npcs["12,12"] = { id: "npc_sub_mage", name: "大魔導士" }; if (externalMapData["map_town_01"]) externalMapData["map_town_01"].npcs["8,14"] = { id: "npc_sub_rumor", name: "町人" }; 
         
@@ -1211,6 +1257,12 @@ function drawMap() {
             const tile = currentMap.tiles[y * currentMap.width + x]; const px = x*TILE_SIZE - camX; const py = y*TILE_SIZE - camY;
             if (px < -TILE_SIZE || px > cWidth || py < -TILE_SIZE || py > cHeight) continue;
             let bgImg = null; let fgImg = null; let color = getTileColor(tile);
+            // 文脈別フォールバックカラー（外部画像が読めない時の補正）
+            if (tile === 0 || tile === 23) {
+                if (isCastle) color = '#778'; else if (isTown) color = '#cba'; else if (isCave) color = '#445'; else if (isMountain) color = '#665';
+            } else if (tile === 1 || tile === 4 || tile === 15) {
+                if (isCastle) color = '#445'; else if (isTown) color = '#764'; else if (isCave) color = '#222'; else if (isMountain) color = '#333';
+            }
             let floorKeys = isCastle ? ['castleFloor', 'floor'] : (isTown ? ['townFloor', 'floor', 'townPath'] : (isCave ? ['caveFloor', 'ground', 'floor'] : ['fieldGrass', 'grass'])); if(isMountain) floorKeys = ['northMountainFloor', 'mountainFloor', 'plainRock', 'rock'];
             for(let k of floorKeys) { if(externalImages[k] && externalImages[k].complete && externalImages[k].naturalHeight > 0) { bgImg = externalImages[k]; break; } }
             if (tile === 1 || tile === 4) { 
@@ -1365,7 +1417,7 @@ function drawMap() {
 
 async function moveParty(dx, dy) {
     const nx = partyData.pos.x + dx, ny = partyData.pos.y + dy; if(nx<0 || ny<0 || nx>=currentMap.width || ny>=currentMap.height) return;
-    const tile = currentMap.tiles[ny * currentMap.width + nx]; const solidTiles = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20, 23]; if(solidTiles.includes(tile)) return;
+    const tile = currentMap.tiles[ny * currentMap.width + nx]; const solidTiles = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
     const key = `${nx},${ny}`; if (currentMap.npcs && currentMap.npcs[key]) return;
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
     partyData.pos.x = nx; partyData.pos.y = ny;
@@ -1385,7 +1437,26 @@ async function moveParty(dx, dy) {
     drawMap();
     if(currentMap.exits && currentMap.exits[key]) {
         AudioManager.playSE('stair'); const exit = currentMap.exits[key]; let nextMapId = 'map-' + exit.map; let nextMap = await loadExternalData(nextMapId);
-        if (nextMap) { currentMap = nextMap; partyData.pos.map = exit.map; partyData.pos.x = exit.x; partyData.pos.y = exit.y; moveHistory = []; drawMap(); updateBGM(); return; } 
+        if (nextMap) {
+            currentMap = nextMap; partyData.pos.map = exit.map;
+            let _lx = exit.x, _ly = exit.y;
+            const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
+            let _lt = nextMap.tiles[_ly * nextMap.width + _lx];
+            // 出口タイル上または通行不能タイルに着地した場合、マップ中心方向へ1歩ずらす
+            if (_solid.includes(_lt) || (nextMap.exits && nextMap.exits[`${_lx},${_ly}`])) {
+                let _mx = Math.floor(nextMap.width / 2), _my = Math.floor(nextMap.height / 2);
+                let _dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+                _dirs.sort((a,b) => (Math.abs(_lx+a[0]-_mx)+Math.abs(_ly+a[1]-_my)) - (Math.abs(_lx+b[0]-_mx)+Math.abs(_ly+b[1]-_my)));
+                for (let [_ddx,_ddy] of _dirs) {
+                    let _nx2 = _lx+_ddx, _ny2 = _ly+_ddy;
+                    if (_nx2<0||_ny2<0||_nx2>=nextMap.width||_ny2>=nextMap.height) continue;
+                    let _t2 = nextMap.tiles[_ny2*nextMap.width+_nx2];
+                    if (!_solid.includes(_t2) && (!nextMap.npcs || !nextMap.npcs[`${_nx2},${_ny2}`])) { _lx=_nx2; _ly=_ny2; break; }
+                }
+            }
+            partyData.pos.x = _lx; partyData.pos.y = _ly;
+            moveHistory = []; drawMap(); updateBGM(); return;
+        }
         else { partyData.pos.x = moveHistory[0].x; partyData.pos.y = moveHistory[0].y; partyData.dir = moveHistory[0].dir; drawMap(); return; }
     }
     if(currentMap.encounters && currentMap.encounters.length > 0 && (!partyData.flags || !partyData.flags.last_boss_defeated)) {
