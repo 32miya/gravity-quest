@@ -743,8 +743,8 @@ window.SOUND_DATABASE = {
             <div class="btn btn-down" onmousedown="pressBtn('ArrowDown')" ontouchstart="pressBtn('ArrowDown'); event.preventDefault()" onmouseup="releaseBtn('ArrowDown')" ontouchend="releaseBtn('ArrowDown')" onmouseleave="releaseBtn('ArrowDown')" ontouchcancel="releaseBtn('ArrowDown')">▼</div>
         </div>
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translateY(54px); z-index: 50;">
-            <div id="volume-slider-container"><input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.1" orient="vertical" /></div>
-            <div class="btn-mute" id="btn-mute" onmousedown="toggleVolume()" ontouchstart="toggleVolume(); event.preventDefault()">🔉</div>
+            <div id="volume-slider-container"><input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.7" orient="vertical" /></div>
+            <div class="btn-mute" id="btn-mute" onmousedown="toggleVolume()" ontouchstart="toggleVolume(); event.preventDefault()">🔊</div>
         </div>
         <div class="action-buttons">
             <div class="btn btn-action" onmousedown="simKey('Escape')" ontouchstart="simKey('Escape'); event.preventDefault()">B</div>
@@ -824,7 +824,7 @@ document.addEventListener('contextmenu', event => { if (event.target.tagName !==
 const screenHeight = window.innerHeight; const topExclusionHeight = screenHeight >= 812 ? 98 : 74; document.getElementById('game-wrapper').style.paddingTop = topExclusionHeight + 'px';
 
 const AudioManager = {
-    ctx: null, bgmAudio: null, currentBgmKey: null, isMuted: false, masterVolume: 0.1, db: { bgm: {}, se: {} }, masterGainNode: null, bgmSourceNode: null,
+    ctx: null, bgmAudio: null, currentBgmKey: null, isMuted: false, masterVolume: 0.7, db: { bgm: {}, se: {} }, masterGainNode: null, bgmSourceNode: null,
     init() { if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } if (this.ctx.state === 'suspended') this.ctx.resume(); if (!this.masterGainNode) { this.masterGainNode = this.ctx.createGain(); this.masterGainNode.connect(this.ctx.destination); this.masterGainNode.gain.value = this.masterVolume; } },
     playBGM(key) { 
         this.init(); if (this.currentBgmKey === key) { if(this.bgmAudio && this.bgmAudio.paused && !this.isMuted) { this.bgmAudio.play().catch(e=>{}); } return; } 
@@ -1330,18 +1330,23 @@ function generateFieldMapsForGravityQuest() { let encountersPool = ["slime", "go
 function fixMapExits() {
     if(!externalMapData) return;
     const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
-    // 出口タイル(tx,ty)から1歩「内側」（マップ中心方向で通行可能な隣接タイル）を返す
+    // 出口タイル(tx,ty)の近傍でBFSし、通行可能・非出口・非NPCの最近接タイルを返す
     function _inwardTile(map, tx, ty) {
-        let mc_x = Math.floor(map.width/2), mc_y = Math.floor(map.height/2);
-        let dirs = [[0,1],[0,-1],[1,0],[-1,0]];
-        dirs.sort((a,b) => (Math.abs(tx+a[0]-mc_x)+Math.abs(ty+a[1]-mc_y)) - (Math.abs(tx+b[0]-mc_x)+Math.abs(ty+b[1]-mc_y)));
-        for(let [dx,dy] of dirs) {
-            let nx=tx+dx, ny=ty+dy;
-            if(nx<0||ny<0||nx>=map.width||ny>=map.height) continue;
-            let t = map.tiles[ny*map.width+nx];
-            if(!_solid.includes(t) && !map.exits[`${nx},${ny}`]) return {x:nx, y:ny};
+        const visited = new Set([`${tx},${ty}`]);
+        const queue = [[tx, ty]];
+        while (queue.length > 0) {
+            const [cx, cy] = queue.shift();
+            for (const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+                const nx=cx+dx, ny=cy+dy, k=`${nx},${ny}`;
+                if (visited.has(k)) continue;
+                if (nx<0||ny<0||nx>=map.width||ny>=map.height) continue;
+                visited.add(k);
+                const t = map.tiles[ny*map.width+nx];
+                if (!_solid.includes(t) && !map.exits[k] && (!map.npcs||!map.npcs[k])) return {x:nx, y:ny};
+                if (visited.size < 80) queue.push([nx, ny]);
+            }
         }
-        return {x:tx, y:ty}; // fallback: そのまま
+        return {x:tx, y:ty};
     }
     const maps = Object.keys(externalMapData);
     for(let mapId of maps) {
@@ -2185,17 +2190,26 @@ async function moveParty(dx, dy) {
             currentMap = nextMap; partyData.pos.map = exit.map;
             let _lx = exit.x, _ly = exit.y;
             const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
-            let _lt = nextMap.tiles[_ly * nextMap.width + _lx];
-            // 出口タイル上または通行不能タイルに着地した場合、マップ中心方向へ1歩ずらす
-            if (_solid.includes(_lt) || (nextMap.exits && nextMap.exits[`${_lx},${_ly}`])) {
-                let _mx = Math.floor(nextMap.width / 2), _my = Math.floor(nextMap.height / 2);
-                let _dirs = [[0,1],[0,-1],[1,0],[-1,0]];
-                _dirs.sort((a,b) => (Math.abs(_lx+a[0]-_mx)+Math.abs(_ly+a[1]-_my)) - (Math.abs(_lx+b[0]-_mx)+Math.abs(_ly+b[1]-_my)));
-                for (let [_ddx,_ddy] of _dirs) {
-                    let _nx2 = _lx+_ddx, _ny2 = _ly+_ddy;
-                    if (_nx2<0||_ny2<0||_nx2>=nextMap.width||_ny2>=nextMap.height) continue;
-                    let _t2 = nextMap.tiles[_ny2*nextMap.width+_nx2];
-                    if (!_solid.includes(_t2) && (!nextMap.npcs || !nextMap.npcs[`${_nx2},${_ny2}`])) { _lx=_nx2; _ly=_ny2; break; }
+            const _isBlocked = (x, y) => {
+                if (x<0||y<0||x>=nextMap.width||y>=nextMap.height) return true;
+                const _t = nextMap.tiles[y*nextMap.width+x];
+                return _solid.includes(_t) || !!(nextMap.npcs && nextMap.npcs[`${x},${y}`]);
+            };
+            const _isExit = (x, y) => !!(nextMap.exits && nextMap.exits[`${x},${y}`]);
+            // 着地位置が壁・NPC・出口タイルならBFSで最近接の安全タイルを探す
+            if (_isBlocked(_lx, _ly) || _isExit(_lx, _ly)) {
+                const _vis = new Set([`${_lx},${_ly}`]);
+                const _q = [[_lx, _ly]];
+                outer: while (_q.length > 0) {
+                    const [cx, cy] = _q.shift();
+                    for (const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+                        const nx=cx+dx, ny=cy+dy, k=`${nx},${ny}`;
+                        if (_vis.has(k)) continue;
+                        if (nx<0||ny<0||nx>=nextMap.width||ny>=nextMap.height) continue;
+                        _vis.add(k);
+                        if (!_isBlocked(nx, ny) && !_isExit(nx, ny)) { _lx=nx; _ly=ny; break outer; }
+                        if (_vis.size < 100) _q.push([nx, ny]);
+                    }
                 }
             }
             partyData.pos.x = _lx; partyData.pos.y = _ly;
