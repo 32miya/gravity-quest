@@ -1051,6 +1051,39 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
             externalMapData["map_field_2_4"].npcs["6,13"] = { id: "npc_class_change", name: "転職の神父" };
         }
 
+        // 南の果てマップ: 港町ポートピア入り口を右下に移動、上部には設定しない
+        {
+            const _sk = Object.keys(externalMapData).find(k => k === 'map_field_south_2' || (k.includes('south') && k.includes('field')));
+            const _pk = Object.keys(externalMapData).find(k => k.includes('port'));
+            if (_sk) {
+                const _sm = externalMapData[_sk];
+                // 上部行(y<=2)の港町出口・NPCを除去
+                Object.keys(_sm.exits).forEach(k => {
+                    const _ey = parseInt(k.split(',')[1]);
+                    const _em = _sm.exits[k].map || '';
+                    if (_ey <= 2 && (_em.includes('port') || (_pk && _em === _pk))) delete _sm.exits[k];
+                });
+                Object.keys(_sm.npcs).forEach(k => {
+                    const _ny = parseInt(k.split(',')[1]);
+                    const _nid = _sm.npcs[k].id || '';
+                    if (_ny <= 2 && _nid.includes('port')) delete _sm.npcs[k];
+                });
+                // 右下に港町入り口を設置: NPC(bx,by-1)＋ワープタイル(bx,by)
+                const _bx = _sm.width - 2, _by = _sm.height - 2;
+                _sm.tiles[_by * _sm.width + _bx] = 10;
+                _sm.tiles[(_by - 1) * _sm.width + _bx] = 10;
+                _sm.tiles[(_by - 2) * _sm.width + _bx] = 10;
+                _sm.tiles[_by * _sm.width + (_bx - 1)] = 10;
+                if (_pk) {
+                    const _pm = externalMapData[_pk];
+                    const _destX = Math.floor(_pm.width / 2), _destY = Math.max(1, _pm.height - 3);
+                    _sm.exits[`${_bx},${_by}`] = { map: _pk, x: _destX, y: _destY };
+                }
+                // NPC は1タイル上（ワープタイルをふさがない）
+                _sm.npcs[`${_bx},${_by - 1}`] = { id: "npc_port_town", name: "港町ポートピア" };
+            }
+        }
+
         fixMapExits(); loading.style.display = 'none'; return true; } } throw new Error("JSONデータなし"); } catch(e) { console.error(e); loading.innerText = '読み込み失敗'; setTimeout(() => { loading.style.display = 'none'; }, 2000); return false; } }
 
 async function loadExternalData(id) { 
@@ -1382,6 +1415,8 @@ function drawMap() {
                 drawNpcSign(ctx, _scx, _basePy, '🛏', '宿屋', '#664');
             else if ((npc.id.includes('church') || npc.id.includes('priest')) && npc.id !== 'npc_class_change')
                 drawNpcSign(ctx, _scx, _basePy, '✝', '教会', '#447');
+            else if (npc.id === 'npc_port_town')
+                drawNpcSign(ctx, _scx, _basePy, '⛵', '港町', '#258');
         });
     }
     
@@ -1773,7 +1808,17 @@ async function checkAction() {
                 }
             } 
             else {
-                if(npc.id.includes('shop') || npc.id.includes('bazaar')) { if (npc.id.includes('weapon') || npc.id.includes('bazaar') || npc.id === 'npc_strong_weapon_shop') await eventWeaponShop(npc.id); else await eventShop(npc.id); }
+                if (npc.id === 'npc_port_town') {
+                    const _ptk = Object.keys(externalMapData).find(k => k.includes('port'));
+                    await typeMessage("【船乗り】\nここから先は 港町ポートピアです。\nはいりますか？");
+                    const _yn = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
+                    if (_yn === 0 && _ptk) {
+                        const _pm = externalMapData[_ptk];
+                        partyData.pos.map = _ptk; partyData.pos.x = Math.floor(_pm.width / 2); partyData.pos.y = Math.max(1, _pm.height - 3);
+                        currentMap = await loadExternalData('map-' + _ptk); moveHistory = []; drawMap(); updateBGM();
+                    } else { await typeMessage("またの おこしを おまちしております！"); }
+                }
+                else if(npc.id.includes('shop') || npc.id.includes('bazaar')) { if (npc.id.includes('weapon') || npc.id.includes('bazaar') || npc.id === 'npc_strong_weapon_shop') await eventWeaponShop(npc.id); else await eventShop(npc.id); }
                 else if(npc.id.includes('priest') || npc.id.includes('church')) await eventPriest();
                 else if(npc.id.includes('inn')) await eventInn(npc.id);
                 else if(npc.id.includes('casino') || npc.id.includes('bunny')) await eventCasino();
