@@ -1366,14 +1366,28 @@ function drawMap() {
         if(i > 0 && moveHistory[i-1]) { px = moveHistory[i-1].x; py = moveHistory[i-1].y; pDir = moveHistory[i-1].dir; }
         if(member.hp <= 0) { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("⚰️", px*TILE_SIZE - camX + TILE_SIZE/2, py*TILE_SIZE - camY + TILE_SIZE/2); } 
         else {
+            let _drawn = false;
             if (member.extId) {
                 let dirStr = pDir === 0 ? 'up' : pDir === 2 ? 'down' : 'left'; let imgKey = 'sprite_' + member.extId + '_' + dirStr;
-                if(externalImages[imgKey] && externalImages[imgKey].complete) {
-                    ctx.save(); let targetX = px*TILE_SIZE - camX; let targetY = py*TILE_SIZE - camY; 
+                if(externalImages[imgKey] && externalImages[imgKey].complete && externalImages[imgKey].naturalHeight > 0) {
+                    ctx.save(); let targetX = px*TILE_SIZE - camX; let targetY = py*TILE_SIZE - camY;
                     let isBaseRight = (member.extId === 'priest' || member.extId === 'mage'); let needsFlip = false;
                     if (pDir === 1 || pDir === 3) { if (isBaseRight) { needsFlip = (pDir === 3); } else { needsFlip = (pDir === 1); } }
                     if(needsFlip) { ctx.translate(targetX + TILE_SIZE, targetY); ctx.scale(-1, 1); drawSpriteLocal(ctx, externalImages[imgKey], 0, 0, 42); } else { drawSpriteLocal(ctx, externalImages[imgKey], targetX, targetY, 42); }
-                    ctx.restore();
+                    ctx.restore(); _drawn = true;
+                }
+            }
+            if (!_drawn) {
+                let _fx = px*TILE_SIZE - camX + TILE_SIZE/2; let _fy = py*TILE_SIZE - camY + TILE_SIZE/2;
+                let _job = member.job || '';
+                let _color = _job.includes('戦士') ? '#e88' : _job.includes('僧侶') ? '#8be' : _job.includes('魔法') ? '#b8e' : '#ee8';
+                ctx.fillStyle = _color; ctx.beginPath(); ctx.arc(_fx, _fy - 4, 8, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = _color; ctx.fillRect(_fx - 7, _fy + 4, 14, 10);
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(_fx, _fy - 4, 8, 0, Math.PI*2); ctx.stroke();
+                ctx.strokeRect(_fx - 7, _fy + 4, 14, 10);
+                if (i === 0) {
+                    ctx.fillStyle = 'rgba(255,255,100,0.9)'; ctx.font = 'bold 8px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('★', _fx, _fy - 4);
                 }
             }
         }
