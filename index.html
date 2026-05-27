@@ -1207,6 +1207,17 @@ function resetBattleState(char) {
 function getTileColor(t) { const colors = { 0:'#3a823f', 1:'#8b4513', 2:'#3366ff', 3:'#cccc00', 4:'#777777', 5:'#33ccff', 6:'#800080', 8:'#ff00ff', 9:'#c00', 10:'#d2b48c', 11:'#3a823f', 12:'#1a1', 13:'#e6cc80', 15:'#777', 16:'#aaa', 17:'#151', 18:'#d2d', 19:'#040', 20:'#432', 21:'#d55', 22:'#aaa', 23:'#cff' }; return colors[t] || '#000'; }
 function drawSpriteLocal(ctx, img, px, py, targetHeight) { if (!img || !img.complete || img.naturalHeight === 0) return false; const ratio = img.width / img.height; const targetWidth = targetHeight * ratio; const offsetX = (TILE_SIZE - targetWidth) / 2; const offsetY = TILE_SIZE - targetHeight; ctx.drawImage(img, px + offsetX, py + offsetY, targetWidth, targetHeight); return true; }
 function drawLargeSpriteLocal(ctx, img, px, py, targetWidth) { if (!img || !img.complete || img.naturalHeight === 0) return false; const ratio = img.height / img.width; const targetHeight = targetWidth * ratio; const offsetX = (TILE_SIZE - targetWidth) / 2; const offsetY = TILE_SIZE - targetHeight + 10; ctx.drawImage(img, px + offsetX, py + offsetY, targetWidth, targetHeight); return true; }
+function drawNpcSign(ctx, cx, ty, emoji, label, bgColor) {
+    ctx.font = 'bold 7px sans-serif';
+    let lw = ctx.measureText(label).width, ew = 11, pad = 3, h = 12, w = ew + lw + pad * 2;
+    let rx = cx - w / 2, ry = ty - h - 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(rx - 1, ry - 1, w + 2, h + 2);
+    ctx.fillStyle = bgColor; ctx.fillRect(rx, ry, w, h);
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 0.5; ctx.strokeRect(rx, ry, w, h);
+    ctx.font = '9px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+    ctx.fillText(emoji, rx + 1, ry + h / 2);
+    ctx.font = 'bold 7px sans-serif'; ctx.fillText(label, rx + ew, ry + h / 2);
+}
 function drawDragonLocal(ctx, img, px, py, tw, extraY = 20) { if (!img || !img.complete || img.naturalHeight === 0) return false; const r = img.height / img.width; const th = tw * r; ctx.drawImage(img, px - (tw / 2) + (TILE_SIZE / 2), py - th + TILE_SIZE + extraY, tw, th); return true; }
 
 function getEnemyImageHtml(enemyId) {
@@ -1355,9 +1366,18 @@ function drawMap() {
                 if(externalImages['bunnyGirl']) drawSpriteLocal(ctx, externalImages['bunnyGirl'], px, py, 48);
                 else if(externalImages['innGirl']) drawSpriteLocal(ctx, externalImages['innGirl'], px, py, 48);
                 else if(externalImages['oldMan']) drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48);
-            } else if((npc.id.includes('weapon_shop') || npc.id.includes('bazaar') || npc.id.includes('market') || npc.id === 'npc_strong_weapon_shop') && externalImages['weaponShop']) { drawLargeSpriteLocal(ctx, externalImages['weaponShop'], px, py, 64); 
-            } else if((npc.id.includes('item_shop') || npc.id.includes('shop') || npc.id === 'npc_border_shop') && externalImages['itemShop']) { drawSpriteLocal(ctx, externalImages['itemShop'], px, py, 48); 
+            } else if((npc.id.includes('weapon_shop') || npc.id.includes('bazaar') || npc.id.includes('market') || npc.id === 'npc_strong_weapon_shop') && externalImages['weaponShop']) { drawLargeSpriteLocal(ctx, externalImages['weaponShop'], px, py, 64);
+            } else if((npc.id.includes('item_shop') || npc.id.includes('shop') || npc.id === 'npc_border_shop') && externalImages['itemShop']) { drawSpriteLocal(ctx, externalImages['itemShop'], px, py, 48);
             } else { if(externalImages['oldMan']) { drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); } }
+            const _scx = px + TILE_SIZE / 2;
+            if (npc.id.includes('weapon_shop') || npc.id.includes('bazaar') || npc.id.includes('market') || npc.id === 'npc_strong_weapon_shop')
+                drawNpcSign(ctx, _scx, py, '⚔', '武器屋', '#933');
+            else if (npc.id.includes('item_shop') || npc.id.includes('shop') || npc.id === 'npc_border_shop')
+                drawNpcSign(ctx, _scx, py, '🧪', '道具屋', '#337');
+            else if (npc.id.includes('inn') || npc.id === 'npc_border_inn')
+                drawNpcSign(ctx, _scx, py, '🛏', '宿屋', '#664');
+            else if ((npc.id.includes('church') || npc.id.includes('priest')) && npc.id !== 'npc_class_change')
+                drawNpcSign(ctx, _scx, py, '✝', '教会', '#447');
         });
     }
     
