@@ -1478,10 +1478,164 @@ function getEnemyImageHtml(enemyId) {
     return `<div style="font-size:60px; line-height:1; color:#f5f;">🧌</div>`;
 }
 
+function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
+    const T = TILE_SIZE;
+    const { castle, town, cave, demon, tower, shrine } = mc;
+    const fl = Math.floor;
+    const fr = (c, rx, ry, rw, rh) => { ctx.fillStyle = c; ctx.fillRect(px + rx, py + ry, rw, rh); };
+    const ln = (c, lw, x1, y1, x2, y2) => { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(px + x1, py + y1); ctx.lineTo(px + x2, py + y2); ctx.stroke(); };
+
+    if (tile === 11) { // 草
+        let g = rand < 0.28 ? '#4a9e40' : rand > 0.72 ? '#3c9035' : '#45973c';
+        fr(g, 0, 0, T, T);
+        ctx.strokeStyle = 'rgba(60,140,30,0.55)'; ctx.lineWidth = 0.8;
+        for (let i = 0; i < 5; i++) {
+            let gx = fl((rand * 7.3 + i * 6.1) % (T - 2)) + 1;
+            let gy = fl((rand * 5.7 + i * 4.9) % (T - 7)) + 2;
+            ctx.beginPath(); ctx.moveTo(px + gx, py + gy + 5); ctx.quadraticCurveTo(px + gx - 1, py + gy + 2, px + gx, py + gy); ctx.stroke();
+        }
+        if (rand < 0.07) { fr('#f8e890', fl(rand * 18) + 4, fl(rand * 18) + 4, 5, 5); fr('#fff8c0', fl(rand * 18) + 5, fl(rand * 18) + 5, 3, 3); fr('#ffe040', fl(rand * 18) + 6, fl(rand * 18) + 6, 1, 1); }
+    } else if (tile === 12) { // 背の高い草
+        fr('#267020', 0, 0, T, T);
+        ctx.fillStyle = '#2e7e28';
+        for (let i = 0; i < 8; i++) { let gx = fl((rand * 5.8 + i * 4.1) % (T - 3)) + 1; ctx.fillRect(px + gx, py + fl(rand * 4) + 1, 2, fl(rand * 5) + 11); }
+        ctx.fillStyle = 'rgba(70,160,50,0.4)';
+        for (let i = 0; i < 4; i++) { ctx.fillRect(px + fl((rand * 7.2 + i * 7.9) % (T - 2)), py + fl((rand * 4.3 + i * 3.7) % (T - 5)), 1, 11); }
+    } else if (tile === 19) { // 森
+        fr('#062806', 0, 0, T, T);
+        [[rand * 5 + 7, rand * 3 + 7, 11, '#186016'], [rand * 5 + 17, rand * 3 + 11, 9, '#1e7020'],
+         [rand * 4 + 11, rand * 3 + 3, 8, '#156818'], [rand * 3 + 13, rand * 2 + 5, 5, '#267828']].forEach(([cx, cy, r2, c]) => {
+            ctx.fillStyle = c; ctx.beginPath(); ctx.arc(px + fl(cx), py + fl(cy), r2, 0, Math.PI * 2); ctx.fill();
+        });
+        fr('#4a2808', T / 2 - 2, T - 9, 4, 9);
+    } else if (tile === 20) { // 山
+        fr('#52483a', 0, 0, T, T);
+        [[[fl(rand * 4) + 2, T], [fl(rand * 4) + 10, fl(rand * 4) + 5], [fl(rand * 4) + 18, T], '#665c48'],
+         [[fl(rand * 4) + 11, T], [fl(rand * 4) + 17, fl(rand * 4) + 2], [T - 1, T], '#756a56']].forEach(([[x1, y1], [x2, y2], [x3, y3], c]) => {
+            ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(px + x1, py + y1); ctx.lineTo(px + x2, py + y2); ctx.lineTo(px + x3, py + y3); ctx.closePath(); ctx.fill();
+        });
+        ctx.fillStyle = '#f0efe6'; ctx.beginPath(); ctx.moveTo(px + fl(rand * 4) + 10, py + fl(rand * 4) + 2); ctx.lineTo(px + fl(rand * 4) + 7, py + fl(rand * 4) + 9); ctx.lineTo(px + fl(rand * 4) + 14, py + fl(rand * 4) + 9); ctx.closePath(); ctx.fill();
+    } else if (tile === 5) { // 水
+        let w1 = Math.sin(now / 700 + rand * 3.1) * 2, w2 = Math.sin(now / 950 + rand * 5.3 + 1) * 2;
+        fr('#1050a8', 0, 0, T, T); fr('#1a6ccc', 0, fl(5 + w1), T, 8); fr('#2288e8', 2, fl(13 + w2), T - 4, 6);
+        fr('rgba(255,255,255,0.42)', fl(3 + rand * 8), fl(4 + w1), 8, 2); fr('rgba(255,255,255,0.28)', fl(15 + rand * 9), fl(16 + w2), 6, 2);
+    } else if (tile === 0 || tile === 23) {
+        if (tile === 23) {
+            fr('#a8d8fc', 0, 0, T, T); fr('rgba(255,255,255,0.45)', 3, 3, T - 6, T - 6); fr('rgba(180,230,255,0.5)', 7, 7, T - 14, T - 14);
+        } else if (town) {
+            let cs = ['#c89042', '#b88032', '#d4a052'];
+            for (let r2 = 0; r2 < 4; r2++) fr(cs[r2 % 3], 0, r2 * 8, T, 8);
+            ctx.strokeStyle = '#8a5022'; ctx.lineWidth = 0.5;
+            for (let r2 = 1; r2 < 4; r2++) ln('#8a5022', 0.5, 0, r2 * 8, T, r2 * 8);
+            let jx = fl(6 + rand * 19); ln('#8a5022', 0.5, jx, 0, jx, T);
+        } else if (castle || tower || shrine) {
+            let ev = (fl(px / T) + fl(py / T)) % 2;
+            fr(ev ? '#8898a8' : '#9aaabe', 0, 0, T, T);
+            ctx.strokeStyle = 'rgba(60,80,100,0.35)'; ctx.lineWidth = 0.7; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
+        } else if (demon) {
+            fr('#271230', 0, 0, T, T); fr('#311838', 4, 4, T - 8, T - 8);
+            if (rand < 0.07) { ln('#7722bb', 1, fl(rand * T), 0, fl((1 - rand) * T), T); ctx.strokeStyle = 'rgba(100,20,180,0.22)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px + fl(rand * T), py); ctx.lineTo(px + fl((1 - rand) * T), py + T); ctx.stroke(); }
+        } else if (cave) {
+            fr('#373340', 0, 0, T, T); fr('#413d4c', 3, 3, T - 6, T - 6);
+            if (rand < 0.08) fr('rgba(0,0,0,0.35)', fl(rand * (T - 8)) + 2, fl(rand * (T - 6)) + 2, fl(rand * 4) + 4, fl(rand * 2) + 3);
+        } else {
+            fr('#aaaaaa', 0, 0, T, T);
+        }
+    } else if (tile === 1 || tile === 4) {
+        if (town) {
+            fr('#6a3828', 0, 0, T, T);
+            let bh = 8, bw = 16;
+            for (let row = 0; row < 4; row++) {
+                let off = row % 2 === 0 ? 0 : 8;
+                for (let col = -1; col <= 2; col++) {
+                    let c = (row + col) % 3 === 0 ? '#9a5838' : (row + col) % 3 === 1 ? '#885030' : '#9e6040';
+                    fr(c, col * bw - off + 1, row * bh + 1, bw - 2, bh - 2);
+                }
+            }
+        } else if (castle || tower) {
+            fr('#3f5060', 0, 0, T, T);
+            fr('#506070', 1, 1, T / 2 - 2, T / 2 - 2); fr('#4a5c6c', T / 2 + 1, 1, T / 2 - 2, T / 2 - 2);
+            fr('#485868', 1, T / 2 + 1, T / 2 - 2, T / 2 - 2); fr('#4e5c6e', T / 2 + 1, T / 2 + 1, T / 2 - 2, T / 2 - 2);
+            ctx.strokeStyle = 'rgba(110,160,200,0.25)'; ctx.lineWidth = 0.5; ln('rgba(110,160,200,0.25)', 0.5, 1, 1, T / 2 - 1, 1);
+            if (rand > 0.84) {
+                fr('#a00', 8, 3, 16, 20); fr('#da0', 8, 23, 5, 4); fr('#da0', 14, 25, 4, 4); fr('#da0', 20, 23, 4, 4); fr('#da0', 14, 9, 4, 8); fr('#da0', 10, 11, 12, 4);
+            }
+            if (rand > 0.92) {
+                fr('#322', 12, 10, 8, 14); fr('#110', 10, 8, 12, 4);
+                ctx.fillStyle = '#f50'; ctx.beginPath(); ctx.arc(px + 16, py + 6, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ff4'; ctx.beginPath(); ctx.arc(px + 16, py + 6, 2.5, 0, Math.PI * 2); ctx.fill();
+                lights.push({ x: px + 16, y: py + 6, radius: 50 + rand * 16, color: 'rgba(255,120,0,0.26)' });
+            }
+        } else if (demon) {
+            fr('#180a20', 0, 0, T, T); fr('#220d2c', 2, 2, T - 4, T - 4);
+            let cx2 = fl(rand * 14) + 3, cy2 = fl(rand * 8) + 4, len = fl(rand * 9) + 6;
+            ctx.strokeStyle = '#aa33ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px + cx2, py + cy2); ctx.lineTo(px + cx2 + len, py + cy2 + fl(rand * 10) + 7); ctx.stroke();
+            ctx.strokeStyle = 'rgba(150,40,255,0.22)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px + cx2, py + cy2); ctx.lineTo(px + cx2 + len, py + cy2 + fl(rand * 10) + 7); ctx.stroke();
+            if (rand > 0.87) {
+                ctx.fillStyle = '#a020f0'; ctx.beginPath(); ctx.arc(px + 16, py + 6, 5, 0, Math.PI * 2); ctx.fill();
+                lights.push({ x: px + 16, y: py + 6, radius: 44 + rand * 14, color: 'rgba(160,30,220,0.23)' });
+            }
+        } else if (cave) {
+            fr('#201e2c', 0, 0, T, T); fr('#2a2835', 1, 0, T - 2, 5); fr('#1a1826', 1, 5, T - 2, T - 6);
+            if (rand < 0.22) fr('#343042', fl(rand * 14) + 2, fl(rand * 8) + 4, fl(rand * 4) + 4, fl(rand * 3) + 3);
+            if (rand < 0.09) {
+                fr('#302', 12, 10, 8, 14); fr('#100', 10, 8, 12, 4);
+                ctx.fillStyle = '#f50'; ctx.beginPath(); ctx.arc(px + 16, py + 6, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ff4'; ctx.beginPath(); ctx.arc(px + 16, py + 6, 2.5, 0, Math.PI * 2); ctx.fill();
+                lights.push({ x: px + 16, y: py + 6, radius: 46 + rand * 14, color: 'rgba(255,120,0,0.25)' });
+            }
+        } else {
+            fr('#48465a', 0, 0, T, T); fr('#545268', 1, 0, T - 2, 5); fr('#3c3a50', 1, 5, T - 2, T - 6);
+        }
+    } else if (tile === 9) { // カーペット
+        fr(demon ? '#56003c' : '#980000', 0, 0, T, T);
+        ctx.strokeStyle = demon ? '#c822a8' : '#cc8800'; ctx.lineWidth = 2; ctx.strokeRect(px + 2, py + 2, T - 4, T - 4);
+        ctx.strokeStyle = demon ? '#882288' : '#996600'; ctx.lineWidth = 1; ctx.strokeRect(px + 5, py + 5, T - 10, T - 10);
+        ctx.fillStyle = demon ? 'rgba(200,0,140,0.42)' : 'rgba(220,170,0,0.42)';
+        ctx.beginPath(); ctx.moveTo(px + T / 2, py + 5); ctx.lineTo(px + T - 5, py + T / 2); ctx.lineTo(px + T / 2, py + T - 5); ctx.lineTo(px + 5, py + T / 2); ctx.closePath(); ctx.fill();
+    } else if (tile === 10) { // 石畳
+        fr('#c49838', 0, 0, T, T);
+        fr('#b88828', 1, 1, T / 2 - 2, T / 2 - 2); fr('#c09430', T / 2 + 1, 1, T / 2 - 2, T / 2 - 2);
+        fr('#a87c20', 1, T / 2 + 1, T / 2 - 2, T / 2 - 2); fr('#c49034', T / 2 + 1, T / 2 + 1, T / 2 - 2, T / 2 - 2);
+        ln('#906e18', 0.5, T / 2, 0, T / 2, T); ln('#906e18', 0.5, 0, T / 2, T, T / 2);
+        if (rand < 0.11) fr('rgba(0,0,0,0.18)', fl(rand * 20) + 2, fl(rand * 20) + 2, 3, 2);
+    } else if (tile === 21) { // 下り階段
+        fr(demon ? '#200d28' : cave ? '#282030' : '#7a5e18', 0, 0, T, T);
+        for (let s = 0; s < 4; s++) {
+            fr(demon ? '#4a2660' : cave ? '#464050' : '#a88638', s * 6, s * 6, T - s * 6, 6);
+            ln(demon ? '#6a3880' : cave ? '#605a68' : '#c8a050', 0.5, s * 6, s * 6 + 6, T, s * 6 + 6);
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('▼', px + T / 2 + 3, py + T - 7);
+    } else if (tile === 22) { // 上り階段
+        fr(demon ? '#0d1c10' : cave ? '#1e2c20' : '#7a5e18', 0, 0, T, T);
+        for (let s = 0; s < 4; s++) {
+            fr(demon ? '#2a4432' : cave ? '#384840' : '#a88638', s * 6, (3 - s) * 6, T - s * 6, 6);
+            ln(demon ? '#3a6448' : cave ? '#506858' : '#c8a050', 0.5, s * 6, (3 - s) * 6, T, (3 - s) * 6);
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('▲', px + T / 2 + 3, py + 7);
+    } else if (tile === 8) { // ワープ
+        fr('#440066', 0, 0, T, T);
+        let wr = 9 + Math.sin(now / 380) * 3;
+        let grd = ctx.createRadialGradient(px + T / 2, py + T / 2, 1, px + T / 2, py + T / 2, wr);
+        grd.addColorStop(0, 'rgba(230,110,255,0.95)'); grd.addColorStop(1, 'rgba(80,0,150,0)');
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(px + T / 2, py + T / 2, wr, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('🌀', px + T / 2, py + T / 2);
+    } else {
+        fr('#666', 0, 0, T, T);
+    }
+}
+
 function drawMap() {
     const canvas = document.getElementById('screen'); const ctx = canvas.getContext('2d'); const cWidth = canvas.width; const cHeight = canvas.height; ctx.clearRect(0, 0, cWidth, cHeight);
     const camX = partyData.pos.x * TILE_SIZE - cWidth/2 + TILE_SIZE/2; const camY = partyData.pos.y * TILE_SIZE - cHeight/2 + TILE_SIZE/2;
-    const isCastle = partyData.pos.map.includes('castle'); const isTown = partyData.pos.map.includes('town') || partyData.pos.map.includes('market') || partyData.pos.map.includes('village'); const isCave = partyData.pos.map.includes('dungeon') || partyData.pos.map.includes('cave'); const isMountain = partyData.pos.map === 'map_field_north_2';
+    const _mapId = partyData.pos.map;
+    const isCastle = _mapId.includes('castle'); const isTown = _mapId.includes('town') || _mapId.includes('market') || _mapId.includes('village'); const isCave = _mapId.includes('dungeon') || _mapId.includes('cave'); const isMountain = _mapId === 'map_field_north_2';
+    const _isDemon = _mapId.includes('demon'); const _isTower = _mapId.includes('tower'); const _isShrine = _mapId.includes('shrine');
+    const _mc = { castle: isCastle && !_isDemon, town: isTown, cave: isCave, demon: _isDemon, tower: _isTower, shrine: _isShrine };
+    const _drawNow = Date.now();
     let lights = [];
     const startX = Math.max(0, Math.floor(camX / TILE_SIZE) - 1);
     const endX = Math.min(currentMap.width, Math.ceil((camX + cWidth) / TILE_SIZE) + 1);
@@ -1521,42 +1675,11 @@ function drawMap() {
             } else if (tile === 22) { bgImg = null; color = '#aaa'; if(externalImages['fieldShrineIcon']) fgImg = externalImages['fieldShrineIcon']; else if(externalImages['caveIcon']) fgImg = externalImages['caveIcon']; else if(externalImages['shrineIcon']) fgImg = externalImages['shrineIcon'];
             } else if (tile === 23) { bgImg = null; color = '#cff'; }
 
+            const _rand = getMapRandom(x, y, _mapId);
             let drawnCustom = false;
-            if (bgImg && bgImg.complete && bgImg.naturalHeight > 0) { ctx.drawImage(bgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; } 
-            if (fgImg && fgImg.complete && fgImg.naturalHeight > 0) { if(!drawnCustom && color) { ctx.fillStyle = color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); } ctx.drawImage(fgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
-            if (!drawnCustom) {
-                ctx.fillStyle = color || "#000"; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                if (tilesetImg.complete && tilesetImg.naturalHeight > 0 && TILE_IMG_MAP[tile]) { const sw = tilesetImg.width / SHEET_COLS; const sh = tilesetImg.height / SHEET_ROWS; let cx = TILE_IMG_MAP[tile].cx; let cy = TILE_IMG_MAP[tile].cy; ctx.drawImage(tilesetImg, cx * sw, cy * sh, sw, sh, px, py, TILE_SIZE, TILE_SIZE);
-                } else { ctx.font = "20px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (tile === 3 || tile === 6 || tile === 7) ctx.fillText("🪜", px + TILE_SIZE/2, py + TILE_SIZE/2); if (tile === 8) ctx.fillText("🌀", px + TILE_SIZE/2, py + TILE_SIZE/2); if (tile === 21) ctx.fillText("🏰", px + TILE_SIZE/2, py + TILE_SIZE/2); if (tile === 22) ctx.fillText("🕳️", px + TILE_SIZE/2, py + TILE_SIZE/2); }
-            }
-
-            if (!fgImg && (!currentMap.npcs || !currentMap.npcs[`${x},${y}`])) {
-                let rand = getMapRandom(x, y, partyData.pos.map);
-                let isWalkable = (tile === 0 || tile === 10 || tile === 11 || tile === 12 || tile === 23);
-                let isWallTile = (tile === 1 || tile === 4);
-                
-                if (isWalkable) {
-                    if (!isCastle && !isCave && !isMountain && !isTown) {
-                        if (rand < 0.05) { ctx.fillStyle = '#e6a'; ctx.fillRect(px + 8, py + 8, 8, 8); ctx.fillStyle = '#fff'; ctx.fillRect(px + 10, py + 10, 4, 4); ctx.fillStyle = '#fd0'; ctx.fillRect(px + 12, py + 12, 2, 2); }
-                        else if (rand < 0.12) { ctx.fillStyle = 'rgba(0,50,0,0.4)'; ctx.fillRect(px + 6, py + 16, 4, 6); ctx.fillRect(px + 14, py + 12, 4, 10); ctx.fillRect(px + 22, py + 18, 4, 6); }
-                        else if (rand < 0.16) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px + 12, py + 16, 6, 4); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(px + 12, py + 16, 4, 2); }
-                    } else if (isCave || isCastle) {
-                        if (rand < 0.05) { ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px+6, py+6); ctx.lineTo(px+14, py+12); ctx.lineTo(px+22, py+16); ctx.stroke(); }
-                        else if (rand < 0.15 && isCave) { ctx.fillStyle = 'rgba(10, 70, 10, 0.5)'; ctx.beginPath(); ctx.arc(px+16, py+16, 12, 0, Math.PI*2); ctx.fill(); }
-                    }
-                } else if (isWallTile) {
-                    if (isCave && rand < 0.1) {
-                        ctx.fillStyle = '#321'; ctx.fillRect(px + 12, py + 10, 8, 14); ctx.fillStyle = '#000'; ctx.fillRect(px + 10, py + 8, 12, 4);
-                        let fSize = 8 + Math.random() * 6; ctx.fillStyle = Math.random() > 0.3 ? '#f50' : '#fa0'; ctx.beginPath(); ctx.arc(px + 16, py + 6, fSize/2, 0, Math.PI*2); ctx.fill();
-                        ctx.fillStyle = '#ff0'; ctx.beginPath(); ctx.arc(px + 16, py + 6, fSize/4, 0, Math.PI*2); ctx.fill();
-                        lights.push({x: px + 16, y: py + 6, radius: 40 + Math.random()*15, color: 'rgba(255, 120, 0, 0.3)'});
-                    } else if (isCastle && rand < 0.15) {
-                        ctx.fillStyle = '#a00'; ctx.fillRect(px + 8, py + 4, 16, 24);
-                        ctx.fillStyle = '#da0'; ctx.fillRect(px + 8, py + 24, 4, 4); ctx.fillRect(px + 14, py + 26, 4, 4); ctx.fillRect(px + 20, py + 24, 4, 4);
-                        ctx.fillStyle = '#da0'; ctx.fillRect(px + 14, py + 10, 4, 8); ctx.fillRect(px + 10, py + 12, 12, 4);
-                    }
-                }
-            }
+            if (bgImg && bgImg.complete && bgImg.naturalHeight > 0) { ctx.drawImage(bgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
+            if (fgImg && fgImg.complete && fgImg.naturalHeight > 0) { if (!drawnCustom && color) { ctx.fillStyle = color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); } ctx.drawImage(fgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
+            if (!drawnCustom) { drawProceduralTile(ctx, tile, px, py, _rand, _drawNow, _mc, lights); drawnCustom = true; }
         }
     }
     
@@ -1572,9 +1695,19 @@ function drawMap() {
                 let chestImg = externalImages['chest'] || externalImages['treasure'] || externalImages['treasureBox'];
                 if (npc.id === "obj_chest_star_frag") { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("✨", px + TILE_SIZE/2, py + TILE_SIZE/2); }
                 else if(chestImg && chestImg.complete && chestImg.naturalHeight > 0) { ctx.drawImage(chestImg, px, py, TILE_SIZE, TILE_SIZE); } else { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(isOpened ? "🧳" : "🎁", px + TILE_SIZE/2, py + TILE_SIZE/2); } ctx.globalAlpha = 1.0;
-            } else if(npc.id.includes('king') && externalImages['king']) { drawSpriteLocal(ctx, externalImages['king'], px, py, 48); 
-            } else if(npc.id.includes('master_dragon') && externalImages['masterDragon']) { drawDragonLocal(ctx, externalImages['masterDragon'], px, py, 160); 
-            } else if((npc.id.includes('demon') || npc.id.includes('maou')) && !npc.id.includes('statue') && externalImages['demonKing']) { drawDragonLocal(ctx, externalImages['demonKing'], px, py, 70, 10); 
+            } else if(npc.id === 'boss_dungeon') {
+                let _bcx = px+TILE_SIZE/2, _bcy = py+TILE_SIZE/2+4;
+                if (externalImages['skeleton'] && externalImages['skeleton'].complete && externalImages['skeleton'].naturalHeight > 0) { drawSpriteLocal(ctx, externalImages['skeleton'], px, py, 52); }
+                else { ctx.fillStyle='#6a3080'; ctx.beginPath(); ctx.arc(_bcx,_bcy-4,14,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#8a40a0'; ctx.beginPath(); ctx.arc(_bcx,_bcy-4,10,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ffdd00'; ctx.font='22px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👹',_bcx,_bcy-4); }
+            } else if(npc.id === 'boss_sky') {
+                if (externalImages['angel'] && externalImages['angel'].complete && externalImages['angel'].naturalHeight > 0) { drawSpriteLocal(ctx, externalImages['angel'], px, py, 52); }
+                else { ctx.fillStyle='rgba(220,220,100,0.25)'; ctx.beginPath(); ctx.arc(px+TILE_SIZE/2,py+TILE_SIZE/2,18,0,Math.PI*2); ctx.fill(); ctx.font='26px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👼',px+TILE_SIZE/2,py+TILE_SIZE/2); }
+            } else if(npc.id.includes('king') && externalImages['king']) { drawSpriteLocal(ctx, externalImages['king'], px, py, 48);
+            } else if(npc.id.includes('master_dragon') && externalImages['masterDragon']) { drawDragonLocal(ctx, externalImages['masterDragon'], px, py, 160);
+            } else if((npc.id.includes('demon') || npc.id.includes('maou') || npc.id === 'boss_maou') && !npc.id.includes('statue')) {
+                if (externalImages['demonKing'] && externalImages['demonKing'].complete && externalImages['demonKing'].naturalHeight > 0) { drawDragonLocal(ctx, externalImages['demonKing'], px, py, 70, 10); }
+                else { ctx.fillStyle='rgba(120,0,60,0.3)'; ctx.beginPath(); ctx.arc(px+TILE_SIZE/2,py+TILE_SIZE/2,20,0,Math.PI*2); ctx.fill(); ctx.font='28px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👿',px+TILE_SIZE/2,py+TILE_SIZE/2+2); }
+
             } else if(npc.id.includes('guide') || npc.id.includes('flavor') || npc.id.includes('elder') || npc.id.includes('ship') || npc.id.includes('sub_smith') || npc.id.includes('sub_richman') || npc.id.includes('sub_rumor') || npc.id.includes('sub_2ndloop')) {
                 if((npc.id.includes('village') || npc.id.includes('dungeon') || npc.id.includes('cave') || npc.id.includes('elder') || npc.id.includes('ship') || npc.id === 'bazaar_guide_1' || npc.id.includes('sub_smith') || npc.id.includes('sub_richman') || npc.id.includes('sub_rumor')) && externalImages['oldMan']) { drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); }
                 else if(npc.id.includes('sub_2ndloop') && externalImages['priest']) { drawSpriteLocal(ctx, externalImages['priest'], px, py, 48); }
