@@ -2373,6 +2373,14 @@ async function startSecondLoop(parsedOldData) {
 
 async function showTitleScreen() {
     await fetchExternalMap("https://www.gravity.place/share/ugcGame?id=36783");
+    await loadExternalGrowthDatabase("https://www.gravity.place/share/ugcGame?id=38430");
+    if (!masterData.growth) masterData.growth = {};
+    if (window.EXT_GROWTH) {
+        window.EXT_GROWTH.characterData.forEach(char => {
+            if (!masterData.growth[char.job] && char.growth && char.growth.length > 0)
+                masterData.growth[char.job] = char.growth;
+        });
+    }
     state = 'TITLE'; document.getElementById('title-screen').style.display = 'flex'; AudioManager.playBGM('title');
     while(true) {
         let s = localStorage.getItem('gravity_quest_save'); let hasClearData = false;
