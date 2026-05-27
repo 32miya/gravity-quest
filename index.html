@@ -874,7 +874,45 @@ const SHEET_COLS = 30; const SHEET_ROWS = 16; const TILE_IMG_MAP = { 3: { cx: 23
 function getMapRandom(x, y, mapId) { let seed = 0; let mStr = mapId || ""; for(let i=0; i<mStr.length; i++) seed += mStr.charCodeAt(i); return Math.abs(Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453) % 1; }
 function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return mapObj.name; if (!mapId) return "フィールド"; if (mapId.includes('town_01')) return "城下町グラマニア"; if (mapId.includes('castle_01')) return "グラマニア城"; if (mapId.includes('dungeon_1f')) return "試練の洞窟 1F"; if (mapId.includes('dungeon_b1f')) return "試練の洞窟 B1F"; if (mapId.includes('dungeon_b2f')) return "試練の洞窟 B2F"; if (mapId.includes('dungeon_b3f')) return "試練の洞窟 B3F"; if (mapId.includes('tower_1f')) return "天空の塔 1F"; if (mapId.includes('tower_2f')) return "天空の塔 2F"; if (mapId.includes('tower_3f')) return "天空の塔 3F"; if (mapId.includes('demon_castle_1f')) return "魔王城 1F"; if (mapId.includes('demon_castle_2f')) return "魔王城 2F"; if (mapId.includes('demon_castle_3f')) return "魔王城 3F"; if (mapId.includes('demon_castle_4f')) return "魔王城 4F"; if (mapId.includes('shrine')) return "ほこら"; if (mapId.includes('town') || mapId.includes('village') || mapId.includes('market')) return "街・村"; if (mapId.includes('dungeon') || mapId.includes('cave')) return "ダンジョン"; if (mapId.includes('field')) return "フィールド"; return "未知の場所"; }
 function getCurrentWorldPos() { let m = partyData.pos.map; let wx = -1, wy = -1; if (m.startsWith('map_field_') && m.split('_').length >= 4) { wx = parseInt(m.split('_')[2]); wy = parseInt(m.split('_')[3]); } else if (m.includes('town') || m.includes('castle')) { wx = 2; wy = 2; } else if (m.includes('dungeon') || m.includes('cave')) { wx = 2; wy = 0; } else if (m.includes('shrine')) { wx = 2; wy = 3; } else if (m.includes('north')) { wx = 2; wy = 0; } else if (m.includes('south')) { wx = 2; wy = 4; } else if (m.includes('east')) { wx = 4; wy = 2; } else if (m.includes('west')) { wx = 0; wy = 2; } if (wx === -1 || wy === -1) { wx = 2; wy = 2; } return {x: wx, y: wy}; }
-async function showWorldMap() { let pos = getCurrentWorldPos(); let html = `<div style="font-size:18px; border-bottom:1px solid #fff; margin-bottom:10px; padding-bottom:5px; text-align:center;">せかいちず</div>`; html += `<div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:2px; background:#fff; padding:2px; border:2px solid #fff; border-radius:4px; max-width:220px; margin:0 auto;">`; for(let y=0; y<5; y++) { for(let x=0; x<5; x++) { let bg = "#3a823f"; let icon = ""; if (x===2 && y===2) { bg = "#8b4513"; icon = "🏰"; } else if (x===2 && y===0) { bg = "#aab"; icon = "🕳️"; } else if (x===2 && y===3) { icon = "⛩️"; } else if (x===2 && y===4) { bg = "#d2b48c"; icon = "🏜️"; } else if (x===0 && y===4) { bg = "#040"; icon = "🌲"; } else if (x===4 && y===4) { bg = "#432"; icon = "🔮"; } let isCurrent = (pos.x === x && pos.y === y); let content = isCurrent ? `<span class="blink" style="color:#f55; text-shadow:1px 1px 0 #fff; font-size:20px;">📍</span>` : icon; html += `<div style="background:${bg}; width:40px; height:40px; display:flex; justify-content:center; align-items:center; font-size:18px;">${content}</div>`; } } html += `</div>`; html += `<div style="margin-top:15px; text-align:right; font-size:14px;" class="blink">▼とじる</div>`; document.getElementById('status-window').innerHTML = html; showWindow('status-window'); await new Promise(resolve => { inputCallback = (key) => { if(key === 'Enter' || key === 'Escape' || key === ' ') { AudioManager.playSE('decision'); inputCallback = null; resolve(); } }; }); hideWindow('status-window'); }
+async function showWorldMap() {
+    let pos = getCurrentWorldPos();
+    const SCALE = 2, MW = 15, MG = 5;
+    const tC = t => { if(t===5)return'#1878d8'; if(t===11||t===12)return'#4caa28'; if(t===19)return'#246c10'; if(t===20)return'#8a7848'; if(t===0)return'#c8be78'; if(t===1||t===4)return'#606060'; if(t===21||t===22)return'#fff8a0'; if(t===9||t===10)return'#a06020'; return'#3a3a3a'; };
+    let cv = document.createElement('canvas'); cv.width = MW*MG*SCALE; cv.height = MW*MG*SCALE;
+    let ctx2 = cv.getContext('2d');
+    for (let gy = 0; gy < MG; gy++) for (let gx = 0; gx < MG; gx++) {
+        let m = externalMapData["map_field_"+gx+"_"+gy]; if (!m) continue;
+        for (let ty = 0; ty < MW; ty++) for (let tx = 0; tx < MW; tx++) {
+            ctx2.fillStyle = tC(m.tiles[ty*MW+tx]);
+            ctx2.fillRect((gx*MW+tx)*SCALE, (gy*MW+ty)*SCALE, SCALE, SCALE);
+        }
+    }
+    // Grid lines between maps
+    ctx2.strokeStyle = 'rgba(0,0,0,0.25)'; ctx2.lineWidth = 0.5;
+    for (let i = 1; i < MG; i++) { ctx2.beginPath(); ctx2.moveTo(i*MW*SCALE,0); ctx2.lineTo(i*MW*SCALE,MG*MW*SCALE); ctx2.stroke(); ctx2.beginPath(); ctx2.moveTo(0,i*MW*SCALE); ctx2.lineTo(MG*MW*SCALE,i*MW*SCALE); ctx2.stroke(); }
+    // Player dot
+    let pMapId = partyData.pos.map;
+    if (pMapId && pMapId.startsWith('map_field_')) {
+        let parts = pMapId.split('_');
+        if (parts.length >= 4) {
+            let pgx = parseInt(parts[2]), pgy = parseInt(parts[3]);
+            let ppx = (pgx*MW + partyData.pos.x)*SCALE, ppy = (pgy*MW + partyData.pos.y)*SCALE;
+            ctx2.fillStyle = '#ff2222'; ctx2.fillRect(ppx-1, ppy-1, 4, 4);
+            ctx2.fillStyle = '#ffffff'; ctx2.fillRect(ppx, ppy, 2, 2);
+        }
+    }
+    let imgSrc = cv.toDataURL();
+    const regionNames = [{gx:2,gy:2,name:"グラマニア"},{gx:2,gy:0,name:"北の島"},{gx:4,gy:0,name:"天空の塔"},{gx:4,gy:4,name:"魔王の島"},{gx:0,gy:4,name:"鍛冶の森"},{gx:2,gy:4,name:"砂漠の島"},{gx:2,gy:3,name:"ほこら"}];
+    let rHtml = regionNames.map(r => `<div style="display:inline-block;background:rgba(0,0,0,0.5);color:#fff;font-size:9px;padding:1px 3px;margin:1px;border-radius:2px;">${r.name}</div>`).join('');
+    let html = `<div style="font-size:18px;border-bottom:1px solid #fff;margin-bottom:8px;padding-bottom:5px;text-align:center;">せかいちず</div>`;
+    html += `<div style="text-align:center;"><img src="${imgSrc}" style="image-rendering:pixelated;image-rendering:crisp-edges;width:150px;height:150px;border:2px solid #fff;display:block;margin:0 auto;"/></div>`;
+    html += `<div style="margin-top:6px;text-align:center;line-height:1.4;">${rHtml}</div>`;
+    html += `<div style="margin-top:10px;text-align:right;font-size:14px;" class="blink">▼とじる</div>`;
+    document.getElementById('status-window').innerHTML = html;
+    showWindow('status-window');
+    await new Promise(resolve => { inputCallback = (key) => { if(key==='Enter'||key==='Escape'||key===' ') { AudioManager.playSE('decision'); inputCallback=null; resolve(); } }; });
+    hideWindow('status-window');
+}
 function resizeCanvas() { const canvas = document.getElementById('screen'); const container = document.getElementById('game-container'); if(!container) return; const cw = container.clientWidth; const ch = container.clientHeight; const baseWidth = 480; canvas.width = baseWidth; const ratio = ch / cw; canvas.height = Math.floor(baseWidth * ratio); if(state === 'FIELD' || state === 'MSG') drawMap(); }
 window.addEventListener('resize', resizeCanvas);
 function updateGoldWindow() { document.getElementById('gold-window').innerText = partyData.gold + ' G'; } function showGoldWindow() { updateGoldWindow(); document.getElementById('gold-window').style.display = 'block'; } function hideGoldWindow() { document.getElementById('gold-window').style.display = 'none'; }
@@ -1326,7 +1364,117 @@ function applyGrowthDataToParty(isNewGame = false) {
 
 function convertMapData(extMap) { let tiles = []; for (let y = 0; y < extMap.height; y++) { for (let x = 0; x < extMap.width; x++) tiles.push(extMap.terrain_layer[y][x]); } let exits = {}; if (extMap.warp_points) extMap.warp_points.forEach(w => { exits[`${w.x},${w.y}`] = { map: w.target_map, x: w.target_x, y: w.target_y }; }); let npcs = {}; if (extMap.objects) extMap.objects.forEach(obj => { npcs[`${obj.x},${obj.y}`] = { id: obj.entity_id, name: obj.entity_id }; }); let isSafe = extMap.map_id.includes('town') || extMap.map_id.includes('market') || extMap.map_id.includes('village') || extMap.map_id.includes('shrine') || extMap.map_id.includes('port'); if (extMap.map_id.includes('castle') && !extMap.map_id.includes('death')) { isSafe = true; } let encounters = extMap.encounters || []; if (!isSafe && encounters.length === 0) { let isCave = extMap.map_id.includes('dungeon') || extMap.map_id.includes('cave'); let isLate = extMap.map_id.includes('death') || extMap.map_id.includes('demon') || extMap.map_id.includes('volcano'); let isMid = extMap.map_id.includes('tower') || extMap.map_id.includes('dungeon_2') || extMap.map_id.includes('mountain') || extMap.map_id.includes('desert'); let pool = []; if (isLate) pool = ["ancient_dragon", "cyclops", "vampire_lord", "death_knight", "behemoth", "lich", "archdemon", "bahamut", "hagure_gura"]; else if (isMid) pool = ["killer_mantis", "dark_mage", "minotaur", "troll", "chimera", "dullahan", "cockatrice", "succubus", "flame_elemental", "gargoyle", "hagure_gura"]; else if (isCave) pool = ["ghost", "skeleton", "giant_bat", "ghost_mushroom", "golem", "dark_mage"]; else pool = ["slime", "goblin", "wild_wolf", "orc", "red_dragon"]; encounters = pool.filter(id => masterData.monsters[id]); if(encounters.length === 0) encounters = isCave ? ["m02"] : ["m01", "m02"]; } else if (isSafe) { encounters = []; } return { width: extMap.width, height: extMap.height, tiles: tiles, encounters: encounters, exits: exits, npcs: npcs, name: extMap.name || extMap.map_name || getMapDisplayName(extMap.map_id) }; }
 
-function generateFieldMapsForGravityQuest() { let encountersPool = ["slime", "goblin", "wild_wolf", "m01", "m02"]; for (let y = 0; y < 5; y++) { for (let x = 0; x < 5; x++) { let mapId = "map_field_" + x + "_" + y; let tiles2D = []; let exits = {}; for (let ty = 0; ty < 15; ty++) { let row = []; for (let tx = 0; tx < 15; tx++) { let tile = 0; if (x === 0 && tx === 0) tile = 4; if (x === 4 && tx === 14) tile = 4; if (y === 0 && ty === 0) tile = 4; if (y === 4 && ty === 14) tile = 4; if ((tx === 0 && ty === 0) || (tx === 14 && ty === 0) || (tx === 0 && ty === 14) || (tx === 14 && ty === 14)) tile = 4; if (x === 2 && y === 2) { if (tx >= 6 && tx <= 8 && ty >= 6 && ty <= 8) tile = 1; if (tx === 7 && ty === 8) tile = 0; if (tx === 7 && ty === 7) tile = 21; } if (x === 2 && y === 0) { if (tx >= 6 && tx <= 8 && ty >= 2 && ty <= 4) tile = 4; if (tx === 7 && ty === 4) tile = 0; if (tx === 7 && ty === 3) tile = 22; } if (tile === 0) { if (tx === 7 || ty === 7 || tx === 1 || tx === 13 || ty === 1 || ty === 13) { tile = Math.random() < 0.7 ? 11 : 12; } else { let rand = Math.random(); if (x === 2 && y === 0) { if(rand < 0.05) tile = 19; else if(rand < 0.20) tile = 20; else tile = rand < 0.8 ? 11 : 12; } else if (x === 0 && y === 2) { if(rand < 0.20) tile = 19; else if(rand < 0.05) tile = 20; else tile = rand < 0.8 ? 11 : 12; } else if (x === 4 && y === 2) { if(rand < 0.10) tile = 19; else if(rand < 0.10) tile = 20; else tile = rand < 0.8 ? 11 : 12; } else if (x === 2 && y === 4) { if(rand < 0.10) tile = 19; else if(rand < 0.10) tile = 20; else tile = rand < 0.8 ? 11 : 12; } else { if(rand < 0.05) tile = 19; else if(rand < 0.05) tile = 20; else tile = rand < 0.8 ? 11 : 12; } } } row.push(tile); } tiles2D.push(row); } for (let i = 1; i < 14; i++) { if (y > 0) exits[`${i},0`] = { map: "map_field_" + x + "_" + (y - 1), x: i, y: 13 }; if (y < 4) exits[`${i},14`] = { map: "map_field_" + x + "_" + (y + 1), x: i, y: 1 }; if (x > 0) exits[`0,${i}`] = { map: "map_field_" + (x - 1) + "_" + y, x: 13, y: i }; if (x < 4) exits[`14,${i}`] = { map: "map_field_" + (x + 1) + "_" + y, x: 1, y: i }; } if (x === 2 && y === 2) exits[`7,7`] = { map: "map_town_01", x: 10, y: 18 }; if (x === 2 && y === 0) exits[`7,3`] = { map: "map_dungeon_1f", x: 7, y: 14 }; if (y === 0 && x === 2) { tiles2D[0][7] = 11; exits[`7,0`] = { map: "map_field_north_2", x: 7, y: 13 }; } if (y === 4 && x === 2) { tiles2D[14][7] = 11; exits[`7,14`] = { map: "map_field_south_2", x: 7, y: 1 }; } if (y === 2 && x === 4) { tiles2D[7][14] = 11; exits[`14,7`] = { map: "map_field_east_2", x: 1, y: 7 }; } if (y === 2 && x === 0) { tiles2D[7][0] = 11; exits[`0,7`] = { map: "map_field_west_2", x: 13, y: 7 }; } if (x === 2 && y === 3) { tiles2D[7][7] = 22; exits[`7,7`] = { map: "map_shrine_warp", x: 7, y: 13 }; } let tiles1D = []; for(let r=0; r<15; r++) for(let c=0; c<15; c++) tiles1D.push(tiles2D[r][c]); let encounters = encountersPool.filter(id => masterData.monsters[id]); if(encounters.length===0) encounters = ["m01"]; externalMapData[mapId] = { width: 15, height: 15, tiles: tiles1D, encounters: encounters, exits: exits, npcs: {}, name: "フィールド" }; } } }
+function generateFieldMapsForGravityQuest() {
+    const GW = 75, GH = 75;
+    const world = new Array(GW * GH).fill(5);
+    const fillEll = (cx, cy, rx, ry, tile) => {
+        for (let gy2 = Math.max(0,cy-ry); gy2 <= Math.min(GH-1,cy+ry); gy2++) {
+            for (let gx2 = Math.max(0,cx-rx); gx2 <= Math.min(GW-1,cx+rx); gx2++) {
+                let dx=(gx2-cx)/rx, dy=(gy2-cy)/ry;
+                if (dx*dx+dy*dy <= 1) world[gy2*GW+gx2] = tile;
+            }
+        }
+    };
+    const fillEllCond = (cx, cy, rx, ry, tile) => {
+        for (let gy2 = Math.max(0,cy-ry); gy2 <= Math.min(GH-1,cy+ry); gy2++) {
+            for (let gx2 = Math.max(0,cx-rx); gx2 <= Math.min(GW-1,cx+rx); gx2++) {
+                let dx=(gx2-cx)/rx, dy=(gy2-cy)/ry;
+                if (dx*dx+dy*dy <= 1 && world[gy2*GW+gx2] !== 5) world[gy2*GW+gx2] = tile;
+            }
+        }
+    };
+    // === Land masses ===
+    fillEll(36, 37, 14, 10, 11); // グラマニア大陸 main body
+    fillEll(24, 35, 9, 6, 11);   // western arm
+    fillEll(27, 45, 8, 5, 11);   // SW extension
+    fillEll(41, 32, 8, 5, 11);   // NE bump
+    fillEll(44, 42, 6, 4, 11);   // east peninsula
+    fillEll(36, 6, 9, 7, 11);    // 北の島 (covers 37,3 for dungeon+NPC and 34,8 for traveler NPC)
+    fillEll(28, 9, 4, 3, 11);    // north island west rock
+    fillEll(43, 7, 4, 3, 11);    // north island east rock
+    fillEll(67, 10, 9, 8, 11);   // NE大陸 (covers 67,12 for tower, 70,5 for hermit NPC)
+    fillEll(64, 20, 6, 5, 11);   // NE SE extension into map 4,1
+    fillEll(70, 22, 5, 4, 11);   // NE east coast
+    fillEll(8, 8, 7, 5, 11);     // NW island
+    fillEll(10, 16, 5, 4, 11);
+    fillEll(5, 22, 4, 3, 11);
+    fillEll(66, 66, 9, 8, 11);   // 魔王の島 (covers 67,65-66 for demon castle gate)
+    fillEll(70, 70, 5, 5, 11);   // demon island SE (covers 72,72 for mage NPC)
+    fillEll(68, 57, 5, 4, 11);   // demon island north peninsula
+    fillEll(5, 70, 7, 5, 11);    // 鍛冶の森 SW island (covers 3,72 for smith NPC)
+    fillEll(12, 64, 5, 4, 11);
+    fillEll(11, 73, 4, 2, 11);
+    fillEll(37, 67, 10, 7, 11);  // 砂漠の島 south island (covers 37,67 for richman NPC)
+    fillEll(43, 61, 6, 4, 11);
+    fillEll(46, 70, 5, 4, 11);
+    fillEll(36, 51, 7, 5, 11);   // ほこら island
+    fillEll(57, 50, 6, 5, 11);   // SE island
+    fillEll(63, 47, 4, 3, 11);
+    fillEll(52, 5, 4, 3, 11);    // NE tiny island
+    fillEll(17, 45, 5, 3, 11);   // west-center island
+    fillEll(50, 35, 5, 3, 11);   // east-center island
+    fillEll(36, 21, 4, 10, 11);  // north isthmus: main continent ↔ north island
+    fillEll(36, 58, 4, 3, 11);   // south bridge: shrine island ↔ south desert
+    fillEll(24, 55, 5, 6, 11);   // SW bridge: map(1,3) ↔ map(1,4) for forest island access
+    // === Terrain overlays (only on existing land) ===
+    fillEllCond(6, 70, 4, 3, 19);    fillEllCond(12, 65, 3, 3, 19);    fillEllCond(10, 73, 3, 2, 19);
+    fillEllCond(21, 37, 4, 3, 19);   fillEllCond(26, 30, 3, 3, 19);    fillEllCond(42, 34, 3, 3, 19);
+    fillEllCond(61, 14, 4, 3, 19);   fillEllCond(66, 22, 3, 2, 19);    fillEllCond(22, 9, 3, 2, 19);
+    fillEllCond(38, 28, 4, 3, 20);   fillEllCond(43, 40, 3, 2, 20);    fillEllCond(29, 26, 3, 2, 20);
+    fillEllCond(67, 6, 3, 2, 20);    fillEllCond(31, 5, 3, 2, 20);     fillEllCond(65, 62, 3, 2, 20);
+    fillEllCond(72, 68, 2, 2, 20);
+    fillEllCond(29, 40, 3, 2, 12);   fillEllCond(36, 44, 3, 2, 12);    fillEllCond(24, 13, 3, 2, 12);
+    fillEllCond(62, 17, 3, 2, 12);
+    fillEllCond(37, 67, 7, 5, 0);    fillEllCond(43, 63, 4, 3, 0);     // 砂漠エリア
+    // === Build 25 field maps ===
+    const _ef = id => masterData.monsters && masterData.monsters[id];
+    for (let gy = 0; gy < 5; gy++) {
+        for (let gx = 0; gx < 5; gx++) {
+            let mapId = "map_field_" + gx + "_" + gy;
+            let tiles1D = [], exits = {};
+            for (let ty = 0; ty < 15; ty++) for (let tx = 0; tx < 15; tx++) tiles1D.push(world[(gy*15+ty)*GW+(gx*15+tx)]);
+            if (gy > 0) for (let tx = 1; tx < 14; tx++) { let wx = gx*15+tx; if (world[(gy*15)*GW+wx]!==5 && world[((gy-1)*15+14)*GW+wx]!==5) exits[`${tx},0`]={map:"map_field_"+gx+"_"+(gy-1),x:tx,y:13}; }
+            if (gy < 4) for (let tx = 1; tx < 14; tx++) { let wx = gx*15+tx; if (world[(gy*15+14)*GW+wx]!==5 && world[((gy+1)*15)*GW+wx]!==5) exits[`${tx},14`]={map:"map_field_"+gx+"_"+(gy+1),x:tx,y:1}; }
+            if (gx > 0) for (let ty = 1; ty < 14; ty++) { let wy = gy*15+ty; if (world[wy*GW+gx*15]!==5 && world[wy*GW+(gx-1)*15+14]!==5) exits[`0,${ty}`]={map:"map_field_"+(gx-1)+"_"+gy,x:13,y:ty}; }
+            if (gx < 4) for (let ty = 1; ty < 14; ty++) { let wy = gy*15+ty; if (world[wy*GW+gx*15+14]!==5 && world[wy*GW+(gx+1)*15]!==5) exits[`14,${ty}`]={map:"map_field_"+(gx+1)+"_"+gy,x:1,y:ty}; }
+            let isLate = (gx===4&&gy>=3)||(gx===3&&gy===4);
+            let isMid = (gx===4&&gy<=2)||(gx>=3&&gy>=2)||(gx===0&&gy<=1);
+            let enc;
+            if (isLate) enc=["ancient_dragon","cyclops","vampire_lord","death_knight","behemoth","lich","archdemon"].filter(_ef);
+            else if (isMid) enc=["killer_mantis","dark_mage","minotaur","troll","chimera","dullahan","cockatrice","flame_elemental","gargoyle"].filter(_ef);
+            else enc=["slime","goblin","wild_wolf","orc","red_dragon","m01","m02"].filter(_ef);
+            if (!enc.length) enc=["m01"];
+            externalMapData[mapId]={width:15,height:15,tiles:tiles1D,encounters:enc,exits:exits,npcs:{},name:"フィールド"};
+        }
+    }
+    // === Special building exits ===
+    const findLand = (mapId, cx, cy) => {
+        let m = externalMapData[mapId]; if (!m) return null;
+        for (let r = 0; r <= 7; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+            if (Math.abs(dx)!==r && Math.abs(dy)!==r) continue;
+            let tx=cx+dx, ty=cy+dy;
+            if (tx<1||ty<1||tx>=m.width-1||ty>=m.height-1) continue;
+            let t=m.tiles[ty*m.width+tx], k=`${tx},${ty}`;
+            if (t!==5 && t!==20 && !m.exits[k] && !m.npcs[k]) return {x:tx,y:ty,k};
+        }
+        return null;
+    };
+    let tp = findLand("map_field_2_2", 7, 7);
+    if (tp) { externalMapData["map_field_2_2"].tiles[tp.y*15+tp.x]=21; externalMapData["map_field_2_2"].exits[tp.k]={map:"map_town_01",x:10,y:18}; }
+    let dp = findLand("map_field_2_0", 7, 6);
+    if (dp) { externalMapData["map_field_2_0"].tiles[dp.y*15+dp.x]=22; externalMapData["map_field_2_0"].exits[dp.k]={map:"map_dungeon_1f",x:7,y:14}; }
+    let shrp = findLand("map_field_2_3", 7, 7);
+    if (shrp) { externalMapData["map_field_2_3"].tiles[shrp.y*15+shrp.x]=22; externalMapData["map_field_2_3"].exits[shrp.k]={map:"map_shrine_warp",x:7,y:13}; }
+    const forceExit = (mapId, tx, ty, destMap, dx, dy) => {
+        let m = externalMapData[mapId]; if (!m || !externalMapData[destMap]) return;
+        if (m.tiles[ty*m.width+tx]===5) m.tiles[ty*m.width+tx]=11;
+        m.exits[`${tx},${ty}`]={map:destMap,x:dx,y:dy};
+    };
+    if (externalMapData["map_field_north_2"]) forceExit("map_field_2_0",7,0,"map_field_north_2",7,13);
+    if (externalMapData["map_field_south_2"]) forceExit("map_field_2_4",7,14,"map_field_south_2",7,1);
+    if (externalMapData["map_field_east_2"]) forceExit("map_field_4_2",14,7,"map_field_east_2",1,7);
+    if (externalMapData["map_field_west_2"]) forceExit("map_field_0_2",0,7,"map_field_west_2",13,7);
+}
 function fixMapExits() {
     if(!externalMapData) return;
     const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
@@ -1930,7 +2078,13 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
             fr('#373340', 0, 0, T, T); fr('#413d4c', 3, 3, T - 6, T - 6);
             if (rand < 0.08) fr('rgba(0,0,0,0.35)', fl(rand * (T - 8)) + 2, fl(rand * (T - 6)) + 2, fl(rand * 4) + 4, fl(rand * 2) + 3);
         } else {
-            fr('#aaaaaa', 0, 0, T, T);
+            // Field sand/desert (DQ3 style)
+            let sc = rand < 0.35 ? '#c4ba6c' : rand > 0.65 ? '#d0c47e' : '#c8be78';
+            fr(sc, 0, 0, T, T);
+            ctx.fillStyle = 'rgba(180,160,40,0.35)';
+            for (let di = 0; di < 12; di++) ctx.fillRect(px+fl((rand*11.3+di*3.7)%T), py+fl((rand*9.1+di*2.9)%T), 1, 1);
+            ctx.fillStyle = 'rgba(255,240,180,0.2)';
+            for (let di = 0; di < 5; di++) ctx.fillRect(px+fl((rand*7.8+di*5.2)%(T-2))+1, py+fl((rand*6.4+di*4.1)%(T-2))+1, 2, 2);
         }
     } else if (tile === 1 || tile === 4) {
         if (town) {
