@@ -759,7 +759,7 @@ function packSaveData(pData) {
     let minObj = {
         g: pData.gold,
         p: [pData.pos.map.replace('map_',''), pData.pos.x, pData.pos.y],
-        f: Object.keys(pData.flags||{}).filter(k => pData.flags[k] === true && !k.startsWith('chest_')),
+        f: Object.keys(pData.flags||{}).filter(k => pData.flags[k] === true),
         c: pData.members.map(mb => [
             mb.name, mb.job, mb.lv, mb.exp,
             mb.equipment.weapon||"", mb.equipment.armor||"", mb.equipment.shield||"", mb.equipment.helmet||"", mb.equipment.accessory||"",
@@ -777,13 +777,20 @@ function unpackSaveData(pwd) {
     let obj; try { obj = JSON.parse(decoded); } catch(e) { return null; }
     if (obj.members && obj.pos) return { type: 'normal', data: obj }; 
     let flags = {}; if (obj.f) obj.f.forEach(k => flags[k] = true);
-    let members = obj.c.map(mb => ({
-        id: "p" + Math.random(), name: mb[0], job: mb[1], lv: mb[2], exp: mb[3],
-        hp: 999, max_hp: 999, mp: 999, max_mp: 999, atk: 10, def: 10, spd: 10,
-        equipment: { weapon: mb[4]||null, armor: mb[5]||null, shield: mb[6]||null, helmet: mb[7]||null, accessory: mb[8]||null },
-        inventory: mb[9] ? mb[9].split(',') : [],
-        spells: mb[10] ? mb[10].split(',') : []
-    }));
+    let members = obj.c.map(mb => {
+        let bs = { hp: 50, max_hp: 50, mp: 20, max_mp: 20, atk: 10, def: 10, spd: 10 };
+        if (masterData && masterData.growth && masterData.growth[mb[1]]) {
+            let g = masterData.growth[mb[1]].find(g => g.level === mb[2]);
+            if (g) bs = { hp: g.hp, max_hp: g.hp, mp: g.mp||0, max_mp: g.mp||0, atk: g.atk||10, def: g.def||10, spd: g.spd||10 };
+        }
+        return {
+            id: "p" + Math.random(), name: mb[0], job: mb[1], lv: mb[2], exp: mb[3],
+            ...bs,
+            equipment: { weapon: mb[4]||null, armor: mb[5]||null, shield: mb[6]||null, helmet: mb[7]||null, accessory: mb[8]||null },
+            inventory: mb[9] ? mb[9].split(',') : [],
+            spells: mb[10] ? mb[10].split(',') : []
+        };
+    });
     let mapName = obj.p[0];
     if(!mapName.startsWith('map_') && !mapName.includes('town') && !mapName.includes('castle') && !mapName.includes('dungeon')) mapName = 'map_' + mapName;
     else if (!mapName.startsWith('map_')) mapName = 'map_' + mapName;
@@ -1068,8 +1075,8 @@ function getDef(char) { let def = char.def; if(char.equipment) { if(char.equipme
 function getSpd(char) { let spd = char.spd; if(char.equipment && char.equipment.accessory && masterData.items[char.equipment.accessory]) { let acc = masterData.items[char.equipment.accessory]; if (acc.effect === 'speed_up' || acc.id === 'acc_star_bracelet') spd += 50; } return Math.max(0, spd); }
 
 function calculateDamage(attacker, defender) {
-    let atkMod = attacker.tmpAtk ? 1.5 : 1.0; let defMod = defender.tmpDef ? 1.5 : 1.0;
-    if(defender.tmpDef < 0) defMod = 0.5; if(attacker.tmpAtk < 0) atkMod = 0.5;
+    let atkMod = attacker.tmpAtk > 0 ? 1.5 : attacker.tmpAtk < 0 ? 0.5 : 1.0;
+    let defMod = defender.tmpDef > 0 ? 1.5 : defender.tmpDef < 0 ? 0.5 : 1.0;
     
     if (window.isGuraKingBattle && attacker.job) {
         atkMod *= 0.9;
@@ -2118,7 +2125,7 @@ async function executeBattle(fixedEnemies = null) {
                 if(act.item.id === 'i_star_frag' || act.item.id === 'acc_star_bracelet' || act.item.id === 'w_star_sword') { await typeMessage(`しかし なにも おこらなかった！`); } 
                 else if(t.hp <= 0) { await typeMessage("しんでいる なかまには きかない！"); } 
                 else { 
-                    act.actor.inventory.splice(act.itemIndex, 1); AudioManager.playSE('heal'); 
+                    if(act.itemIndex >= 0 && act.itemIndex < act.actor.inventory.length) act.actor.inventory.splice(act.itemIndex, 1); AudioManager.playSE('heal');
                     if(act.item.id.includes('antidote') || act.item.effect === 'cure_poison') { t.isPoisoned = false; await typeMessage(`${t.name}の どくが きえた！`); } 
                     else { let val = act.item.value; if(val === 'max' || act.item.effect === 'full_heal' || isNaN(parseInt(val))) { t.hp = t.max_hp; } else { t.hp = Math.min(t.max_hp, t.hp + parseInt(val || 30)); } await typeMessage(`${t.name}の HPが かいふくした！`); }
                 }
@@ -2281,20 +2288,7 @@ async function showTitleScreen() {
     state = 'FIELD'; drawMap(); updateBGM();
 }
 
-async function init() {
-    resizeCanvas(); masterData = await loadExternalData('master'); const loading = document.getElementById('loading-indicator');
-    loading.style.display = 'block'; loading.innerText = 'データを結合中...';
-    await loadExternalItemDatabase("https://www.gravity.place/share/ugcGame?id=38292");
-    await loadExternalMagicDatabase("https://www.gravity.place/share/ugcGame?id=36496");
-    await loadExternalEnemyDatabase("https://www.gravity.place/share/ugcGame?id=36489");
-    await loadExternalGrowthDatabase("https://www.gravity.place/share/ugcGame?id=38430");
-    await loadExternalAudioDatabase("https://www.gravity.place/share/ugcGame?id=37967");
-    await loadSecondLoopMonsters(); 
-    loading.style.display = 'none'; showTitleScreen();
-}
-
 setInterval(() => { if (state === 'FIELD' || state === 'MSG') drawMap(); }, 100);
-window.onload = init;
 </script>
 
 <script>
@@ -2338,7 +2332,7 @@ async function init() {
     if (window.EXT_GROWTH) {
         const ext = window.EXT_GROWTH;
         masterData.growth = {};
-        ext.characterData.forEach(char => {
+        (ext.characterData || []).forEach(char => {
             masterData.growth[char.job] = char.growth;
             if (char.sprites) {
                 const li = (src) => { let img = new Image(); img.crossOrigin="Anonymous"; img.src=src; return img; };
