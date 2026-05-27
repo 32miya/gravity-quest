@@ -959,7 +959,19 @@ async function playSpellEffect(spellData, targetObj) {
     const ctx = cvs.getContext('2d');
 
     const isEnemy = targetObj === 'enemies' || stype === 'attack' || stype === 'debuff' || stype === 'status';
-    const tcx = W * 0.5, tcy = isEnemy ? H * 0.35 : H * 0.65;
+    let tcx = W * 0.5, tcy = isEnemy ? H * 0.38 : H * 0.72;
+    if (isEnemy) {
+        const _econt = document.querySelectorAll('#enemies-area .enemy-container');
+        if (_econt.length > 0) {
+            const _gcr = gc.getBoundingClientRect();
+            let _sx = 0, _sy = 0, _cnt = 0;
+            const _tname = targetObj && targetObj.displayName ? targetObj.displayName : null;
+            let _match = _tname ? Array.from(_econt).filter(c => { const d = c.querySelector('div'); return d && d.textContent.trim() === _tname.trim(); }) : [];
+            if (!_match.length) _match = Array.from(_econt);
+            _match.forEach(c => { const _r = c.getBoundingClientRect(); _sx += _r.left + _r.width/2 - _gcr.left; _sy += _r.top + _r.height*0.45 - _gcr.top; _cnt++; });
+            if (_cnt > 0) { tcx = _sx/_cnt; tcy = _sy/_cnt; }
+        }
+    }
     const dur = [700, 900, 1100, 1400][tier - 1];
     const N = [18, 30, 50, 75][tier - 1];
 
@@ -1593,9 +1605,9 @@ function generateDQStyleMaps() {
     externalMapData['map_dungeon_b2f'] = mkMap(20, 20,
         [[1,1,6,5],[8,1,5,5],[14,1,5,5],[1,7,7,7],[9,7,6,7],[16,7,3,7],[3,15,14,4]],
         [[6,3,8,3],[12,3,14,3],[7,4,7,7],[13,5,13,7],[16,5,16,7],[5,15,5,13],[14,15,14,13],[3,18,3,17]],
-        [[17,17]],
+        [[15,17]],
         [[3,17]],
-        { '3,17': { map: 'map_dungeon_b1f', x: 16, y: 3 }, '17,17': { map: 'map_dungeon_b3f', x: 3, y: 3 } },
+        { '3,17': { map: 'map_dungeon_b1f', x: 16, y: 3 }, '15,17': { map: 'map_dungeon_b3f', x: 3, y: 3 } },
         { '3,3': { id: 'obj_chest_item', name: '宝箱' }, '16,3': { id: 'obj_chest_weapon', name: '宝箱' }, '16,10': { id: 'obj_chest_item', name: '宝箱' } },
         encD3.length ? encD3 : fb, '試練の洞窟 B2F');
 
@@ -1606,10 +1618,9 @@ function generateDQStyleMaps() {
             [[8,7,8,1],[11,7,11,1],[5,13,5,11],[14,13,14,11],[8,13,8,11],[11,13,11,11]],
             [],
             [[3,3]],
-            { '3,3': { map: 'map_dungeon_b2f', x: 17, y: 16 } },
-            { '9,10': { id: 'boss_dungeon', name: 'ダンジョンボス' }, '3,17': { id: 'obj_chest_armor', name: '宝箱' }, '16,17': { id: 'obj_chest_weapon', name: '宝箱' }, '9,17': { id: 'obj_chest_item', name: '宝箱' } },
+            { '3,3': { map: 'map_dungeon_b2f', x: 15, y: 17 } },
+            { '9,15': { id: 'boss_dungeon', name: 'ダンジョンボス' }, '6,17': { id: 'obj_chest_armor', name: '宝箱' }, '13,17': { id: 'obj_chest_weapon', name: '宝箱' }, '9,17': { id: 'obj_chest_item', name: '宝箱' } },
             encD3.length ? encD3 : fb, '試練の洞窟 B3F');
-        for (let y = 1; y < 7; y++) for (let x = 1; x < 19; x++) { if (b3f.tiles[y * 20 + x] === 0) b3f.tiles[y * 20 + x] = 9; }
         externalMapData['map_dungeon_b3f'] = b3f;
     }
 
@@ -1956,6 +1967,82 @@ function resetBattleState(char) {
 function getTileColor(t) { const colors = { 0:'#3a823f', 1:'#8b4513', 2:'#3366ff', 3:'#cccc00', 4:'#777777', 5:'#33ccff', 6:'#800080', 8:'#ff00ff', 9:'#c00', 10:'#d2b48c', 11:'#3a823f', 12:'#1a1', 13:'#e6cc80', 15:'#777', 16:'#aaa', 17:'#151', 18:'#d2d', 19:'#040', 20:'#432', 21:'#d55', 22:'#aaa', 23:'#cff' }; return colors[t] || '#000'; }
 function drawSpriteLocal(ctx, img, px, py, targetHeight) { if (!img || !img.complete || img.naturalHeight === 0) return false; const ratio = img.width / img.height; const targetWidth = targetHeight * ratio; const offsetX = (TILE_SIZE - targetWidth) / 2; const offsetY = TILE_SIZE - targetHeight; ctx.drawImage(img, px + offsetX, py + offsetY, targetWidth, targetHeight); return true; }
 function drawLargeSpriteLocal(ctx, img, px, py, targetWidth) { if (!img || !img.complete || img.naturalHeight === 0) return false; const ratio = img.height / img.width; const targetHeight = targetWidth * ratio; const offsetX = (TILE_SIZE - targetWidth) / 2; const offsetY = TILE_SIZE - targetHeight + 10; ctx.drawImage(img, px + offsetX, py + offsetY, targetWidth, targetHeight); return true; }
+function _drawFieldBuilding(ctx, bType, px, py) {
+    const T = TILE_SIZE, fl = Math.floor;
+    ctx.save();
+    if (bType === 'town') {
+        const bx = px - fl(T*0.3);
+        ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect(bx+3,py-fl(T*0.55)+3,fl(T*1.6),fl(T*0.85));
+        ctx.fillStyle='#c09060'; ctx.fillRect(bx,py-fl(T*0.5),fl(T*1.6),fl(T*0.65));
+        ctx.fillStyle='#d8a870'; ctx.fillRect(bx+2,py-fl(T*0.45),fl(T*1.5),fl(T*0.55));
+        ctx.fillStyle='#a03030'; ctx.beginPath(); ctx.moveTo(bx-4,py-fl(T*0.5)); ctx.lineTo(bx+fl(T*0.8),py-fl(T*1.05)); ctx.lineTo(bx+fl(T*1.65),py-fl(T*0.5)); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#882828'; ctx.beginPath(); ctx.moveTo(bx-2,py-fl(T*0.52)); ctx.lineTo(bx+fl(T*0.8),py-fl(T*1.02)); ctx.lineTo(bx+fl(T*1.62),py-fl(T*0.52)); ctx.lineTo(bx+fl(T*1.62),py-fl(T*0.46)); ctx.lineTo(bx-2,py-fl(T*0.46)); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#805040'; ctx.fillRect(bx+fl(T*0.5),py-fl(T*1.15),5,fl(T*0.28));
+        ctx.fillStyle='#f8f088'; ctx.fillRect(bx+3,py-fl(T*0.36),8,6); ctx.fillRect(bx+fl(T*0.9),py-fl(T*0.36),8,6);
+        ctx.fillStyle='#704020'; ctx.fillRect(bx+fl(T*0.62),py-fl(T*0.2),7,fl(T*0.2)+1);
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('町',px+T/2,py+T-5);
+        ctx.fillStyle='#ffe88a'; ctx.fillText('町',px+T/2-1,py+T-6);
+    } else if (bType === 'castle') {
+        const bx = px - fl(T*0.4);
+        ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect(bx+3,py-fl(T*1.05)+3,fl(T*1.8),fl(T*1.15));
+        ctx.fillStyle='#607080'; ctx.fillRect(bx+fl(T*0.2),py-fl(T*0.9),fl(T*1.4),fl(T*1.05));
+        ctx.fillStyle='#708090'; ctx.fillRect(bx+fl(T*0.25),py-fl(T*0.85),fl(T*1.3),fl(T*0.95));
+        ctx.fillStyle='#506070'; ctx.fillRect(bx,py-fl(T*0.75),fl(T*0.25),fl(T*0.9)); ctx.fillRect(bx+fl(T*1.55),py-fl(T*0.75),fl(T*0.25),fl(T*0.9));
+        ctx.fillStyle='#90a0b0'; for(let _bi=0;_bi<4;_bi++) ctx.fillRect(bx+fl(T*0.2)+_bi*fl(T*0.36),py-fl(T*0.9)-5,fl(T*0.23),6);
+        for(let _bi=0;_bi<2;_bi++) { ctx.fillRect(bx+_bi*fl(T*0.13),py-fl(T*0.75)-4,fl(T*0.11),5); ctx.fillRect(bx+fl(T*1.55)+_bi*fl(T*0.13),py-fl(T*0.75)-4,fl(T*0.11),5); }
+        ctx.fillStyle='#202830'; ctx.beginPath(); ctx.arc(bx+fl(T*0.9),py-fl(T*0.1),fl(T*0.18),Math.PI,0); ctx.rect(bx+fl(T*0.72),py-fl(T*0.1),fl(T*0.36),fl(T*0.18)); ctx.fill();
+        ctx.strokeStyle='#c0c8d0'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(bx+fl(T*0.9),py-fl(T*0.9)-5); ctx.lineTo(bx+fl(T*0.9),py-fl(T*0.9)-14); ctx.stroke();
+        ctx.fillStyle='#e04040'; ctx.beginPath(); ctx.moveTo(bx+fl(T*0.9),py-fl(T*0.9)-14); ctx.lineTo(bx+fl(T*0.9)+9,py-fl(T*0.9)-10); ctx.lineTo(bx+fl(T*0.9),py-fl(T*0.9)-6); ctx.fill();
+        ctx.fillStyle='#d8d060'; ctx.fillRect(bx+fl(T*0.38),py-fl(T*0.6),6,5); ctx.fillRect(bx+fl(T*1.1),py-fl(T*0.6),6,5);
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('城',px+T/2,py+T-5);
+        ctx.fillStyle='#aad0ff'; ctx.fillText('城',px+T/2-1,py+T-6);
+    } else if (bType === 'shrine') {
+        const bx = px - 2;
+        ctx.fillStyle='rgba(0,0,0,0.18)'; ctx.fillRect(bx+3,py-fl(T*0.88)+3,fl(T*1.1),fl(T*1.0));
+        ctx.fillStyle='#c0a080'; ctx.fillRect(bx,py-fl(T*0.05),fl(T*1.1),fl(T*0.18));
+        ctx.fillStyle='#e8d8a0'; ctx.fillRect(bx+fl(T*0.1),py-fl(T*0.45),fl(T*0.9),fl(T*0.42));
+        ctx.fillStyle='#a02020'; ctx.beginPath(); ctx.moveTo(bx-5,py-fl(T*0.45)); ctx.lineTo(bx+fl(T*0.55),py-fl(T*0.98)); ctx.lineTo(bx+fl(T*1.15),py-fl(T*0.45)); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#c02828'; ctx.beginPath(); ctx.moveTo(bx-4,py-fl(T*0.47)); ctx.lineTo(bx+fl(T*0.55),py-fl(T*0.95)); ctx.lineTo(bx+fl(T*1.14),py-fl(T*0.47)); ctx.lineTo(bx+fl(T*1.14),py-fl(T*0.42)); ctx.lineTo(bx-4,py-fl(T*0.42)); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#302010'; ctx.beginPath(); ctx.arc(bx+fl(T*0.55),py-fl(T*0.17),fl(T*0.14),Math.PI,0); ctx.rect(bx+fl(T*0.41),py-fl(T*0.17),fl(T*0.28),fl(T*0.14)); ctx.fill();
+        ctx.fillStyle='rgba(255,220,100,0.75)'; ctx.beginPath(); ctx.arc(bx+fl(T*0.2),py-fl(T*0.5),2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(bx+fl(T*0.9),py-fl(T*0.5),2,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('祠',px+T/2,py+T-5);
+        ctx.fillStyle='#ffcc66'; ctx.fillText('祠',px+T/2-1,py+T-6);
+    } else if (bType === 'tower') {
+        const bx = px + 4;
+        ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect(bx+3,py-fl(T*1.48)+3,fl(T*0.8),fl(T*1.65));
+        ctx.fillStyle='#6070a0'; ctx.fillRect(bx,py-fl(T*1.4),fl(T*0.8),fl(T*1.55));
+        ctx.fillStyle='#7080b0'; ctx.fillRect(bx+2,py-fl(T*1.35),fl(T*0.7),fl(T*1.45));
+        ctx.fillStyle='#9090c8'; for(let _bi=0;_bi<3;_bi++) ctx.fillRect(bx+_bi*fl(T*0.27),py-fl(T*1.4)-5,fl(T*0.2),6);
+        ctx.fillRect(bx,py-fl(T*1.4)-2,fl(T*0.8),3);
+        ctx.fillStyle='#e8d040'; ctx.fillRect(bx+fl(T*0.22),py-fl(T*1.1),fl(T*0.35),5); ctx.fillRect(bx+fl(T*0.22),py-fl(T*0.78),fl(T*0.35),5); ctx.fillRect(bx+fl(T*0.22),py-fl(T*0.46),fl(T*0.35),5);
+        ctx.fillStyle='#202035'; ctx.beginPath(); ctx.arc(bx+fl(T*0.4),py-fl(T*0.14),fl(T*0.16),Math.PI,0); ctx.rect(bx+fl(T*0.24),py-fl(T*0.14),fl(T*0.32),fl(T*0.15)); ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('塔',px+T/2,py+T-5);
+        ctx.fillStyle='#aaaaff'; ctx.fillText('塔',px+T/2-1,py+T-6);
+    } else if (bType === 'dungeon') {
+        const bx = px - 4;
+        ctx.fillStyle='#302838'; ctx.beginPath(); ctx.arc(bx+fl(T*0.65),py-fl(T*0.35),fl(T*0.62),0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#4a4858'; ctx.beginPath(); ctx.moveTo(bx,py-fl(T*0.12)); ctx.lineTo(bx+fl(T*0.18),py-fl(T*0.78)); ctx.lineTo(bx+fl(T*0.42),py-fl(T*0.42)); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(bx+fl(T*1.3),py-fl(T*0.12)); ctx.lineTo(bx+fl(T*1.12),py-fl(T*0.78)); ctx.lineTo(bx+fl(T*0.88),py-fl(T*0.42)); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#404050'; ctx.beginPath(); ctx.arc(bx+fl(T*0.65),py-fl(T*0.62),fl(T*0.3),Math.PI,0); ctx.fill();
+        ctx.fillStyle='#0a0815'; ctx.beginPath(); ctx.arc(bx+fl(T*0.65),py-fl(T*0.35),fl(T*0.27),Math.PI,0); ctx.rect(bx+fl(T*0.38),py-fl(T*0.35),fl(T*0.54),fl(T*0.38)); ctx.fill();
+        ctx.fillStyle='rgba(200,20,20,0.65)'; ctx.beginPath(); ctx.arc(bx+fl(T*0.5),py-fl(T*0.22),2.2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(bx+fl(T*0.8),py-fl(T*0.22),2.2,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('洞',px+T/2,py+T-5);
+        ctx.fillStyle='#cc8888'; ctx.fillText('洞',px+T/2-1,py+T-6);
+    } else if (bType === 'demon') {
+        const bx = px - fl(T*0.35);
+        ctx.fillStyle='rgba(60,0,20,0.38)'; ctx.fillRect(bx+3,py-fl(T*1.18)+3,fl(T*1.7),fl(T*1.3));
+        ctx.fillStyle='#180d24'; ctx.fillRect(bx+fl(T*0.15),py-fl(T*0.95),fl(T*1.4),fl(T*1.1));
+        ctx.fillStyle='#220e30'; ctx.fillRect(bx+fl(T*0.2),py-fl(T*0.9),fl(T*1.3),fl(T*1.0));
+        ctx.fillStyle='#2a0e38'; for(let _si=0;_si<3;_si++) { const _sx2=bx+fl(T*0.15)+_si*fl(T*0.47); ctx.beginPath(); ctx.moveTo(_sx2,py-fl(T*0.95)); ctx.lineTo(_sx2+fl(T*0.22),py-fl(T*1.38)); ctx.lineTo(_sx2+fl(T*0.44),py-fl(T*0.95)); ctx.fill(); }
+        ctx.fillStyle='#380010'; ctx.fillRect(bx+fl(T*0.6),py-fl(T*0.5),fl(T*0.4),fl(T*0.65)); ctx.fillStyle='rgba(180,0,30,0.4)'; ctx.fillRect(bx+fl(T*0.6),py-fl(T*0.5),fl(T*0.4),fl(T*0.65));
+        ctx.fillStyle='#ff1818'; ctx.beginPath(); ctx.arc(bx+fl(T*0.5),py-fl(T*0.62),3.2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(bx+fl(T*1.1),py-fl(T*0.62),3.2,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(255,20,20,0.22)'; ctx.beginPath(); ctx.arc(bx+fl(T*0.5),py-fl(T*0.62),7,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(bx+fl(T*1.1),py-fl(T*0.62),7,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('魔',px+T/2,py+T-5);
+        ctx.fillStyle='#ff4444'; ctx.fillText('魔',px+T/2-1,py+T-6);
+    }
+    ctx.restore();
+}
+
 function drawNpcSign(ctx, cx, ty, emoji, label, bgColor) {
     ctx.font = 'bold 7px sans-serif';
     let lw = ctx.measureText(label).width, ew = 11, pad = 3, h = 12, w = ew + lw + pad * 2;
@@ -2313,9 +2400,58 @@ function drawMap() {
                 if (npc.id === "obj_chest_star_frag") { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("✨", px + TILE_SIZE/2, py + TILE_SIZE/2); }
                 else if(chestImg && chestImg.complete && chestImg.naturalHeight > 0) { ctx.drawImage(chestImg, px, py, TILE_SIZE, TILE_SIZE); } else { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(isOpened ? "🧳" : "🎁", px + TILE_SIZE/2, py + TILE_SIZE/2); } ctx.globalAlpha = 1.0;
             } else if(npc.id === 'boss_dungeon') {
-                let _bcx = px+TILE_SIZE/2, _bcy = py+TILE_SIZE/2+4;
+                let _bcx = px+TILE_SIZE/2, _bcy = py+TILE_SIZE/2;
                 if (externalImages['skeleton'] && externalImages['skeleton'].complete && externalImages['skeleton'].naturalHeight > 0) { drawSpriteLocal(ctx, externalImages['skeleton'], px, py, 52); }
-                else { ctx.fillStyle='#6a3080'; ctx.beginPath(); ctx.arc(_bcx,_bcy-4,14,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#8a40a0'; ctx.beginPath(); ctx.arc(_bcx,_bcy-4,10,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ffdd00'; ctx.font='22px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👹',_bcx,_bcy-4); }
+                else {
+                    const _bs = TILE_SIZE, _now2 = Date.now();
+                    // Pulsing aura
+                    const _ap = 0.45 + Math.sin(_now2/400)*0.15;
+                    const _bg2 = ctx.createRadialGradient(_bcx,_bcy,0,_bcx,_bcy,_bs*0.9);
+                    _bg2.addColorStop(0,`rgba(160,0,220,${_ap})`); _bg2.addColorStop(1,'rgba(60,0,100,0)');
+                    ctx.fillStyle=_bg2; ctx.beginPath(); ctx.arc(_bcx,_bcy,_bs*0.9,0,Math.PI*2); ctx.fill();
+                    // Armored torso
+                    ctx.fillStyle='#2a1230'; ctx.fillRect(_bcx-9,_bcy-2,18,15);
+                    ctx.fillStyle='#3c1a44'; ctx.fillRect(_bcx-8,_bcy-1,16,13);
+                    // Plate details
+                    ctx.strokeStyle='#6a3888'; ctx.lineWidth=0.7; ctx.strokeRect(_bcx-7,_bcy,14,10);
+                    ctx.beginPath(); ctx.moveTo(_bcx,_bcy); ctx.lineTo(_bcx,_bcy+10); ctx.stroke();
+                    // Shoulder pauldrons
+                    ctx.fillStyle='#5c2868'; ctx.fillRect(_bcx-14,_bcy-2,6,9); ctx.fillRect(_bcx+8,_bcy-2,6,9);
+                    ctx.fillStyle='#7a3888'; ctx.fillRect(_bcx-13,_bcy-2,4,3); ctx.fillRect(_bcx+9,_bcy-2,4,3);
+                    // Skull head
+                    ctx.fillStyle='#d0c0a0'; ctx.beginPath(); ctx.arc(_bcx,_bcy-14,10,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle='#b8a888'; ctx.beginPath(); ctx.arc(_bcx,_bcy-13,8,0,Math.PI*2); ctx.fill();
+                    // Eye sockets
+                    ctx.fillStyle='#100018';
+                    ctx.beginPath(); ctx.ellipse(_bcx-3.5,_bcy-15,3.2,3.8,0,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(_bcx+3.5,_bcy-15,3.2,3.8,0,0,Math.PI*2); ctx.fill();
+                    // Glowing red eyes
+                    const _eg = 0.8 + Math.sin(_now2/300)*0.2;
+                    ctx.fillStyle=`rgba(255,30,30,${_eg})`;
+                    ctx.beginPath(); ctx.ellipse(_bcx-3.5,_bcy-15,1.8,2.2,0,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(_bcx+3.5,_bcy-15,1.8,2.2,0,0,Math.PI*2); ctx.fill();
+                    // Eye glow halos
+                    ctx.fillStyle=`rgba(255,0,0,${_eg*0.3})`;
+                    ctx.beginPath(); ctx.arc(_bcx-3.5,_bcy-15,4,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(_bcx+3.5,_bcy-15,4,0,Math.PI*2); ctx.fill();
+                    // Teeth
+                    ctx.fillStyle='#c8b898'; ctx.fillRect(_bcx-6,_bcy-7,12,4);
+                    ctx.fillStyle='#180020'; for(let _ti=0;_ti<4;_ti++) ctx.fillRect(_bcx-5+_ti*3,_bcy-4,2,4);
+                    // Horns
+                    ctx.fillStyle='#c03020';
+                    ctx.beginPath(); ctx.moveTo(_bcx-10,_bcy-20); ctx.lineTo(_bcx-7,_bcy-30); ctx.lineTo(_bcx-4,_bcy-20); ctx.closePath(); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(_bcx-2,_bcy-21); ctx.lineTo(_bcx,_bcy-32); ctx.lineTo(_bcx+2,_bcy-21); ctx.closePath(); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(_bcx+4,_bcy-20); ctx.lineTo(_bcx+7,_bcy-30); ctx.lineTo(_bcx+10,_bcy-20); ctx.closePath(); ctx.fill();
+                    ctx.fillStyle='#e04040';
+                    ctx.beginPath(); ctx.moveTo(_bcx-9,_bcy-21); ctx.lineTo(_bcx-7,_bcy-28); ctx.lineTo(_bcx-5,_bcy-21); ctx.closePath(); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(_bcx+5,_bcy-21); ctx.lineTo(_bcx+7,_bcy-28); ctx.lineTo(_bcx+9,_bcy-21); ctx.closePath(); ctx.fill();
+                    // Scythe weapon
+                    ctx.strokeStyle='#8888cc'; ctx.lineWidth=1.5;
+                    ctx.beginPath(); ctx.moveTo(_bcx+10,_bcy-10); ctx.lineTo(_bcx+16,_bcy+10); ctx.stroke();
+                    ctx.fillStyle='#9898d8';
+                    ctx.beginPath(); ctx.moveTo(_bcx+16,_bcy+10); ctx.quadraticCurveTo(_bcx+24,_bcy-10,_bcx+11,_bcy-12); ctx.lineTo(_bcx+10,_bcy-10); ctx.closePath(); ctx.fill();
+                    ctx.strokeStyle='rgba(160,160,255,0.5)'; ctx.lineWidth=0.5; ctx.stroke();
+                }
             } else if(npc.id === 'boss_sky') {
                 if (externalImages['angel'] && externalImages['angel'].complete && externalImages['angel'].naturalHeight > 0) { drawSpriteLocal(ctx, externalImages['angel'], px, py, 52); }
                 else { ctx.fillStyle='rgba(220,220,100,0.25)'; ctx.beginPath(); ctx.arc(px+TILE_SIZE/2,py+TILE_SIZE/2,18,0,Math.PI*2); ctx.fill(); ctx.font='26px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👼',px+TILE_SIZE/2,py+TILE_SIZE/2); }
@@ -2369,6 +2505,31 @@ function drawMap() {
                 drawNpcSign(ctx, _scx, _basePy, '🔥', '魔王城', '#622');
         });
     }
+    }
+
+    // DQ-style building icons at field map exit positions
+    if (_isFieldMap) {
+        for (const { map: _rMap2, offX: _rOX2, offY: _rOY2 } of _mapsToRender) {
+            if (!_rMap2.exits) continue;
+            for (const _ek of Object.keys(_rMap2.exits)) {
+                const _ed = _rMap2.exits[_ek];
+                const [_ex2,_ey2] = _ek.split(',').map(Number);
+                const _evx2 = _ex2+_rOX2, _evy2 = _ey2+_rOY2;
+                const _epx2 = _evx2*TILE_SIZE - camX;
+                const _epy2 = _evy2*TILE_SIZE - camY;
+                if (_epx2 < -TILE_SIZE*5 || _epx2 > cWidth+TILE_SIZE*5) continue;
+                if (_epy2 < -TILE_SIZE*5 || _epy2 > cHeight+TILE_SIZE*5) continue;
+                const _dm2 = (_ed && _ed.map) ? _ed.map : '';
+                let _bt2 = null;
+                if (_dm2.includes('town') || _dm2.includes('village') || _dm2.includes('market')) _bt2 = 'town';
+                else if (_dm2.includes('shrine')) _bt2 = 'shrine';
+                else if (_dm2.includes('tower') && !_dm2.includes('demon')) _bt2 = 'tower';
+                else if (_dm2.includes('castle') && !_dm2.includes('demon') && !_dm2.includes('death')) _bt2 = 'castle';
+                else if (_dm2.includes('dungeon') || _dm2.includes('cave')) _bt2 = 'dungeon';
+                else if (_dm2.includes('demon') || _dm2.includes('death') || _dm2.includes('maou')) _bt2 = 'demon';
+                if (_bt2) _drawFieldBuilding(ctx, _bt2, _epx2, _epy2);
+            }
+        }
     }
 
     let displayOrder = []; partyData.members.forEach(m => { if(m.hp > 0) displayOrder.push(m); }); partyData.members.forEach(m => { if(m.hp <= 0) displayOrder.push(m); });
