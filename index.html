@@ -910,7 +910,7 @@ volumeSlider.addEventListener('input', (e) => {
 const unlockAudio = () => { AudioManager.init(); if (!AudioManager.isMuted && AudioManager.currentBgmKey && (!AudioManager.bgmAudio || AudioManager.bgmAudio.paused)) { AudioManager.playBGM(AudioManager.currentBgmKey); } };
 document.addEventListener('click', unlockAudio, { once: true }); document.addEventListener('touchstart', unlockAudio, { once: true });
 
-let state = 'INIT'; let masterData = {}; let partyData = {}; let currentMap = {}; let moveHistory = []; let inputCallback = null; const TILE_SIZE = 32; let externalMapData = null; let externalImages = {}; let externalEntitiesData = {};
+let state = 'INIT'; let masterData = {}; let partyData = {}; let currentMap = {}; let moveHistory = []; let inputCallback = null; const TILE_SIZE = 24; let externalMapData = null; let externalImages = {}; let externalEntitiesData = {};
 let _walkPhase = 0; let _lastMoveTime = 0;
 const tilesetImg = new Image(); tilesetImg.crossOrigin = "Anonymous"; tilesetImg.src = "https://cdn.gravity.place/aiugc/game/material/2026-04-09/88e120ab-ee16-4c1a-bdfb-4ffad407b6ad.jpeg";
 const bunnyGirlImg = new Image(); bunnyGirlImg.crossOrigin = "Anonymous"; bunnyGirlImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/c1add1db1f1ce5ccad9e1b76fee60b9c_1776406373895474042.png"; externalImages['bunnyGirl'] = bunnyGirlImg;
@@ -1797,6 +1797,33 @@ function generateDQStyleMaps() {
         if (!externalMapData['map_field_4_4'].npcs['7,5']) externalMapData['map_field_4_4'].npcs['7,5'] = { id: 'npc_maou_castle_gate', name: '魔王城の門' };
     }
 
+    // ===== ダーマ神殿 (map_dharma_temple) =====
+    {
+        let dt = mkMap(15, 15,
+            [[1,1,13,10],[3,11,9,2]],
+            [[7,10,7,11]],
+            [],
+            [[7,13]],
+            { '7,13': { map: 'map_field_2_4', x: 6, y: 7 } },
+            {
+                '7,3':  { id: 'npc_class_change', name: '転職の神父' },
+                '4,5':  { id: 'npc_dharma_monk_l', name: '修道士' },
+                '10,5': { id: 'npc_dharma_monk_r', name: '修道士' },
+                '3,8':  { id: 'obj_chest_item', name: '宝箱' },
+                '11,8': { id: 'obj_chest_item', name: '宝箱' }
+            },
+            [], 'ダーマ神殿');
+        for (let y = 1; y < 11; y++) for (let x = 1; x < 14; x++) { if (dt.tiles[y*15+x] === 0) dt.tiles[y*15+x] = 9; }
+        dt.tiles[3*15+7] = 3;   // 祭壇タイル
+        dt.tiles[4*15+7] = 9;
+        dt.tiles[13*15+7] = 22; // 出口タイル
+        dt.tiles[3*15+6] = 9; dt.tiles[3*15+8] = 9;
+        dt.tiles[11*15+3] = 9; dt.tiles[11*15+11] = 9;
+        externalMapData['map_dharma_temple'] = dt;
+        if (!externalEntitiesData['npc_dharma_monk_l']) externalEntitiesData['npc_dharma_monk_l'] = { id: 'npc_dharma_monk_l', name: '修道士', msg: 'ダーマ神殿へ ようこそ。\n奥にいる 神父様に お話しください。' };
+        if (!externalEntitiesData['npc_dharma_monk_r']) externalEntitiesData['npc_dharma_monk_r'] = { id: 'npc_dharma_monk_r', name: '修道士', msg: 'ここは 転職の 聖地。\nふたたびの たびに でた ゆうしゃのみが\nここで 新たなる 道を えらべます。' };
+    }
+
     // ===== ほこら (map_shrine_warp) — フォールバック実装 =====
     // 外部JSONにある場合はそちらが優先。なければこの小さな祠を使う
     if (!externalMapData['map_shrine_warp']) {
@@ -1862,10 +1889,19 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
             // フィールドNPC追加
             if (externalMapData["map_field_1_1"]) externalMapData["map_field_1_1"].npcs["5,10"] = { id: "npc_field_fisherman", name: "釣り人" };
             if (externalMapData["map_field_3_2"]) externalMapData["map_field_3_2"].npcs["8,8"]  = { id: "npc_field_monk",      name: "旅の僧侶" };
+            // ストーリー導線ガイドNPC（の字ルート）
+            if (externalMapData["map_field_2_1"]) externalMapData["map_field_2_1"].npcs["7,7"] = { id: "npc_guide_north", name: "旅の案内人" };
+            if (externalMapData["map_field_3_0"]) externalMapData["map_field_3_0"].npcs["5,7"] = { id: "npc_guide_east_tower", name: "旅の案内人" };
+            if (externalMapData["map_field_4_1"]) externalMapData["map_field_4_1"].npcs["7,10"] = { id: "npc_guide_south", name: "旅の案内人" };
+            if (externalMapData["map_field_3_3"]) externalMapData["map_field_3_3"].npcs["5,5"] = { id: "npc_guide_demon", name: "旅の案内人" };
 
-        // 転職の神父
-        if (externalMapData["map_field_2_4"]) {
-            externalMapData["map_field_2_4"].npcs["6,13"] = { id: "npc_class_change", name: "転職の神父" };
+        // ダーマ神殿入口（フィールドに建物出口を設置）
+        {
+            const _dtp = findLand("map_field_2_4", 6, 6);
+            if (_dtp) {
+                externalMapData["map_field_2_4"].tiles[_dtp.y*15+_dtp.x] = 22;
+                externalMapData["map_field_2_4"].exits[_dtp.k] = { map: "map_dharma_temple", x: 7, y: 12 };
+            }
         }
 
         // 南の果てマップ: 港町ポートピア入り口を右下に移動、上部には設定しない
@@ -2178,6 +2214,20 @@ function _drawFieldBuilding(ctx, bType, px, py) {
         ctx.fillStyle='rgba(200,20,20,0.65)'; ctx.beginPath(); ctx.arc(bx+fl(T*0.5),py-fl(T*0.22),2.2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(bx+fl(T*0.8),py-fl(T*0.22),2.2,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('洞',px+T/2,py+T-5);
         ctx.fillStyle='#cc8888'; ctx.fillText('洞',px+T/2-1,py+T-6);
+    } else if (bType === 'dharma') {
+        const bx = px - 4;
+        ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(bx+3,py-fl(T*1.1)+3,fl(T*1.2),fl(T*1.25));
+        ctx.fillStyle='#604020'; ctx.fillRect(bx,py-fl(T*0.05),fl(T*1.2),fl(T*0.18));
+        ctx.fillStyle='#806030'; ctx.fillRect(bx+2,py-fl(T*0.5),fl(T*1.0),fl(T*0.48));
+        ctx.fillStyle='#7a3010'; ctx.beginPath(); ctx.moveTo(bx-4,py-fl(T*0.5)); ctx.lineTo(bx+fl(T*0.6),py-fl(T*0.98)); ctx.lineTo(bx+fl(T*1.25),py-fl(T*0.5)); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#603010'; ctx.fillRect(bx+fl(T*0.45),py-fl(T*1.0),5,fl(T*0.22));
+        ctx.fillStyle='#c08830'; ctx.beginPath(); ctx.arc(bx+fl(T*0.6),py-fl(T*1.0),4,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#806030'; ctx.fillRect(bx+fl(T*0.2),py-fl(T*0.8),fl(T*0.85),fl(T*0.35));
+        ctx.fillStyle='#a07040'; ctx.fillRect(bx+fl(T*0.25),py-fl(T*0.75),fl(T*0.75),fl(T*0.28));
+        ctx.fillStyle='#302010'; ctx.beginPath(); ctx.arc(bx+fl(T*0.6),py-fl(T*0.18),fl(T*0.14),Math.PI,0); ctx.rect(bx+fl(T*0.46),py-fl(T*0.18),fl(T*0.28),fl(T*0.14)); ctx.fill();
+        ctx.fillStyle='rgba(255,200,50,0.7)'; ctx.beginPath(); ctx.arc(bx+fl(T*0.22),py-fl(T*0.62),2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(bx+fl(T*0.98),py-fl(T*0.62),2,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('寺',px+T/2,py+T-5);
+        ctx.fillStyle='#ffe066'; ctx.fillText('寺',px+T/2-1,py+T-6);
     } else if (bType === 'demon') {
         const bx = px - fl(T*0.35);
         ctx.fillStyle='rgba(60,0,20,0.38)'; ctx.fillRect(bx+3,py-fl(T*1.18)+3,fl(T*1.7),fl(T*1.3));
@@ -2682,6 +2732,7 @@ function drawMap() {
                 else if (_dm2.includes('tower') && !_dm2.includes('demon')) _bt2 = 'tower';
                 else if (_dm2.includes('castle') && !_dm2.includes('demon') && !_dm2.includes('death')) _bt2 = 'castle';
                 else if (_dm2.includes('dungeon') || _dm2.includes('cave')) _bt2 = 'dungeon';
+                else if (_dm2.includes('dharma')) _bt2 = 'dharma';
                 else if (_dm2.includes('demon') || _dm2.includes('death') || _dm2.includes('maou')) _bt2 = 'demon';
                 if (_bt2) _drawFieldBuilding(ctx, _bt2, _epx2, _epy2);
             }
@@ -2697,7 +2748,19 @@ function drawMap() {
         const _bobY = _isWalking ? [0,-2,0,-4,0,-2,0,-4][_mPhase] : Math.round(Math.sin(_wNow / 1200 + i * 1.5) * 1);
         if(member.hp <= 0) { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("⚰️", px*TILE_SIZE - camX + TILE_SIZE/2, py*TILE_SIZE - camY + TILE_SIZE/2); }
         else {
-            if (_isWalking) {
+            const _onWater = _isFieldMap && partyData.flags && partyData.flags.has_ship && currentMap.tiles && currentMap.tiles[partyData.pos.y * currentMap.width + partyData.pos.x] === 5;
+            if (_onWater && i === 0) {
+                const _sx = px*TILE_SIZE - camX; const _sy = py*TILE_SIZE - camY;
+                const _sw = TILE_SIZE; const _sh = TILE_SIZE;
+                const _rock = Math.sin(_wNow / 600 + 0.5) * 1.5;
+                ctx.save(); ctx.translate(_sx + _sw/2, _sy + _sh/2); ctx.rotate(_rock * Math.PI / 180);
+                ctx.fillStyle='#5588cc'; ctx.beginPath(); ctx.ellipse(0, _sh*0.22, _sw*0.48, _sh*0.22, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle='#8b5e2c'; ctx.beginPath(); ctx.moveTo(-_sw*0.42, _sh*0.15); ctx.quadraticCurveTo(0, _sh*0.38, _sw*0.42, _sh*0.15); ctx.lineTo(_sw*0.38, _sh*0.06); ctx.quadraticCurveTo(0, _sh*0.28, -_sw*0.38, _sh*0.06); ctx.closePath(); ctx.fill();
+                ctx.fillStyle='#a06830'; ctx.fillRect(-2, -_sh*0.35, 3, _sh*0.42);
+                ctx.fillStyle='#f0f0f0'; ctx.beginPath(); ctx.moveTo(0, -_sh*0.35); ctx.lineTo(_sw*0.26, _sh*0.04); ctx.lineTo(0, -_sh*0.02); ctx.closePath(); ctx.fill();
+                ctx.restore();
+            }
+            if (_isWalking && !_onWater) {
                 const _sfx = px*TILE_SIZE - camX + TILE_SIZE/2;
                 const _sfy = py*TILE_SIZE - camY + TILE_SIZE - 3;
                 const _lfoot = _mPhase < 4;
@@ -2770,7 +2833,7 @@ function drawMap() {
 
 async function moveParty(dx, dy) {
     const nx = partyData.pos.x + dx, ny = partyData.pos.y + dy; if(nx<0 || ny<0 || nx>=currentMap.width || ny>=currentMap.height) return;
-    const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const solidTiles = _onField ? [1, 2, 4, 5, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
+    const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
     const key = `${nx},${ny}`; if (currentMap.npcs && currentMap.npcs[key]) return;
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
     _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
@@ -3196,6 +3259,30 @@ async function checkAction() {
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
+            // ★ストーリー導線ガイドNPC
+            if (npc.id === "npc_guide_north") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王を 倒したとは！\nあなたたちが 世界の 英雄ですね！"); }
+                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n試練の 洞窟を 乗り越えたなら\n東の 大陸へ 向かいましょう。\n天空の 塔が あの方向に あります！"); }
+                else { await typeMessage("【案内人】\nこの 先 北へ 進むと\n試練の 洞窟があります。\nまずは そこで 力を 試してみては？"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_guide_east_tower") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n世界に 平和が 戻りました。\nあなたたちの おかげです！"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【案内人】\n天空の 塔を 制覇したなら\n次は 南の 海を 渡るしか ありません。\n港町で 船を 手に入れましょう。"); }
+                else { await typeMessage("【案内人】\n東の 大陸の 北に\n天空の 塔が そびえています。\n塔の 頂には 伝説の 守護者が いるそうですよ。"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_guide_south") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\nお疲れ様でした！\n世界が 救われましたね！"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【案内人】\n船を 持っているのですね。\n南の 海を 渡ると\n魔王の 島が あります。\n気をつけて！"); }
+                else { await typeMessage("【案内人】\n南の 港町に 行けば\n海を 渡る 船が 手に 入るかもしれません。\nレベルを 上げて 挑戦してみては？"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_guide_demon") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王が 倒れた！\nこれで やっと 平和が 戻ります……！"); }
+                else { await typeMessage("【案内人】\n近くに 感じる あの 暗黒の 気配……\n東の 海の 果てに 魔王の 城が あるのです。\n船で 渡り 最後の 戦いに 挑んでください！"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
             if (extDef) {
                 if (extDef.name === "宝箱" || npc.id.includes('chest')) {
                     let chestFlag = `chest_${partyData.pos.map}_${tx}_${ty}`;
@@ -3291,13 +3378,31 @@ async function checkAction() {
             else {
                 if (npc.id === 'npc_port_town') {
                     const _ptk = Object.keys(externalMapData).find(k => k.includes('port'));
-                    await typeMessage("【船乗り】\nここから先は 港町ポートピアです。\nはいりますか？");
-                    const _yn = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
-                    if (_yn === 0 && _ptk) {
-                        const _pm = externalMapData[_ptk];
-                        partyData.pos.map = _ptk; partyData.pos.x = Math.floor(_pm.width / 2); partyData.pos.y = Math.max(1, _pm.height - 3);
-                        currentMap = await loadExternalData('map-' + _ptk); moveHistory = []; drawMap(); updateBGM();
-                    } else { await typeMessage("またの おこしを おまちしております！"); }
+                    const _hasShip2 = partyData.flags && partyData.flags.has_ship;
+                    const _avgLv = Math.floor(partyData.members.reduce((s,m) => s+(m.lv||1), 0) / partyData.members.length);
+                    const _canGetShip = !_hasShip2 && _avgLv >= 12;
+                    if (_hasShip2) {
+                        await typeMessage("【船乗り】\nいってらっしゃい！\n船は もう あなたのものです。\nたくみに つかいこなしてください！");
+                    } else if (_canGetShip) {
+                        await typeMessage("【船乗り】\nおお！ このチカラなら\n大海原を わたれるでしょう！\n船を お使いになりますか？");
+                        const _yn2 = await selectMenu(["船を手に入れる", "港町に入る", "やめる"], 'cmd-window', 0, true);
+                        if (_yn2 === 0) {
+                            partyData.flags.has_ship = true; AudioManager.playSE('item_get');
+                            await typeMessage("【船乗り】\nこの船は あなたに さしあげます！\n海の タイルを 自由に うごけますよ！");
+                        } else if (_yn2 === 1 && _ptk) {
+                            const _pm = externalMapData[_ptk];
+                            partyData.pos.map = _ptk; partyData.pos.x = Math.floor(_pm.width / 2); partyData.pos.y = Math.max(1, _pm.height - 3);
+                            currentMap = await loadExternalData('map-' + _ptk); moveHistory = []; drawMap(); updateBGM();
+                        } else { await typeMessage("またの おこしを おまちしております！"); }
+                    } else {
+                        await typeMessage("【船乗り】\nここから先は 港町ポートピアです。\nはいりますか？");
+                        const _yn = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
+                        if (_yn === 0 && _ptk) {
+                            const _pm = externalMapData[_ptk];
+                            partyData.pos.map = _ptk; partyData.pos.x = Math.floor(_pm.width / 2); partyData.pos.y = Math.max(1, _pm.height - 3);
+                            currentMap = await loadExternalData('map-' + _ptk); moveHistory = []; drawMap(); updateBGM();
+                        } else { await typeMessage("またの おこしを おまちしております！"); }
+                    }
                 }
                 else if (npc.id.includes('chest')) {
                     let _cf = `chest_${partyData.pos.map}_${tx}_${ty}`;
@@ -3353,6 +3458,12 @@ async function checkAction() {
                         partyData.pos.map = _dm; partyData.pos.x = _isT ? 7 : 9; partyData.pos.y = _isT ? 6 : 17;
                         currentMap = await loadExternalData('map-' + _dm); moveHistory = []; drawMap(); updateBGM();
                     } else { await typeMessage("またの おこしを おまちしております！"); }
+                }
+                else if (npc.id === 'npc_dharma_monk_l' || npc.id === 'npc_dharma_monk_r') {
+                    let _dm_msg = npc.id === 'npc_dharma_monk_l'
+                        ? "【修道士】\nダーマ神殿へ ようこそ。\n奥にいる 神父様に お話しください。\nきっと 新たなる 道が ひらけるでしょう。"
+                        : "【修道士】\nここは 転職の 聖地。\n2周目以降の 勇者のみが\nその 力を 試せると いいます。\n神父様に お会いしてみてください。";
+                    await typeMessage(_dm_msg);
                 }
                 else if (npc.id === 'npc_tower_sage') { await typeMessage("【塔の番人】\nここは 天空の塔の 1階。\n太古の 守護者が 頂に 眠っておる……\nその 力を 受け継ぐに ふさわしい 者のみが\n先へ 進めると いうぞ。\nご武運を！"); }
                 else if (npc.id === 'npc_sky_guard') { await typeMessage("【天空の守護者】\nよく ここまで たどりついた……\nその 眼に 本物の 意志を 感じる。\nこの 先に 天空の王が おわします。\n全力で ぶつかるがよい！"); }
