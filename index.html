@@ -922,39 +922,139 @@ function getMapRandom(x, y, mapId) { let seed = 0; let mStr = mapId || ""; for(l
 function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return mapObj.name; if (!mapId) return "フィールド"; if (mapId.includes('town_01')) return "城下町グラマニア"; if (mapId.includes('castle_01')) return "グラマニア城"; if (mapId.includes('dungeon_1f')) return "試練の洞窟 1F"; if (mapId.includes('dungeon_b1f')) return "試練の洞窟 B1F"; if (mapId.includes('dungeon_b2f')) return "試練の洞窟 B2F"; if (mapId.includes('dungeon_b3f')) return "試練の洞窟 B3F"; if (mapId.includes('tower_1f')) return "天空の塔 1F"; if (mapId.includes('tower_2f')) return "天空の塔 2F"; if (mapId.includes('tower_3f')) return "天空の塔 3F"; if (mapId.includes('demon_castle_1f')) return "魔王城 1F"; if (mapId.includes('demon_castle_2f')) return "魔王城 2F"; if (mapId.includes('demon_castle_3f')) return "魔王城 3F"; if (mapId.includes('demon_castle_4f')) return "魔王城 4F"; if (mapId.includes('shrine')) return "ほこら"; if (mapId.includes('town') || mapId.includes('village') || mapId.includes('market')) return "街・村"; if (mapId.includes('dungeon') || mapId.includes('cave')) return "ダンジョン"; if (mapId.includes('field')) return "フィールド"; return "未知の場所"; }
 function getCurrentWorldPos() { let m = partyData.pos.map; let wx = -1, wy = -1; if (m.startsWith('map_field_') && m.split('_').length >= 4) { wx = parseInt(m.split('_')[2]); wy = parseInt(m.split('_')[3]); } else if (m.includes('town') || m.includes('castle')) { wx = 2; wy = 2; } else if (m.includes('dungeon') || m.includes('cave')) { wx = 2; wy = 0; } else if (m.includes('shrine')) { wx = 2; wy = 3; } else if (m.includes('north')) { wx = 2; wy = 0; } else if (m.includes('south')) { wx = 2; wy = 4; } else if (m.includes('east')) { wx = 4; wy = 2; } else if (m.includes('west')) { wx = 0; wy = 2; } if (wx === -1 || wy === -1) { wx = 2; wy = 2; } return {x: wx, y: wy}; }
 async function showWorldMap() {
-    let pos = getCurrentWorldPos();
     const SCALE = 2, MW = 15, MG = 5;
-    const tC = t => { if(t===5)return'#1878d8'; if(t===11||t===12)return'#4caa28'; if(t===19)return'#246c10'; if(t===20)return'#8a7848'; if(t===0)return'#c8be78'; if(t===1||t===4)return'#606060'; if(t===21||t===22)return'#fff8a0'; if(t===9||t===10)return'#a06020'; return'#3a3a3a'; };
-    let cv = document.createElement('canvas'); cv.width = MW*MG*SCALE; cv.height = MW*MG*SCALE;
-    let ctx2 = cv.getContext('2d');
-    for (let gy = 0; gy < MG; gy++) for (let gx = 0; gx < MG; gx++) {
-        let m = externalMapData["map_field_"+gx+"_"+gy]; if (!m) continue;
-        for (let ty = 0; ty < MW; ty++) for (let tx = 0; tx < MW; tx++) {
-            ctx2.fillStyle = tC(m.tiles[ty*MW+tx]);
-            ctx2.fillRect((gx*MW+tx)*SCALE, (gy*MW+ty)*SCALE, SCALE, SCALE);
+    if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {};
+    // Starting castle area always visible
+    partyData.flags.visited_maps['map_field_2_2'] = true;
+    const vm = partyData.flags.visited_maps;
+
+    const tC = t => {
+        if(t===5) return '#1a5c9a';
+        if(t===11||t===12) return '#3e9a22';
+        if(t===19) return '#1e6010';
+        if(t===20) return '#7a6838';
+        if(t===0) return '#b8ae68';
+        if(t===1||t===4||t===15||t===16||t===17||t===18) return '#4a4a4a';
+        if(t===21||t===22) return '#ffe880';
+        if(t===9||t===10) return '#8a5010';
+        return '#2a2a2a';
+    };
+
+    const FOG = '#0c0e18';
+    const cv = document.createElement('canvas');
+    cv.width = MW*MG*SCALE; cv.height = MW*MG*SCALE;
+    const ctx2 = cv.getContext('2d');
+    ctx2.fillStyle = FOG; ctx2.fillRect(0,0,cv.width,cv.height);
+
+    for (let gy = 0; gy < MG; gy++) {
+        for (let gx = 0; gx < MG; gx++) {
+            const mapId = `map_field_${gx}_${gy}`;
+            const m = externalMapData[mapId];
+            if (!m) continue;
+            const visible = !!vm[mapId];
+
+            if (visible) {
+                // Draw terrain
+                for (let ty = 0; ty < MW; ty++) for (let tx = 0; tx < MW; tx++) {
+                    ctx2.fillStyle = tC(m.tiles[ty*MW+tx]);
+                    ctx2.fillRect((gx*MW+tx)*SCALE, (gy*MW+ty)*SCALE, SCALE, SCALE);
+                }
+                // Building/landmark dots at exit positions
+                if (m.exits) {
+                    for (const [ek, ed] of Object.entries(m.exits)) {
+                        if (!ed || !ed.map) continue;
+                        const [ex2, ey2] = ek.split(',').map(Number);
+                        const dm = ed.map;
+                        let dc = null;
+                        if (dm.includes('town')||dm.includes('village')||dm.includes('market')) dc='#ffe566';
+                        else if (dm.includes('castle')&&!dm.includes('demon')&&!dm.includes('death')) dc='#aaccff';
+                        else if (dm.includes('dharma')) dc='#ffd080';
+                        else if (dm.includes('shrine')) dc='#aaffcc';
+                        else if (dm.includes('tower')&&!dm.includes('demon')) dc='#88aaff';
+                        else if (dm.includes('dungeon')||dm.includes('cave')) dc='#ff9966';
+                        else if (dm.includes('demon')||dm.includes('maou')||dm.includes('death')) dc='#ff3333';
+                        if (dc) {
+                            ctx2.fillStyle = dc;
+                            const bx=(gx*MW+ex2)*SCALE-1, by=(gy*MW+ey2)*SCALE-1;
+                            ctx2.fillRect(bx,by,5,5);
+                            ctx2.fillStyle='rgba(255,255,255,0.7)';
+                            ctx2.fillRect(bx+1,by+1,2,2);
+                        }
+                    }
+                }
+            } else {
+                // Fog — draw very dark with slight border hint
+                ctx2.fillStyle = FOG;
+                ctx2.fillRect(gx*MW*SCALE, gy*MW*SCALE, MW*SCALE, MW*SCALE);
+            }
         }
     }
-    // Grid lines between maps
-    ctx2.strokeStyle = 'rgba(0,0,0,0.25)'; ctx2.lineWidth = 0.5;
-    for (let i = 1; i < MG; i++) { ctx2.beginPath(); ctx2.moveTo(i*MW*SCALE,0); ctx2.lineTo(i*MW*SCALE,MG*MW*SCALE); ctx2.stroke(); ctx2.beginPath(); ctx2.moveTo(0,i*MW*SCALE); ctx2.lineTo(MG*MW*SCALE,i*MW*SCALE); ctx2.stroke(); }
-    // Player dot
-    let pMapId = partyData.pos.map;
-    if (pMapId && pMapId.startsWith('map_field_')) {
-        let parts = pMapId.split('_');
-        if (parts.length >= 4) {
-            let pgx = parseInt(parts[2]), pgy = parseInt(parts[3]);
-            let ppx = (pgx*MW + partyData.pos.x)*SCALE, ppy = (pgy*MW + partyData.pos.y)*SCALE;
-            ctx2.fillStyle = '#ff2222'; ctx2.fillRect(ppx-1, ppy-1, 4, 4);
-            ctx2.fillStyle = '#ffffff'; ctx2.fillRect(ppx, ppy, 2, 2);
-        }
+
+    // Grid lines (subtle)
+    ctx2.strokeStyle = 'rgba(60,80,120,0.35)'; ctx2.lineWidth = 0.5;
+    for (let i = 1; i < MG; i++) {
+        ctx2.beginPath(); ctx2.moveTo(i*MW*SCALE,0); ctx2.lineTo(i*MW*SCALE,MG*MW*SCALE); ctx2.stroke();
+        ctx2.beginPath(); ctx2.moveTo(0,i*MW*SCALE); ctx2.lineTo(MG*MW*SCALE,i*MW*SCALE); ctx2.stroke();
     }
-    let imgSrc = cv.toDataURL();
-    const regionNames = [{gx:2,gy:2,name:"グラマニア"},{gx:2,gy:0,name:"北の島"},{gx:4,gy:0,name:"天空の塔"},{gx:4,gy:4,name:"魔王の島"},{gx:0,gy:4,name:"鍛冶の森"},{gx:2,gy:4,name:"砂漠の島"},{gx:2,gy:3,name:"ほこら"}];
-    let rHtml = regionNames.map(r => `<div style="display:inline-block;background:rgba(0,0,0,0.5);color:#fff;font-size:9px;padding:1px 3px;margin:1px;border-radius:2px;">${r.name}</div>`).join('');
-    let html = `<div style="font-size:18px;border-bottom:1px solid #fff;margin-bottom:8px;padding-bottom:5px;text-align:center;">せかいちず</div>`;
-    html += `<div style="text-align:center;"><img src="${imgSrc}" style="image-rendering:pixelated;image-rendering:crisp-edges;width:150px;height:150px;border:2px solid #fff;display:block;margin:0 auto;"/></div>`;
-    html += `<div style="margin-top:6px;text-align:center;line-height:1.4;">${rHtml}</div>`;
-    html += `<div style="margin-top:10px;text-align:right;font-size:14px;" class="blink">▼とじる</div>`;
+
+    // Current position dot
+    const pMapId = partyData.pos.map;
+    let pgx = -1, pgy = -1, ppx = -1, ppy = -1;
+    if (pMapId && /^map_field_(\d)_(\d)$/.test(pMapId)) {
+        const parts = pMapId.split('_');
+        pgx = parseInt(parts[2]); pgy = parseInt(parts[3]);
+    } else {
+        // Non-field map: approximate from getCurrentWorldPos
+        const wp = getCurrentWorldPos(); pgx = wp.x; pgy = wp.y;
+    }
+    if (pgx >= 0 && pgy >= 0 && vm[`map_field_${pgx}_${pgy}`]) {
+        const _px = pMapId && /^map_field_/.test(pMapId) ? partyData.pos.x : MW/2;
+        const _py = pMapId && /^map_field_/.test(pMapId) ? partyData.pos.y : MW/2;
+        ppx = (pgx*MW+_px)*SCALE; ppy = (pgy*MW+_py)*SCALE;
+        // Pulsing dot
+        ctx2.fillStyle = '#ff2222'; ctx2.fillRect(ppx-2,ppy-2,6,6);
+        ctx2.fillStyle = '#ff8888'; ctx2.fillRect(ppx-1,ppy-1,4,4);
+        ctx2.fillStyle = '#ffffff'; ctx2.fillRect(ppx,ppy,2,2);
+    }
+
+    const imgSrc = cv.toDataURL();
+
+    // Legend
+    const legendItems = [
+        { color:'#ffe566', label:'町・村' },
+        { color:'#aaccff', label:'城' },
+        { color:'#ff9966', label:'洞窟' },
+        { color:'#88aaff', label:'塔' },
+        { color:'#aaffcc', label:'神殿/祠' },
+        { color:'#ff3333', label:'魔王城' },
+    ];
+    const lgHtml = legendItems.map(l =>
+        `<span style="display:inline-flex;align-items:center;gap:3px;margin:2px 4px;font-size:9px;">` +
+        `<span style="width:8px;height:8px;background:${l.color};border:1px solid rgba(255,255,255,0.4);display:inline-block;"></span>${l.label}</span>`
+    ).join('');
+
+    // Region names (visited only)
+    const regionDefs = [
+        {gx:2,gy:2,name:"グラマニア"},{gx:2,gy:0,name:"北の島"},
+        {gx:4,gy:0,name:"天空の塔"},{gx:4,gy:4,name:"魔王の島"},
+        {gx:0,gy:4,name:"鍛冶の森"},{gx:2,gy:4,name:"砂漠の島"},
+        {gx:2,gy:3,name:"ほこら"},{gx:0,gy:2,name:"西の大地"},
+        {gx:4,gy:2,name:"東の大地"}
+    ];
+    const visitedRegions = regionDefs.filter(r => vm[`map_field_${r.gx}_${r.gy}`]);
+    const unknownCount = MG*MG - Object.keys(vm).filter(k => k.startsWith('map_field_')).length;
+    const rHtml = visitedRegions.map(r =>
+        `<span style="display:inline-block;background:rgba(20,40,80,0.75);color:#cce4ff;font-size:9px;padding:1px 4px;margin:1px;border-radius:2px;border:1px solid rgba(100,160,255,0.3);">${r.name}</span>`
+    ).join('');
+
+    let html = `<div style="font-size:15px;border-bottom:1px solid #446;margin-bottom:6px;padding-bottom:4px;text-align:center;letter-spacing:2px;color:#cce4ff;">せ か い ち ず</div>`;
+    html += `<div style="text-align:center;">` +
+            `<img src="${imgSrc}" style="image-rendering:pixelated;image-rendering:crisp-edges;width:160px;height:160px;border:2px solid #446;display:block;margin:0 auto;"/>` +
+            `</div>`;
+    if (rHtml) html += `<div style="margin-top:5px;text-align:center;line-height:1.6;">${rHtml}</div>`;
+    if (unknownCount > 0) html += `<div style="margin-top:3px;text-align:center;color:#556;font-size:9px;">未探索エリア: ${unknownCount}マップ</div>`;
+    html += `<div style="margin-top:5px;text-align:center;line-height:1.8;">${lgHtml}</div>`;
+    html += `<div style="margin-top:6px;text-align:right;font-size:13px;" class="blink">▼とじる</div>`;
     document.getElementById('status-window').innerHTML = html;
     showWindow('status-window');
     await new Promise(resolve => { inputCallback = (key) => { if(key==='Enter'||key==='Escape'||key===' ') { AudioManager.playSE('decision'); inputCallback=null; resolve(); } }; });
@@ -2838,7 +2938,8 @@ async function moveParty(dx, dy) {
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
     _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
     partyData.pos.x = nx; partyData.pos.y = ny;
-    
+    if (_onField) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[partyData.pos.map] = true; }
+
     onStep();
 
     if (tile === 6 || tile === 7) { 
@@ -2857,6 +2958,7 @@ async function moveParty(dx, dy) {
         const exit = currentMap.exits[key]; if (!exit.map.startsWith('map_field_')) AudioManager.playSE('stair'); let nextMapId = 'map-' + exit.map; let nextMap = await loadExternalData(nextMapId);
         if (nextMap) {
             currentMap = nextMap; partyData.pos.map = exit.map;
+            if (/^map_field_/.test(exit.map)) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[exit.map] = true; }
             let _lx = exit.x, _ly = exit.y;
             const _solid = exit.map && /^map_field_/.test(exit.map) ? [1, 2, 4, 5, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
             const _isBlocked = (x, y) => {
@@ -4258,7 +4360,7 @@ async function showTitleScreen() {
             return;
         }
         else if(choiceStr === 'ぼうけんのしょ') {
-            if(s) { partyData = JSON.parse(s); partyData.members.forEach(m => { if (!m.equipment.shield) m.equipment.shield = null; if (!m.equipment.helmet) m.equipment.helmet = null; if (!m.equipment.accessory) m.equipment.accessory = null; }); applyGrowthDataToParty(false); break; } 
+            if(s) { partyData = JSON.parse(s); partyData.members.forEach(m => { if (!m.equipment.shield) m.equipment.shield = null; if (!m.equipment.helmet) m.equipment.helmet = null; if (!m.equipment.accessory) m.equipment.accessory = null; }); if (!partyData.flags) partyData.flags = {}; if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps['map_field_2_2'] = true; applyGrowthDataToParty(false); break; }
             else { await showCustomDialog('alert', "ぼうけんのしょ が ありません。"); }
         }
         else if(choiceStr === 'つづきから（2周目）') { let parsed = JSON.parse(s); await startSecondLoop(parsed); break; }
