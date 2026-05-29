@@ -342,11 +342,10 @@ window.MONSTER_DATABASE = [
         ];
 </script>
 <script>
-// 外部CDNで上書きされる想定。未定義エラー防止用ダミー
-const HERO_URLS = {front:'',back:'',side:''};
-const WARRIOR_URLS = {front:'',back:'',side:''};
-const MAGE_URLS = {front:'',back:'',side:''};
-const PRIEST_URLS = {front:'',back:'',side:''};
+const HERO_URLS = { front: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/c339330293f7d98e737dac107f05eac6_1775665954602201400.png", back: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/c339330293f7d98e737dac107f05eac6_1775666009496007139.png", side: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/d49b98edb594eaa293d6ce9628e1c332_1775666461124113914.png" };
+const WARRIOR_URLS = { front: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/54e4a3227c6af60f12dedec6018863d3_1775667958728355582.png", back: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/c2c725d258d40b85f06509ceccc1d666_1775668139631641155.png", side: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/a1d7cc082ef5d61ac3d6a0321731291a_1775667958736945750.png" };
+const MAGE_URLS = { front: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/74ce93baedcea500a4ab7705848f2abb_1775668943412454322.png", back: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/74ce93baedcea500a4ab7705848f2abb_1775668615416541651.png", side: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/74ce93baedcea500a4ab7705848f2abb_1775668812009803360.png" };
+const PRIEST_URLS = { front: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/3f0915bb9f5a66748a21427ac4f06bb3_1775689439661415449.png", back: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/3f0915bb9f5a66748a21427ac4f06bb3_1775689331385960357.png", side: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/3f0915bb9f5a66748a21427ac4f06bb3_1775669466635517582.png" };
 const characterData = [
             // 既存キャラクター
             { id: "hero", defaultName: "アルス", job: "勇者", gender: "男", sprites: { up: HERO_URLS.back, down: HERO_URLS.front, left: HERO_URLS.side, right: HERO_URLS.side }, baseFacing: "left", weapons: "剣、盾など", growth: [] },
