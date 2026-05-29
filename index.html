@@ -1121,18 +1121,19 @@ async function playSpellEffect(spellData, targetObj) {
             if (_cnt > 0) { tcx = _sx/_cnt; tcy = _sy/_cnt; }
         }
     }
-    const dur = [700, 900, 1100, 1400][tier - 1];
-    const N = [18, 30, 50, 75][tier - 1];
+    const dur = [900, 1200, 1550, 2000][tier - 1];
+    const N = [40, 70, 110, 160][tier - 1];
 
-    // Screen shake for powerful spells
-    if (tier >= 3 && (etype === 'explosion' || etype === 'lightning' || etype === 'fire' || etype === 'dark')) {
-        let sk = 0, maxSk = tier === 4 ? 8 : 5;
-        const gcEl = gc;
+    // Screen shake — tier2+ for all attack types
+    const _atkTypes = ['fire','ice','lightning','wind','explosion','dark','generic'];
+    if (tier >= 2 && _atkTypes.includes(etype)) {
+        const _maxSk = [0,0,6,12,18][tier], _mx = [0,0,6,12,18][tier], _my = [0,0,4,8,13][tier];
+        let _sk = 0;
         const iv = setInterval(() => {
-            sk++;
-            gcEl.style.transform = sk % 2 === 0 ? `translate(${(Math.random()-0.5)*8}px,${(Math.random()-0.5)*5}px)` : 'none';
-            if (sk >= maxSk) { clearInterval(iv); gcEl.style.transform = 'none'; }
-        }, 60);
+            _sk++;
+            gc.style.transform = _sk % 2 === 0 ? `translate(${(Math.random()-0.5)*_mx}px,${(Math.random()-0.5)*_my}px)` : 'none';
+            if (_sk >= _maxSk) { clearInterval(iv); gc.style.transform = 'none'; }
+        }, 50);
     }
 
     // Deterministic per-particle RNG (stable across frames)
@@ -1149,76 +1150,98 @@ async function playSpellEffect(spellData, targetObj) {
     const clearGlow = () => { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; };
     const rg = (cx,cy,r,c1,c2) => { const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r); g.addColorStop(0,c1); g.addColorStop(1,c2); return g; };
     const lg = (x1,y1,x2,y2,c1,c2) => { const g=ctx.createLinearGradient(x1,y1,x2,y2); g.addColorStop(0,c1); g.addColorStop(1,c2); return g; };
+    // Universal: bright impact flash at start + expanding shockwave ring
+    const drawImpact = (t, flashColor, ringColor) => {
+        const fa = Math.max(0, 0.85*(1-t/0.14)); if(fa>0){ctx.globalAlpha=fa;ctx.fillStyle=flashColor;ctx.fillRect(0,0,W,H);}
+        for(let ri=0;ri<(tier>=3?3:tier>=2?2:1);ri++){const rp=Math.max(0,t-ri*0.12);if(rp<=0)continue;const r=rp*(90+tier*55);const ra=Math.max(0,(1-rp)*0.85);ctx.globalAlpha=ra;ctx.strokeStyle=ringColor;ctx.lineWidth=Math.max(0.5,4-ri-rp*3+tier*0.5);ctx.beginPath();ctx.arc(tcx,tcy,r,0,Math.PI*2);ctx.stroke();}
+        ctx.globalAlpha=1;
+    };
 
     const drawFire = (t) => {
+        drawImpact(t, 'rgba(255,80,0,0.7)', 'rgba(255,160,0,0.9)');
         for (const p of parts) {
             const pt = Math.max(0, (t - p.phase) / (1 - p.phase));
             if (pt <= 0) continue;
-            const spd = 80 + p.spd * (80 + tier * 50);
-            const lx = tcx + Math.cos(p.angle)*spd*pt*0.4 + p.wobble*18*pt;
-            const ly = tcy - spd*pt*0.85 + 200*pt*pt*(0.3+p.spd*0.4);
-            const sz = (4+p.size*8*tier*0.3) * Math.max(0,1-pt*0.9);
-            const alpha = pt < 0.25 ? pt/0.25 : Math.max(0,1-(pt-0.25)/0.75);
+            const spd = 100 + p.spd * (100 + tier * 65);
+            const lx = tcx + Math.cos(p.angle)*spd*pt*0.45 + p.wobble*22*pt;
+            const ly = tcy - spd*pt*0.9 + 220*pt*pt*(0.3+p.spd*0.4);
+            const sz = (6+p.size*10*tier*0.35) * Math.max(0,1-pt*0.88);
+            const alpha = pt < 0.2 ? pt/0.2 : Math.max(0,1-(pt-0.2)/0.8);
             if (sz<=0||alpha<=0) continue;
             ctx.globalAlpha = alpha;
+            ctx.shadowColor = `hsl(${15+p.hue*30},100%,60%)`; ctx.shadowBlur = sz*1.5;
             ctx.fillStyle = rg(lx,ly,sz,'#ffffff',`hsla(${15+p.hue*30},100%,50%,0)`);
             ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
         }
-        // Core fireball
-        const ct = Math.min(1,t*3);
-        const coreR = (15+tier*25)*(ct<0.5?ct*2:Math.max(0,2-ct*2));
+        clearGlow();
+        // Core fireball — bigger
+        const ct = Math.min(1,t*2.5);
+        const coreR = (22+tier*32)*(ct<0.5?ct*2:Math.max(0,2-ct*2));
         if (coreR>0) {
-            ctx.globalAlpha = 0.9;
-            ctx.fillStyle = rg(tcx,tcy,coreR*1.5,'#ffffff','rgba(255,100,0,0)');
-            ctx.fillRect(tcx-coreR*1.5,tcy-coreR*1.5,coreR*3,coreR*3);
+            ctx.globalAlpha = 0.95;
+            ctx.shadowColor='#ff8800'; ctx.shadowBlur=coreR*1.2;
+            ctx.fillStyle = rg(tcx,tcy,coreR*1.8,'#ffffff','rgba(255,60,0,0)');
+            ctx.beginPath(); ctx.arc(tcx,tcy,coreR*1.8,0,Math.PI*2); ctx.fill();
+            clearGlow();
         }
-        // Fire pillar (tier3+)
-        if (tier>=3 && t<0.75) {
-            const ph = (0.75-t)/0.75*(100+tier*80), pw = 10+tier*8;
-            ctx.globalAlpha = (0.75-t)/0.75*0.7;
-            ctx.fillStyle = lg(tcx,tcy,tcx,tcy-ph,'rgba(255,200,0,0.9)','rgba(255,50,0,0)');
-            ctx.fillRect(tcx-pw/2,tcy-ph,pw,ph);
-            ctx.globalAlpha = (0.75-t)/0.75*0.35;
-            for (let s=-1;s<=1;s+=2) { ctx.fillStyle=lg(tcx,tcy,tcx,tcy-ph*0.7,'rgba(255,120,0,0.6)','transparent'); ctx.fillRect(tcx-pw/2+s*pw*0.8,tcy-ph*0.7,pw*0.6,ph*0.7); }
+        // Fire pillar (tier2+)
+        if (tier>=2 && t<0.8) {
+            const pilarN = tier-1;
+            for(let pi=0;pi<pilarN;pi++){
+                const pOff=(pi-(pilarN-1)/2)*(18+tier*6);
+                const ph = (0.8-t)/0.8*(130+tier*90), pw = 14+tier*10+Math.abs(pOff)*0.3;
+                ctx.globalAlpha = (0.8-t)/0.8*0.75;
+                ctx.fillStyle = lg(tcx+pOff,tcy,tcx+pOff,tcy-ph,'rgba(255,220,0,0.95)','rgba(255,30,0,0)');
+                ctx.fillRect(tcx+pOff-pw/2,tcy-ph,pw,ph);
+            }
         }
-        const stA = Math.max(0,0.3*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#ff2200';ctx.fillRect(0,0,W,H);}
+        // Ember sparks
+        if(tier>=2){for(let i=0;i<tier*4;i++){const p2=parts[(i*3)%N],pt2=Math.max(0,(t-0.05-p2.phase*0.5)/(0.95-p2.phase*0.5));if(pt2<=0||pt2>=1)continue;const ex=tcx+(Math.cos(p2.angle)*1.8+p2.wobble*0.5)*(80+tier*30)*pt2;const ey=tcy-pt2*(120+tier*40)+240*pt2*pt2;ctx.globalAlpha=Math.max(0,1-pt2*1.3)*0.7;ctx.fillStyle=`hsl(${20+p2.hue*50},100%,70%)`;ctx.beginPath();ctx.arc(ex,ey,1.5+p2.size*2,0,Math.PI*2);ctx.fill();}}
+        const stA = Math.max(0,0.5*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(255,40,0,0.4)';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
 
     const drawIce = (t) => {
+        drawImpact(t, 'rgba(100,220,255,0.65)', 'rgba(180,240,255,0.9)');
         for (const p of parts) {
             const pt = Math.max(0,(t-p.phase)/(1-p.phase));
             if (pt<=0) continue;
-            const spd = 60+p.spd*(60+tier*40);
+            const spd = 80+p.spd*(85+tier*55);
             const lx = tcx+Math.cos(p.angle)*spd*pt, ly = tcy+Math.sin(p.angle)*spd*pt;
-            const sz = (3+p.size*6)*Math.max(0,1-pt*0.6);
+            const sz = (4+p.size*9)*Math.max(0,1-pt*0.55);
             const alpha = pt<0.2?pt/0.2:Math.max(0,1-(pt-0.2)/0.8);
             if (sz<=0||alpha<=0) continue;
-            ctx.globalAlpha = alpha*0.9;
-            ctx.save(); ctx.translate(lx,ly); ctx.rotate(p.angle+pt*Math.PI*1.5);
-            ctx.fillStyle = `hsl(${195+p.hue*25},${60+p.size*40}%,${65+p.hue*20}%)`;
-            ctx.beginPath(); ctx.moveTo(0,-sz); ctx.lineTo(sz*0.5,0); ctx.lineTo(0,sz*1.5); ctx.lineTo(-sz*0.5,0); ctx.closePath(); ctx.fill();
-            ctx.restore();
+            ctx.globalAlpha = alpha*0.95;
+            ctx.shadowColor='#aaeeff'; ctx.shadowBlur=sz*2.5;
+            ctx.save(); ctx.translate(lx,ly); ctx.rotate(p.angle+pt*Math.PI*2);
+            ctx.fillStyle = `hsl(${190+p.hue*30},${70+p.size*30}%,${72+p.hue*18}%)`;
+            ctx.beginPath(); ctx.moveTo(0,-sz); ctx.lineTo(sz*0.55,0); ctx.lineTo(0,sz*1.6); ctx.lineTo(-sz*0.55,0); ctx.closePath(); ctx.fill();
+            ctx.restore(); clearGlow();
         }
-        // Frost rings
-        for (let ri=0; ri<(tier>=3?3:tier>=2?2:1); ri++) {
-            const rp = Math.max(0,t-ri*0.15); if (rp<=0) continue;
-            const r = rp*(70+tier*35), ra = Math.max(0,(1-rp)*0.7);
-            ctx.globalAlpha=ra; ctx.strokeStyle=`rgba(160,220,255,${ra})`; ctx.lineWidth=2+tier-ri;
-            ctx.beginPath(); ctx.arc(tcx,tcy,r,0,Math.PI*2); ctx.stroke();
+        // Frost rings — dense
+        const _ringN=tier>=3?6:tier>=2?4:2;
+        for (let ri=0;ri<_ringN;ri++) {
+            const rp=Math.max(0,t-ri*0.09); if(rp<=0)continue;
+            const r=rp*(90+tier*45), ra=Math.max(0,(1-rp)*0.85);
+            ctx.globalAlpha=ra; ctx.strokeStyle=`rgba(190,240,255,${ra})`; ctx.lineWidth=3+tier*0.5-ri*0.4;
+            ctx.shadowColor='#88ddff'; ctx.shadowBlur=10;
+            ctx.beginPath(); ctx.arc(tcx,tcy,r,0,Math.PI*2); ctx.stroke(); clearGlow();
         }
-        // Snowflake crystal
-        if (t<0.45) {
-            const ft=1-t/0.45, fSz=(20+tier*15)*ft;
-            ctx.globalAlpha=ft*0.9; ctx.strokeStyle='#c8eeff'; ctx.lineWidth=1.5;
+        // Large glowing snowflake
+        if (t<0.55) {
+            const ft=1-t/0.55, fSz=(35+tier*28)*ft;
+            ctx.globalAlpha=ft*0.95; ctx.strokeStyle='#e8f8ff'; ctx.lineWidth=2.5;
+            ctx.shadowColor='#66ccff'; ctx.shadowBlur=14;
             for (let a=0;a<6;a++) {
                 const ag=a*Math.PI/3;
                 ctx.beginPath(); ctx.moveTo(tcx,tcy); ctx.lineTo(tcx+Math.cos(ag)*fSz,tcy+Math.sin(ag)*fSz); ctx.stroke();
                 const bx=tcx+Math.cos(ag)*fSz*0.6, by=tcy+Math.sin(ag)*fSz*0.6;
-                for (let b=-1;b<=1;b+=2){ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+Math.cos(ag+b*Math.PI/3)*fSz*0.3,by+Math.sin(ag+b*Math.PI/3)*fSz*0.3);ctx.stroke();}
+                for (let b=-1;b<=1;b+=2){ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+Math.cos(ag+b*Math.PI/3)*fSz*0.42,by+Math.sin(ag+b*Math.PI/3)*fSz*0.42);ctx.stroke();}
             }
+            clearGlow();
         }
-        const stA=Math.max(0,0.22*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#88ddff';ctx.fillRect(0,0,W,H);}
+        const cg=(18+tier*22)*Math.max(0,1-t*2);if(cg>0){ctx.globalAlpha=0.75;ctx.fillStyle=rg(tcx,tcy,cg,'#ffffff','rgba(80,200,255,0)');ctx.beginPath();ctx.arc(tcx,tcy,cg,0,Math.PI*2);ctx.fill();}
+        const stA=Math.max(0,0.5*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(80,190,255,0.3)';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
 
@@ -1237,18 +1260,27 @@ async function playSpellEffect(spellData, targetObj) {
     };
 
     const drawLightning = (t) => {
-        const flashes = tier>=3?6:tier>=2?4:2;
+        drawImpact(t, 'rgba(240,240,120,0.8)', 'rgba(180,180,255,0.95)');
+        const flashes = tier>=3?8:tier>=2?5:3;
         const cycleT = (t*flashes)%1;
-        if (cycleT<0.55) {
-            const fa=Math.sin(cycleT/0.55*Math.PI)*0.9;
-            for (let b=0;b<1+tier;b++) {
-                const sx=W*(0.15+b*0.7/(1+tier))+(Math.random()-0.5)*40;
-                const sy=isEnemy?0:H*0.5;
-                _drawBolt(sx,sy,tcx+(Math.random()-0.5)*30,tcy,20+tier*12,4,fa);
+        if (cycleT<0.6) {
+            const fa=Math.sin(cycleT/0.6*Math.PI);
+            const boltN=2+tier*2;
+            for (let b=0;b<boltN;b++) {
+                const sx=W*(0.05+b*0.9/boltN)+(Math.random()-0.5)*50;
+                const sy=isEnemy?-10:H*0.55;
+                const spread=(Math.random()-0.5)*50;
+                _drawBolt(sx,sy,tcx+spread,tcy+(Math.random()-0.5)*25,25+tier*14,4+tier,fa);
             }
-            ctx.globalAlpha=fa*0.9; ctx.fillStyle='#ffffaa';
-            for (let i=0;i<6+tier*4;i++){const sa=i/(6+tier*4)*Math.PI*2+Math.random()*0.5,sr=15+Math.random()*(30+tier*15);ctx.fillRect(tcx+Math.cos(sa)*sr-1,tcy+Math.sin(sa)*sr-1,2,2);}
-            ctx.globalAlpha=fa*(0.1+tier*0.06); ctx.fillStyle='#ffffd0'; ctx.fillRect(0,0,W,H);
+            // Electric sparks radiating from target
+            ctx.globalAlpha=fa; ctx.fillStyle='#ffffcc';
+            for (let i=0;i<10+tier*6;i++){const sa=i/(10+tier*6)*Math.PI*2+Math.random(),sr=10+Math.random()*(40+tier*18);ctx.beginPath();ctx.arc(tcx+Math.cos(sa)*sr,tcy+Math.sin(sa)*sr,1+Math.random()*2,0,Math.PI*2);ctx.fill();}
+            // Impact glow at target
+            ctx.globalAlpha=fa*0.6;
+            ctx.fillStyle=rg(tcx,tcy,25+tier*15,'rgba(255,255,200,0.9)','transparent');
+            ctx.beginPath(); ctx.arc(tcx,tcy,25+tier*15,0,Math.PI*2); ctx.fill();
+            // Screen fill — stronger
+            ctx.globalAlpha=fa*(0.18+tier*0.1); ctx.fillStyle='#ffffcc'; ctx.fillRect(0,0,W,H);
         }
         ctx.globalAlpha=1;
     };
@@ -1322,41 +1354,63 @@ async function playSpellEffect(spellData, targetObj) {
     };
 
     const drawExplosion = (t) => {
-        for (let ri=0;ri<tier;ri++) {
-            const rp=Math.max(0,t-ri*0.12); if(rp<=0) continue;
-            const r=rp*(80+tier*45), alpha=Math.max(0,1-rp*1.3);
-            ctx.globalAlpha=alpha; ctx.strokeStyle=`hsl(${25+ri*20},100%,${55+ri*10}%)`;
-            ctx.lineWidth=Math.max(0.5,4-ri-rp*3); ctx.beginPath(); ctx.arc(tcx,tcy,r,0,Math.PI*2); ctx.stroke();
+        // Bright initial flash
+        if(t<0.18){ctx.globalAlpha=(0.18-t)/0.18*0.95;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);}
+        // Multiple expanding rings
+        const ringN=Math.min(tier+2,5);
+        for (let ri=0;ri<ringN;ri++) {
+            const rp=Math.max(0,t-ri*0.09); if(rp<=0) continue;
+            const r=rp*(100+tier*55), alpha=Math.max(0,1-rp*1.1);
+            ctx.globalAlpha=alpha;
+            ctx.shadowColor=`hsl(${20+ri*18},100%,60%)`; ctx.shadowBlur=12;
+            ctx.strokeStyle=`hsl(${20+ri*18},100%,${60+ri*8}%)`;
+            ctx.lineWidth=Math.max(0.5,5-ri*0.7-rp*2.5+tier*0.4);
+            ctx.beginPath(); ctx.arc(tcx,tcy,r,0,Math.PI*2); ctx.stroke(); clearGlow();
         }
         for (const p of parts) {
             const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0) continue;
-            const spd=50+p.spd*(100+tier*40);
-            const lx=tcx+Math.cos(p.angle)*spd*pt, ly=tcy+Math.sin(p.angle)*spd*pt+180*pt*pt;
-            const sz=(2+p.size*4)*Math.max(0,1-pt*0.8);
-            ctx.globalAlpha=Math.max(0,1-pt);
-            ctx.fillStyle=`hsl(${p.hue*80},100%,${55+p.hue*25}%)`; ctx.fillRect(lx-sz/2,ly-sz/2,sz,sz);
+            const spd=70+p.spd*(130+tier*55);
+            const lx=tcx+Math.cos(p.angle)*spd*pt, ly=tcy+Math.sin(p.angle)*spd*pt+220*pt*pt;
+            const sz=(3+p.size*6)*Math.max(0,1-pt*0.75);
+            ctx.globalAlpha=Math.max(0,1-pt*0.85);
+            ctx.shadowColor=`hsl(${p.hue*80+20},100%,65%)`; ctx.shadowBlur=sz*2;
+            ctx.fillStyle=`hsl(${p.hue*80+20},100%,${60+p.hue*22}%)`;
+            ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
         }
-        if (t<0.2){ctx.globalAlpha=(0.2-t)/0.2*0.8;const r=(0.2-t)/0.2*(60+tier*40);ctx.fillStyle=rg(tcx,tcy,r,'#ffffff','transparent');ctx.fillRect(tcx-r,tcy-r,r*2,r*2);}
-        if (t<0.12){ctx.globalAlpha=(0.12-t)/0.12*0.65;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);}
-        else{const stA=Math.max(0,0.3*(1-t*2));if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#ff6600';ctx.fillRect(0,0,W,H);}}
+        clearGlow();
+        // Central flash glow
+        if(t<0.25){ctx.globalAlpha=(0.25-t)/0.25*0.85;const cr=(0.25-t)/0.25*(75+tier*50);ctx.fillStyle=rg(tcx,tcy,cr,'rgba(255,255,200,0.95)','transparent');ctx.beginPath();ctx.arc(tcx,tcy,cr,0,Math.PI*2);ctx.fill();}
+        const stA=Math.max(0,0.5*(1-t*1.8));if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(255,80,0,0.35)';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
 
     const drawDark = (t) => {
+        // Dark screen at start
+        if(t<0.2){ctx.globalAlpha=(0.2-t)/0.2*0.85;ctx.fillStyle='#000000';ctx.fillRect(0,0,W,H);}
+        // Purple flash after dark
+        if(t>=0.15&&t<0.35){ctx.globalAlpha=(t-0.15)/0.2*0.7;ctx.fillStyle='rgba(80,0,160,0.5)';ctx.fillRect(0,0,W,H);}
         for (const p of parts) {
             const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0||pt>=1) continue;
-            const startR=80+p.spd*(60+tier*30);
-            const angle=p.angle+t*Math.PI*(2.5+tier*0.5);
-            const curR=startR*(1-Math.min(1,t*1.3)*0.85);
+            const startR=100+p.spd*(80+tier*40);
+            const angle=p.angle+t*Math.PI*(3+tier*0.7);
+            const curR=startR*(1-Math.min(1,t*1.2)*0.88);
             const lx=tcx+Math.cos(angle)*curR, ly=tcy+Math.sin(angle)*curR*0.7;
-            const sz=(2+p.size*3)*Math.max(0,t<0.7?1:(1-t)*3.3);
-            const alpha=Math.max(0,(t<0.7?Math.min(1,t*2):(1-t)*3.3)*0.85);
+            const sz=(3+p.size*5)*Math.max(0,t<0.7?1:(1-t)*3.3);
+            const alpha=Math.max(0,(t<0.7?Math.min(1,t*2.5):(1-t)*3.3)*0.9);
             ctx.globalAlpha=alpha;
-            ctx.fillStyle=`hsl(${270+p.hue*60},${60+p.hue*30}%,${20+p.size*30}%)`; ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
+            ctx.shadowColor=`hsl(${280+p.hue*40},100%,50%)`; ctx.shadowBlur=sz*2;
+            ctx.fillStyle=`hsl(${270+p.hue*60},${70+p.hue*30}%,${25+p.size*35}%)`;
+            ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
         }
-        if (t>0.2){const vt=(t-0.2)/0.8,r=vt*(35+tier*18);ctx.globalAlpha=Math.min(1,vt*1.5)*0.75;ctx.fillStyle=rg(tcx,tcy,r,'#000000','rgba(80,0,120,0)');ctx.fillRect(tcx-r,tcy-r,r*2,r*2);}
-        if (tier>=2){const tc2=2+tier;for(let i=0;i<tc2;i++){const ag=(i/tc2)*Math.PI*2+t*Math.PI,len=(40+tier*20)*Math.min(1,t*2)*Math.max(0,1-t);ctx.globalAlpha=Math.min(1,t*2)*Math.max(0,1-t)*0.6;ctx.strokeStyle='rgba(160,0,200,0.7)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(tcx,tcy);ctx.lineTo(tcx+Math.cos(ag)*len,tcy+Math.sin(ag)*len*0.7);ctx.stroke();}}
-        const stA=Math.max(0,0.22*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#110022';ctx.fillRect(0,0,W,H);}
+        clearGlow();
+        // Void black hole at center — grows then collapses
+        const vr=(t<0.5?t*2:Math.max(0,(1-t)*2))*(40+tier*25);
+        if(vr>0){ctx.globalAlpha=0.9;ctx.fillStyle=rg(tcx,tcy,vr,'#000000','rgba(60,0,100,0)');ctx.beginPath();ctx.arc(tcx,tcy,vr,0,Math.PI*2);ctx.fill();}
+        // Dark tendrils (all tiers)
+        const tc2=3+tier*2;
+        for(let i=0;i<tc2;i++){const ag=(i/tc2)*Math.PI*2+t*Math.PI*1.5,len=(50+tier*30)*Math.min(1,t*2.5)*Math.max(0,1-t);if(len<=0)continue;ctx.globalAlpha=Math.min(1,t*2.5)*Math.max(0,1-t)*0.75;ctx.strokeStyle=`rgba(180,0,255,0.8)`;ctx.lineWidth=2+tier*0.5;ctx.shadowColor='#8800ff';ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(tcx,tcy);ctx.lineTo(tcx+Math.cos(ag)*len,tcy+Math.sin(ag)*len*0.7);ctx.stroke();}
+        clearGlow();
+        const stA=Math.max(0,0.5*(1-t*1.8)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(10,0,25,0.5)';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
 
@@ -3546,6 +3600,8 @@ async function checkAction() {
                         partyData.flags['def_' + partyData.pos.map + '_' + key] = true;
                         delete currentMap.npcs[key];
                         partyData.flags.shrine_healed = false;
+                        if (npc.id === 'boss_dungeon') partyData.flags.flag_dungeon_cleared = true;
+                        else if (npc.id === 'boss_sky') partyData.flags.flag_tower_cleared = true;
                         if (_isFinal) {
                             await typeMessage(`【${_bn}】\nあ……ありえぬ……！！\nわれが……人間ごときに……！！`);
                             AudioManager.playBGM('victory');
