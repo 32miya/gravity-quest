@@ -342,6 +342,11 @@ window.MONSTER_DATABASE = [
         ];
 </script>
 <script>
+// 外部CDNで上書きされる想定。未定義エラー防止用ダミー
+const HERO_URLS = {front:'',back:'',side:''};
+const WARRIOR_URLS = {front:'',back:'',side:''};
+const MAGE_URLS = {front:'',back:'',side:''};
+const PRIEST_URLS = {front:'',back:'',side:''};
 const characterData = [
             // 既存キャラクター
             { id: "hero", defaultName: "アルス", job: "勇者", gender: "男", sprites: { up: HERO_URLS.back, down: HERO_URLS.front, left: HERO_URLS.side, right: HERO_URLS.side }, baseFacing: "left", weapons: "剣、盾など", growth: [] },
@@ -1361,10 +1366,10 @@ async function loadExternalGrowthDatabase(url) {
                 ext.characterData.forEach(char => { 
                     masterData.growth[char.job] = char.growth; 
                     if (char.sprites) {
-                        const loadImg = (src) => { let img = new Image(); img.crossOrigin = "Anonymous"; img.src = src; return img; };
-                        externalImages['sprite_' + char.id + '_down'] = loadImg(char.sprites.down);
-                        externalImages['sprite_' + char.id + '_up'] = loadImg(char.sprites.up);
-                        externalImages['sprite_' + char.id + '_left'] = loadImg(char.sprites.left);
+                        const loadImg = (src) => { if (!src) return null; let img = new Image(); img.src = src; img.onload = () => { if (state === 'FIELD' || state === 'MSG') drawMap(); }; return img; };
+                        const _imgD = loadImg(char.sprites.down); if (_imgD) externalImages['sprite_' + char.id + '_down'] = _imgD;
+                        const _imgU = loadImg(char.sprites.up); if (_imgU) externalImages['sprite_' + char.id + '_up'] = _imgU;
+                        const _imgL = loadImg(char.sprites.left); if (_imgL) externalImages['sprite_' + char.id + '_left'] = _imgL;
                     }
                 }); 
             } 
@@ -4228,10 +4233,10 @@ async function init() {
         (ext.characterData || []).forEach(char => {
             masterData.growth[char.job] = char.growth;
             if (char.sprites) {
-                const li = (src) => { let img = new Image(); img.crossOrigin="Anonymous"; img.src=src; return img; };
-                externalImages['sprite_' + char.id + '_down']  = li(char.sprites.down);
-                externalImages['sprite_' + char.id + '_up']    = li(char.sprites.up);
-                externalImages['sprite_' + char.id + '_left']  = li(char.sprites.left);
+                const li = (src) => { if (!src) return null; let img = new Image(); img.src=src; img.onload = () => { if (state === 'FIELD' || state === 'MSG') drawMap(); }; return img; };
+                const _liD = li(char.sprites.down); if (_liD) externalImages['sprite_' + char.id + '_down'] = _liD;
+                const _liU = li(char.sprites.up); if (_liU) externalImages['sprite_' + char.id + '_up'] = _liU;
+                const _liL = li(char.sprites.left); if (_liL) externalImages['sprite_' + char.id + '_left'] = _liL;
             }
         });
     }
