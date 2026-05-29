@@ -882,10 +882,10 @@ const AudioManager = {
             else if (key === 'tower') url = this.db.bgm['castle'] || this.db.bgm['dungeon']; 
             else { if (key === "victory" && !this.isMuted) this.playSynthVictory(); return; } 
         } 
-        if (!url) return; 
-        this.bgmAudio = new Audio(url); this.bgmAudio.crossOrigin = "anonymous"; this.bgmAudio.loop = true; this.bgmAudio.volume = 1.0; 
-        try { this.bgmSourceNode = this.ctx.createMediaElementSource(this.bgmAudio); this.bgmSourceNode.connect(this.masterGainNode); } catch(e) { this.bgmAudio.volume = this.masterVolume; } 
-        if(!this.isMuted) this.bgmAudio.play().catch(e => console.warn("BGM blocked")); 
+        if (!url) return;
+        this.bgmAudio = new Audio(); this.bgmAudio.crossOrigin = "anonymous"; this.bgmAudio.loop = true; this.bgmAudio.volume = this.masterVolume; this.bgmAudio.src = url;
+        try { this.bgmSourceNode = this.ctx.createMediaElementSource(this.bgmAudio); this.bgmSourceNode.connect(this.masterGainNode); } catch(e) { this.bgmAudio.volume = this.masterVolume; }
+        if(!this.isMuted) { const _a = this.bgmAudio; const _play = () => { if (_a === this.bgmAudio) _a.play().catch(e => console.warn("BGM blocked")); }; if (this.ctx && this.ctx.state === 'suspended') { this.ctx.resume().then(_play).catch(_play); } else { _play(); } }
     },
     stopBGM() { if (this.bgmAudio) { this.bgmAudio.pause(); this.bgmAudio.removeAttribute('src'); this.bgmAudio.load(); try { if(this.bgmSourceNode) this.bgmSourceNode.disconnect(); } catch(e){} this.bgmAudio = null; this.bgmSourceNode = null; } this.currentBgmKey = null; },
     playSE(key) { if(this.isMuted) return; this.init(); const url = this.db.se[key]; if (!url || url === "ここにURLを貼る") { this.playSynthSE(key); return; } const seAudio = new Audio(url); seAudio.crossOrigin = "anonymous"; seAudio.volume = 1.0; try { const source = this.ctx.createMediaElementSource(seAudio); source.connect(this.masterGainNode); seAudio.onended = () => { source.disconnect(); seAudio.removeAttribute('src'); }; } catch(e){ seAudio.volume = this.masterVolume; } seAudio.play().catch(e => console.warn("SE blocked")); },
@@ -907,7 +907,7 @@ volumeSlider.addEventListener('input', (e) => {
     if (AudioManager.bgmAudio) { if (!AudioManager.bgmSourceNode) AudioManager.bgmAudio.volume = val; if (AudioManager.isMuted) AudioManager.bgmAudio.pause(); else if (AudioManager.bgmAudio.paused && AudioManager.currentBgmKey) AudioManager.bgmAudio.play().catch(err=>{}); } else if (!AudioManager.isMuted && AudioManager.currentBgmKey) { let key = AudioManager.currentBgmKey; AudioManager.currentBgmKey = null; AudioManager.playBGM(key); }
 });
 
-const unlockAudio = () => { AudioManager.init(); if (state === 'TITLE' && !AudioManager.bgmAudio && AudioManager.currentBgmKey === 'title' && !AudioManager.isMuted) AudioManager.playBGM('title'); else if (state === 'FIELD' && !AudioManager.bgmAudio && AudioManager.currentBgmKey && !AudioManager.isMuted) AudioManager.playBGM(AudioManager.currentBgmKey); };
+const unlockAudio = () => { AudioManager.init(); if (!AudioManager.isMuted && AudioManager.currentBgmKey && (!AudioManager.bgmAudio || AudioManager.bgmAudio.paused)) { AudioManager.playBGM(AudioManager.currentBgmKey); } };
 document.addEventListener('click', unlockAudio, { once: true }); document.addEventListener('touchstart', unlockAudio, { once: true });
 
 let state = 'INIT'; let masterData = {}; let partyData = {}; let currentMap = {}; let moveHistory = []; let inputCallback = null; const TILE_SIZE = 32; let externalMapData = null; let externalImages = {}; let externalEntitiesData = {};
