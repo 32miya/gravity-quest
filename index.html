@@ -1356,24 +1356,32 @@ async function loadExternalGrowthDatabase(url) {
         const res2 = await fetch(targetUrl); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); 
         let scriptData = null; doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('characterData') && s.textContent.includes('baseStats')) scriptData = s.textContent; }); 
         
-        if (scriptData) { 
-            let safeCode = scriptData + `\nwindow.EXT_GROWTH = { characterData, baseStats, magicTable };`; 
-            injectSafeScript(safeCode, 'Growth DB'); 
-            await new Promise(r => setTimeout(r, 100)); 
-            
-            if (window.EXT_GROWTH) { 
-                const ext = window.EXT_GROWTH; masterData.growth = {}; 
-                ext.characterData.forEach(char => { 
-                    masterData.growth[char.job] = char.growth; 
+        if (scriptData) {
+            const uiIdx = scriptData.search(/\/\/\s*---\s*UI|const\s+tabContainer\s*=\s*document|function\s+initTabs\s*\(/);
+            const dataCode = uiIdx > 0 ? scriptData.substring(0, uiIdx) : scriptData;
+            try {
+                const fn = new Function(dataCode + '\nreturn { characterData, baseStats, magicTable };');
+                window.EXT_GROWTH = fn();
+            } catch(e2) {
+                console.error('Growth DB new Function failed:', e2);
+                let safeCode = scriptData + `\nwindow.EXT_GROWTH = { characterData, baseStats, magicTable };`;
+                injectSafeScript(safeCode, 'Growth DB');
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            if (window.EXT_GROWTH) {
+                const ext = window.EXT_GROWTH; masterData.growth = {};
+                ext.characterData.forEach(char => {
+                    masterData.growth[char.job] = char.growth;
                     if (char.sprites) {
                         const loadImg = (src) => { if (!src) return null; let img = new Image(); img.src = src; img.onload = () => { if (state === 'FIELD' || state === 'MSG') drawMap(); }; return img; };
                         const _imgD = loadImg(char.sprites.down); if (_imgD) externalImages['sprite_' + char.id + '_down'] = _imgD;
                         const _imgU = loadImg(char.sprites.up); if (_imgU) externalImages['sprite_' + char.id + '_up'] = _imgU;
                         const _imgL = loadImg(char.sprites.left); if (_imgL) externalImages['sprite_' + char.id + '_left'] = _imgL;
                     }
-                }); 
-            } 
-        } 
+                });
+            }
+        }
     } catch(e) { console.error("Growth DB load error", e); } 
 }
 
