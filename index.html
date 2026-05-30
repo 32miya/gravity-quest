@@ -2175,7 +2175,35 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
     let html2 = _rawHtml;
     try { if (_rawHtml.trimStart().startsWith('{') && JSON.parse(_rawHtml)) html2 = `<html><body><script id="map-data" type="application/json">${_rawHtml}<\/script></body></html>`; } catch(e2) {} const imgRegex = /const\s+([a-zA-Z0-9_]+)Img\s*=\s*new\s+Image\(\).*?\.src\s*=\s*["']([^"']+)["']/g; let imgMatch; while ((imgMatch = imgRegex.exec(html2)) !== null) { let img = new Image(); img.crossOrigin = "Anonymous"; img.src = imgMatch[2]; externalImages[imgMatch[1]] = img; } const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); const scriptTag = doc.getElementById('map-data'); if (scriptTag) { const jsonData = JSON.parse(scriptTag.textContent); externalEntitiesData = jsonData.entities_definitions || {}; if (externalEntitiesData) { Object.keys(externalEntitiesData).forEach(key => { let ent = externalEntitiesData[key]; if (ent.type === "boss" || ent.is_boss) { if (!masterData.monsters[key]) { masterData.monsters[key] = { name: ent.name, max_hp: 200, atk: 30, def: 15, spd: 20, exp: 500, gold: 300 }; } } }); } if (jsonData.monsters) Object.assign(masterData.monsters, jsonData.monsters); if (jsonData.maps) { externalMapData = {}; jsonData.maps.forEach(m => { let mapData = convertMapData(m); Object.keys(mapData.npcs).forEach(k => { let npcId = mapData.npcs[k].id; if (externalEntitiesData[npcId] && externalEntitiesData[npcId].name) mapData.npcs[k].name = externalEntitiesData[npcId].name; }); externalMapData[m.map_id] = mapData; }); generateFieldMapsForGravityQuest(); let mapB3FKey = Object.keys(externalMapData).find(k => k.includes('dungeon_b3f')); if (mapB3FKey) { let b3f = externalMapData[mapB3FKey]; let warpA_x = 2, warpA_y = 2; let exitKeys = Object.keys(b3f.exits); if(exitKeys.length > 0) { let [ex, ey] = exitKeys[0].split(',').map(Number); warpA_x = ex; warpA_y = ey + 2; if (warpA_y >= b3f.height - 1) warpA_y = ey - 2; } let warpB_x = Math.floor(b3f.width / 2); let warpB_y = Math.floor(b3f.height / 2); let npcKeys = Object.keys(b3f.npcs); if(npcKeys.length > 0) { let targetNpc = npcKeys[npcKeys.length - 1]; let [nx, ny] = targetNpc.split(',').map(Number); warpB_x = nx; warpB_y = ny + 2; if (warpB_y >= b3f.height - 1) warpB_y = ny - 2; } if (Math.abs(warpA_x - warpB_x) < 3 && Math.abs(warpA_y - warpB_y) < 3) { warpB_x = b3f.width - 3; warpB_y = b3f.height - 3; } const setWarp = (wx, wy, destX, destY) => { wx = Math.max(1, Math.min(wx, b3f.width - 2)); wy = Math.max(1, Math.min(wy, b3f.height - 2)); destX = Math.max(1, Math.min(destX, b3f.width - 2)); destY = Math.max(1, Math.min(destY, b3f.height - 2)); b3f.tiles[wy * b3f.width + wx] = 8; b3f.exits[`${wx},${wy}`] = { map: mapB3FKey, x: destX, y: destY }; b3f.tiles[destY * b3f.width + destX] = 0; if(destY+1 < b3f.height) b3f.tiles[(destY+1) * b3f.width + destX] = 0; if(destX+1 < b3f.width) b3f.tiles[destY * b3f.width + (destX+1)] = 0; if(destX-1 >= 0) b3f.tiles[destY * b3f.width + (destX-1)] = 0; }; setWarp(warpA_x, warpA_y, warpB_x, warpB_y + 1); setWarp(warpB_x, warpB_y, warpA_x, warpA_y + 1); } let mapTown1Key = Object.keys(externalMapData).find(k => k.includes('town_01')); if (mapTown1Key) { let town1 = externalMapData[mapTown1Key]; town1.npcs["12,16"] = { id: "npc_casino_bunny", name: "バニーガール" }; if (16 * town1.width + 12 < town1.tiles.length) { town1.tiles[16 * town1.width + 12] = 9; } if (!externalEntitiesData["npc_casino_bunny"]) { externalEntitiesData["npc_casino_bunny"] = { id: "npc_casino_bunny", name: "バニーガール", type: "casino", msg: "ようこそ カジノへ！" }; } } for (let mapKey in externalMapData) { let map = externalMapData[mapKey]; let isSafeMap = mapKey.includes('town') || mapKey.includes('village') || mapKey.includes('market') || mapKey.includes('castle') || mapKey.includes('shrine'); if (isSafeMap && !mapKey.includes('demon') && !mapKey.includes('death')) { let hasPriest = false; for (let k in map.npcs) { if (map.npcs[k].id.includes('priest') || map.npcs[k].id.includes('church')) { hasPriest = true; break; } } if (!hasPriest) { let placed = false; let startY = Math.floor(map.height / 2) - 2; if (startY < 1) startY = 1; for (let y = startY; y < map.height - 1 && !placed; y++) { for (let x = 2; x < map.width - 2 && !placed; x++) { let tile = map.tiles[y * map.width + x]; let key = `${x},${y}`; if ((tile === 0 || tile === 10 || tile === 11 || tile === 23) && !map.exits[key] && !map.npcs[key] && ![[0,1],[0,-1],[1,0],[-1,0]].some(([dx,dy]) => map.exits[`${x+dx},${y+dy}`])) { map.npcs[key] = { id: "npc_priest", name: "神父" }; placed = true; } } } } } } injectSubStoryData(); if (externalMapData["map_field_0_4"]) externalMapData["map_field_0_4"].npcs["3,12"] = { id: "npc_sub_smith", name: "伝説の鍛冶屋" }; if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["7,3"] = { id: "obj_chest_star_frag", name: "光る地面" }; if (externalMapData["map_field_2_4"]) externalMapData["map_field_2_4"].npcs["7,7"] = { id: "npc_sub_richman", name: "大富豪" }; if (externalMapData["map_field_4_4"]) externalMapData["map_field_4_4"].npcs["12,12"] = { id: "npc_sub_mage", name: "大魔導士" }; if (externalMapData["map_town_01"]) externalMapData["map_town_01"].npcs["8,14"] = { id: "npc_sub_rumor", name: "マルコ" };
             let _castleKey = Object.keys(externalMapData).find(k => k.includes('castle_01') && !k.includes('demon')); if (_castleKey) { let _cM = externalMapData[_castleKey]; let _cp = false; for (let _y = 2; _y < Math.floor(_cM.height * 0.55) && !_cp; _y++) { for (let _x = 2; _x < _cM.width - 2 && !_cp; _x++) { let _ct = _cM.tiles[_y * _cM.width + _x]; let _ck = `${_x},${_y}`; if ((_ct === 0 || _ct === 9 || _ct === 10) && !_cM.exits[_ck] && !_cM.npcs[_ck]) { _cM.npcs[_ck] = { id: "npc_story_advisor", name: "宮廷賢者バルダック" }; _cp = true; } } } }
-            if (externalMapData["map_town_01"]) { let _tM = externalMapData["map_town_01"]; let _ac = false, _av = false; for (let _y = 2; _y < _tM.height - 1 && (!_ac || !_av); _y++) { for (let _x = 2; _x < _tM.width - 2 && (!_ac || !_av); _x++) { let _tt = _tM.tiles[_y * _tM.width + _x]; let _tk = `${_x},${_y}`; if ((_tt === 0 || _tt === 10 || _tt === 11 || _tt === 9) && !_tM.exits[_tk] && !_tM.npcs[_tk]) { if (!_ac) { _tM.npcs[_tk] = { id: "npc_story_citizen", name: "心配性の市民" }; _ac = true; } else { _tM.npcs[_tk] = { id: "npc_story_veteran", name: "引退した冒険者" }; _av = true; } } } } }
+            // NPC安全配置ヘルパー: 回廊ブロック防止・既存NPCとの間隔確保
+            const _npcSolid=[1,2,4,5,15,16,17,18,19,20];
+            const _npcWalk=(map,x,y)=>x>=1&&y>=1&&x<map.width-1&&y<map.height-1&&!_npcSolid.includes(map.tiles[y*map.width+x])&&!map.npcs[`${x},${y}`];
+            const _npcOk=(map,x,y)=>{
+                if(!_npcWalk(map,x,y))return false;
+                const k=`${x},${y}`;
+                if(map.exits[k]||map.npcs[k])return false;
+                for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]])if(map.exits[`${x+dx},${y+dy}`])return false;
+                for(const nk of Object.keys(map.npcs)){const[nx,ny]=nk.split(',').map(Number);if(Math.abs(nx-x)+Math.abs(ny-y)<3)return false;}
+                if(_npcWalk(map,x,y-1)&&_npcWalk(map,x,y+1))return false;
+                if(_npcWalk(map,x-1,y)&&_npcWalk(map,x+1,y))return false;
+                return true;
+            };
+            const _placeNpc=(map,id,name,prefY,prefX)=>{
+                if(!map)return;
+                const pY=Math.max(1,Math.min(prefY,map.height-2)),pX=Math.max(1,Math.min(prefX,map.width-2));
+                for(let r=0;r<=Math.max(map.height,map.width);r++)
+                    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+                        if(Math.abs(dx)!==r&&Math.abs(dy)!==r)continue;
+                        const x=pX+dx,y=pY+dy;
+                        if(_npcOk(map,x,y)){map.npcs[`${x},${y}`]={id,name};return;}
+                    }
+            };
+            // 町NPCを下半分・間隔を確保して配置（citizen のみ town に）
+            if (externalMapData["map_town_01"]) {
+                const _tM = externalMapData["map_town_01"];
+                _placeNpc(_tM,"npc_story_citizen","心配性の市民",Math.floor(_tM.height*0.65),Math.floor(_tM.width*0.3));
+            }
+            // veteran は城に配置（後で castle NPC セクションで処理）
             if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["4,8"] = { id: "npc_story_wounded", name: "傷ついた旅人" };
             if (externalMapData["map_field_4_0"]) externalMapData["map_field_4_0"].npcs["10,5"] = { id: "npc_story_hermit", name: "野の賢者" };
             // 種アイテムを各フィールドマップに配置
@@ -2183,27 +2211,13 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
             if (externalMapData["map_field_1_2"]) externalMapData["map_field_1_2"].npcs["9,5"] = { id: "obj_seed_def", name: "光る地面" };
             if (externalMapData["map_field_3_0"]) externalMapData["map_field_3_0"].npcs["7,5"] = { id: "obj_seed_hp", name: "光る地面" };
             if (externalMapData["map_field_3_3"]) externalMapData["map_field_3_3"].npcs["12,5"] = { id: "obj_seed_mp", name: "光る地面" };
-            // 追加NPC：町の住人を自動配置（y=4以降の空きタイルに順番に配置）
+            // 追加NPC：町と城に分散配置（_placeNpc で回廊・間隔チェック付き）
             if (externalMapData["map_town_01"]) {
-                const _tn = externalMapData["map_town_01"];
-                const _extraNpcs = [
-                    { id: "npc_town_child",    name: "元気な子供" },
-                    { id: "npc_town_bard",     name: "旅の吟遊詩人" },
-                    { id: "npc_town_elder",    name: "お婆さん" },
-                    { id: "npc_town_merchant", name: "旅の商人" },
-                ];
-                let _ep = 0;
-                outer_npc: for (let _ey = 4; _ey < _tn.height - 2; _ey++) {
-                    for (let _ex = 5; _ex < _tn.width - 2; _ex++) {
-                        if (_ep >= _extraNpcs.length) break outer_npc;
-                        const _et = _tn.tiles[_ey * _tn.width + _ex];
-                        const _ek = `${_ex},${_ey}`;
-                        if ((_et === 0 || _et === 9 || _et === 10) && !_tn.exits[_ek] && !_tn.npcs[_ek] && ![[0,1],[0,-1],[1,0],[-1,0]].some(([dx,dy]) => _tn.exits[`${_ex+dx},${_ey+dy}`])) {
-                            _tn.npcs[_ek] = _extraNpcs[_ep++];
-                        }
-                    }
-                }
+                const _tM2 = externalMapData["map_town_01"];
+                _placeNpc(_tM2,"npc_town_child",  "元気な子供",   Math.floor(_tM2.height*0.55),Math.floor(_tM2.width*0.3));
+                _placeNpc(_tM2,"npc_town_bard",   "旅の吟遊詩人", Math.floor(_tM2.height*0.7), Math.floor(_tM2.width*0.7));
             }
+            { const _cK2=Object.keys(externalMapData).find(k=>k.includes('castle_01')&&!k.includes('demon')); const _cM2=_cK2&&externalMapData[_cK2]; if(_cM2){ _placeNpc(_cM2,"npc_story_veteran","歴戦の兵士",Math.floor(_cM2.height*0.6),Math.floor(_cM2.width*0.4)); _placeNpc(_cM2,"npc_town_elder","お婆さん",Math.floor(_cM2.height*0.7),Math.floor(_cM2.width*0.6)); _placeNpc(_cM2,"npc_town_merchant","旅の商人",Math.floor(_cM2.height*0.65),Math.floor(_cM2.width*0.3)); } }
             // フィールドNPC追加
             { let _p=findLand("map_field_1_1",5,10); if(_p&&externalMapData["map_field_1_1"]) externalMapData["map_field_1_1"].npcs[_p.k]={ id:"npc_field_fisherman", name:"釣り人" }; }
             { let _p=findLand("map_field_3_2",8,8);  if(_p&&externalMapData["map_field_3_2"]) externalMapData["map_field_3_2"].npcs[_p.k]={ id:"npc_field_monk",      name:"旅の僧侶" }; }
