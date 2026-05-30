@@ -1667,10 +1667,11 @@ function generateFieldMapsForGravityQuest() {
             let mapId = "map_field_" + gx + "_" + gy;
             let tiles1D = [], exits = {};
             for (let ty = 0; ty < 15; ty++) for (let tx = 0; tx < 15; tx++) tiles1D.push(world[(gy*15+ty)*GW+(gx*15+tx)]);
-            if (gy > 0) for (let tx = 1; tx < 14; tx++) { let wx = gx*15+tx; if (world[(gy*15)*GW+wx]!==5 && world[((gy-1)*15+14)*GW+wx]!==5) exits[`${tx},0`]={map:"map_field_"+gx+"_"+(gy-1),x:tx,y:13}; }
-            if (gy < 4) for (let tx = 1; tx < 14; tx++) { let wx = gx*15+tx; if (world[(gy*15+14)*GW+wx]!==5 && world[((gy+1)*15)*GW+wx]!==5) exits[`${tx},14`]={map:"map_field_"+gx+"_"+(gy+1),x:tx,y:1}; }
-            if (gx > 0) for (let ty = 1; ty < 14; ty++) { let wy = gy*15+ty; if (world[wy*GW+gx*15]!==5 && world[wy*GW+(gx-1)*15+14]!==5) exits[`0,${ty}`]={map:"map_field_"+(gx-1)+"_"+gy,x:13,y:ty}; }
-            if (gx < 4) for (let ty = 1; ty < 14; ty++) { let wy = gy*15+ty; if (world[wy*GW+gx*15+14]!==5 && world[wy*GW+(gx+1)*15]!==5) exits[`14,${ty}`]={map:"map_field_"+(gx+1)+"_"+gy,x:1,y:ty}; }
+            // エッジ出口: 現マップ端・隣マップ端・隣マップ着地点の3点が全て非海洋の場合のみ生成
+            if (gy > 0) for (let tx = 1; tx < 14; tx++) { let wx = gx*15+tx; if (world[(gy*15)*GW+wx]!==5 && world[((gy-1)*15+14)*GW+wx]!==5 && world[((gy-1)*15+13)*GW+wx]!==5) exits[`${tx},0`]={map:"map_field_"+gx+"_"+(gy-1),x:tx,y:13}; }
+            if (gy < 4) for (let tx = 1; tx < 14; tx++) { let wx = gx*15+tx; if (world[(gy*15+14)*GW+wx]!==5 && world[((gy+1)*15)*GW+wx]!==5 && world[((gy+1)*15+1)*GW+wx]!==5) exits[`${tx},14`]={map:"map_field_"+gx+"_"+(gy+1),x:tx,y:1}; }
+            if (gx > 0) for (let ty = 1; ty < 14; ty++) { let wy = gy*15+ty; if (world[wy*GW+gx*15]!==5 && world[wy*GW+(gx-1)*15+14]!==5 && world[wy*GW+(gx-1)*15+13]!==5) exits[`0,${ty}`]={map:"map_field_"+(gx-1)+"_"+gy,x:13,y:ty}; }
+            if (gx < 4) for (let ty = 1; ty < 14; ty++) { let wy = gy*15+ty; if (world[wy*GW+gx*15+14]!==5 && world[wy*GW+(gx+1)*15]!==5 && world[wy*GW+(gx+1)*15+1]!==5) exits[`14,${ty}`]={map:"map_field_"+(gx+1)+"_"+gy,x:1,y:ty}; }
             let isLate = (gx===4&&gy>=3)||(gx===3&&gy===4);
             let isMid = (gx===4&&gy<=2)||(gx>=3&&gy>=2)||(gx===0&&gy<=1);
             let enc;
@@ -3126,6 +3127,15 @@ async function moveParty(dx, dy) {
         const exit = currentMap.exits[key];
             const _toField = /^(map_)?field_\d/.test(exit.map);
             if (!_toField) AudioManager.playSE('stair');
+            // 船なしでフィールドの海タイルに着地する移動は禁止
+            if (_toField && !(partyData.flags && partyData.flags.has_ship)) {
+                const _chkM = externalMapData[exit.map] || externalMapData['map_'+exit.map] || externalMapData[(exit.map||'').replace(/^map_/,'')];
+                if (_chkM) {
+                    const _cx2 = Math.max(0, Math.min(exit.x||0, _chkM.width-1));
+                    const _cy2 = Math.max(0, Math.min(exit.y||0, _chkM.height-1));
+                    if (_chkM.tiles[_cy2*_chkM.width+_cx2] === 5) return;
+                }
+            }
             let nextMapId = 'map-' + exit.map; let nextMap = await loadExternalData(nextMapId);
         if (nextMap) {
             currentMap = nextMap;
