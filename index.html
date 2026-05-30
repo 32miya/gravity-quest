@@ -49,6 +49,9 @@
     #volume-slider { -webkit-appearance: slider-vertical; appearance: slider-vertical; width: 100%; height: 100%; margin: 0; cursor: pointer; }
     .action-buttons { display: flex; gap: 15px; } .btn-action { width: 65px; height: 65px; border-radius: 50%; font-weight: bold; font-size: 24px; }
     #loading-indicator { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border: 1px solid #ff0; border-radius: 4px; color: #ff0; font-size: 14px; z-index: 100; display: none; }
+    #loading-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000910; z-index: 998; flex-direction: column; justify-content: center; align-items: center; }
+    #loading-overlay .lo-title { color: #ffe066; font-family: monospace; font-size: 13px; letter-spacing: 3px; margin-bottom: 18px; }
+    #loading-text { color: #aaddff; font-family: monospace; font-size: 17px; text-align: center; min-height: 1.5em; }
 </style>
 <!-- ═══ EMBEDDED DATABASES (standalone / no network required) ═══ -->
 <script>
@@ -247,11 +250,12 @@
                 { id: "i09", name: "ラーの鏡", effect: "reveal", price: 0, description: "真実の姿を映し出す伝説の鏡。" },
                 { id: "i10", name: "魔法の鍵", effect: "unlock", price: 0, description: "魔法で閉ざされた扉を開ける鍵。" },
                 { id: "i11", name: "最後の鍵", effect: "unlock_all", price: 0, description: "この世のあらゆる扉を開ける究極の鍵。" },
-                { id: "i12", name: "ちからのたね", effect: "at_plus", price: 0, description: "食べると力が少し上がる不思議な種。" },
-                { id: "i13", name: "すばやさのたね", effect: "spd_plus", price: 0, description: "食べると素早さが少し上がる輝く種。" },
-                { id: "i14", name: "まもりのたね", effect: "def_plus", price: 0, description: "食べると守備力が少し上がる固い種。" },
-                { id: "i15", name: "たいりょくのたね", effect: "hp_plus", price: 0, description: "食べると最大HPが上がる赤い種。" },
-                { id: "i16", name: "まなのたね", effect: "mp_plus", price: 0, description: "食べると最大MPが上がる青い種。" }
+                { id: "i12", name: "ちからのたね", effect: "at_plus", price: 500, description: "食べると力が少し上がる不思議な種。" },
+                { id: "i13", name: "すばやさのたね", effect: "spd_plus", price: 500, description: "食べると素早さが少し上がる輝く種。" },
+                { id: "i14", name: "まもりのたね", effect: "def_plus", price: 500, description: "食べると守備力が少し上がる固い種。" },
+                { id: "i15", name: "たいりょくのたね", effect: "hp_plus", price: 500, description: "食べると最大HPが上がる赤い種。" },
+                { id: "i16", name: "まなのたね", effect: "mp_plus", price: 500, description: "食べると最大MPが上がる青い種。" },
+                { id: "i17", name: "いのちのきのみ", effect: "life_nut", price: 2000, description: "食べると最大HPが大きく上がる不思議な木の実。" }
             ]
         };
 
@@ -721,6 +725,7 @@ window.SOUND_DATABASE = {
 
 <div id="game-wrapper">
     <div id="loading-indicator">通信中...</div>
+    <div id="loading-overlay"><div class="lo-title">GRAVITY QUEST</div><div id="loading-text"></div></div>
     <div id="game-container">
         <canvas id="screen"></canvas>
         <div id="title-screen"><div id="title-menu-box"></div></div>
@@ -892,9 +897,20 @@ const AudioManager = {
     playSE(key) { if(this.isMuted) return; this.init(); const url = this.db.se[key]; if (!url || url === "ここにURLを貼る") { this.playSynthSE(key); return; } const seAudio = new Audio(url); seAudio.crossOrigin = "anonymous"; seAudio.volume = 1.0; try { const source = this.ctx.createMediaElementSource(seAudio); source.connect(this.masterGainNode); seAudio.onended = () => { source.disconnect(); seAudio.removeAttribute('src'); }; } catch(e){ seAudio.volume = this.masterVolume; } seAudio.play().catch(e => console.warn("SE blocked")); },
     playTone(freq, type, duration, vol=0.5, slideFreq=null) { if(this.isMuted || !this.ctx) return; this.init(); const osc = this.ctx.createOscillator(); const gainNode = this.ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime); if (slideFreq) osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration); gainNode.gain.setValueAtTime(vol, this.ctx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration); osc.connect(gainNode); gainNode.connect(this.masterGainNode); osc.start(); osc.stop(this.ctx.currentTime + duration); },
     playNoise(duration, vol=0.5) { if(this.isMuted || !this.ctx) return; this.init(); const bufferSize = this.ctx.sampleRate * duration; const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1; const noise = this.ctx.createBufferSource(); noise.buffer = buffer; const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1000; const gainNode = this.ctx.createGain(); gainNode.gain.setValueAtTime(vol, this.ctx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration); noise.connect(filter); filter.connect(gainNode); gainNode.connect(this.masterGainNode); noise.start(); },
-    playSynthSE(key) { if(this.isMuted) return; switch(key) { case 'cursor': this.playTone(880, 'square', 0.05, 0.2); break; case 'decision': this.playTone(660, 'square', 0.1, 0.2); setTimeout(() => this.playTone(880, 'square', 0.15, 0.2), 100); break; case 'cancel': this.playTone(200, 'sawtooth', 0.2, 0.3); break; case 'attack_hit': this.playNoise(0.1, 0.5); this.playTone(150, 'square', 0.1, 0.3, 50); break; case 'attack_crit': this.playNoise(0.3, 0.8); this.playTone(200, 'sawtooth', 0.3, 0.5, 50); break; case 'damage_hero': this.playTone(100, 'square', 0.2, 0.4, 20); this.playNoise(0.15, 0.4); break; case 'magic_cast': this.playTone(400, 'sine', 0.4, 0.3, 1200); setTimeout(() => this.playTone(600, 'sine', 0.3, 0.2, 1600), 100); break; case 'poison': this.playTone(150, 'sawtooth', 0.1, 0.3, 80); setTimeout(() => this.playTone(120, 'sawtooth', 0.1, 0.3, 60), 150); break; case 'item_get': [440, 554, 659, 880].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', 0.15, 0.2), i * 120)); break; case 'save': this.playTone(440, 'square', 0.1, 0.2); setTimeout(() => this.playTone(880, 'square', 0.15, 0.2), 100); break; case 'inn': const notes = [{f: 440, d: 0.15}, {f: 554, d: 0.15}, {f: 659, d: 0.15}, {f: 880, d: 0.6}]; let delay = 0; notes.forEach(n => { setTimeout(() => this.playTone(n.f, 'square', n.d, 0.2), delay * 1000); delay += n.d; }); break; case 'level_up': [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', i===5?0.4:0.1, 0.2), i * 120)); break; } },
+    playSynthSE(key) { if(this.isMuted) return; switch(key) { case 'cursor': this.playTone(880, 'square', 0.05, 0.2); break; case 'decision': this.playTone(660, 'square', 0.1, 0.2); setTimeout(() => this.playTone(880, 'square', 0.15, 0.2), 100); break; case 'cancel': this.playTone(200, 'sawtooth', 0.2, 0.3); break; case 'attack_hit': this.playNoise(0.1, 0.5); this.playTone(150, 'square', 0.1, 0.3, 50); break; case 'attack_crit': this.playNoise(0.3, 0.8); this.playTone(200, 'sawtooth', 0.3, 0.5, 50); break; case 'damage_hero': this.playTone(100, 'square', 0.2, 0.4, 20); this.playNoise(0.15, 0.4); break; case 'magic_cast': this.playTone(400, 'sine', 0.4, 0.3, 1200); setTimeout(() => this.playTone(600, 'sine', 0.3, 0.2, 1600), 100); break; case 'poison': this.playTone(150, 'sawtooth', 0.1, 0.3, 80); setTimeout(() => this.playTone(120, 'sawtooth', 0.1, 0.3, 60), 150); break; case 'item_get': [440, 554, 659, 880].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', 0.15, 0.2), i * 120)); break; case 'save': this.playTone(440, 'square', 0.1, 0.2); setTimeout(() => this.playTone(880, 'square', 0.15, 0.2), 100); break; case 'inn': const notes = [{f: 440, d: 0.15}, {f: 554, d: 0.15}, {f: 659, d: 0.15}, {f: 880, d: 0.6}]; let delay = 0; notes.forEach(n => { setTimeout(() => this.playTone(n.f, 'square', n.d, 0.2), delay * 1000); delay += n.d; }); break; case 'level_up': [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', i===5?0.4:0.1, 0.2), i * 120)); break;
+        case 'travel_gate':
+            // DQ風旅の扉SE: 上昇する魔法的なアルペジオ
+            [392, 523.25, 659.25, 784, 1046.5, 1318.5, 1568, 2093].forEach((f, i) => {
+                setTimeout(() => {
+                    this.playTone(f, 'sine', 0.26 - i*0.02, 0.2);
+                    if (i < 5) this.playTone(f * 1.5, 'sine', 0.1 - i*0.01, 0.08);
+                }, i * 65);
+            });
+            setTimeout(() => this.playNoise(0.45, 0.04), 20);
+            break; } },
     playSynthVictory() { if(this.isMuted) return; this.stopBGM(); const notes = [{f: 349.23, d: 0.12}, {f: 349.23, d: 0.12}, {f: 349.23, d: 0.12}, {f: 349.23, d: 0.35}, {f: 293.66, d: 0.15}, {f: 233.08, d: 0.15}, {f: 293.66, d: 0.15}, {f: 349.23, d: 0.15}, {f: 466.16, d: 0.8}]; let delay = 0; notes.forEach(n => { setTimeout(() => this.playTone(n.f, 'square', n.d, 0.3), delay * 1000); delay += n.d + 0.02; }); },
-    preloadAllBGMs() { setTimeout(() => { const seen = new Set(); Object.values(this.db.bgm).forEach(url => { if (!url || url.includes('ここに') || seen.has(url) || this.bgmBlobCache[url]) return; seen.add(url); fetch(url).then(r => r.blob()).then(b => { if (!this.bgmBlobCache[url]) this.bgmBlobCache[url] = URL.createObjectURL(b); }).catch(() => {}); }); }, 2000); }
+    preloadAllBGMs() { const seen = new Set(); Object.values(this.db.bgm).forEach(url => { if (!url || url.includes('ここに') || seen.has(url) || this.bgmBlobCache[url]) return; seen.add(url); fetch(url).then(r => r.blob()).then(b => { if (!this.bgmBlobCache[url]) this.bgmBlobCache[url] = URL.createObjectURL(b); }).catch(() => {}); }); },
+    async preloadAllBGMsTracked(onProgress) { const seen = new Set(); const _us = Object.values(this.db.bgm).filter(u => u && !u.includes('ここに') && !seen.has(u) && !this.bgmBlobCache[u] && (seen.add(u), true)); if (!_us.length) { onProgress && onProgress(1); return; } let _done = 0; await Promise.all(_us.map(u => fetch(u).then(r => r.blob()).then(b => { if (!this.bgmBlobCache[u]) this.bgmBlobCache[u] = URL.createObjectURL(b); onProgress && onProgress(++_done / _us.length); }).catch(() => { onProgress && onProgress(++_done / _us.length); }))); }
 };
 
 function toggleVolume() { AudioManager.init(); const container = document.getElementById('volume-slider-container'); if (container.style.display === 'none' || container.style.display === '') { container.style.display = 'block'; } else { container.style.display = 'none'; } }
@@ -1641,6 +1657,9 @@ function generateFieldMapsForGravityQuest() {
     fillEll(36, 21, 4, 10, 11);  // north isthmus: main continent ↔ north island
     fillEll(36, 58, 4, 3, 11);   // south bridge: shrine island ↔ south desert
     fillEll(24, 55, 5, 6, 11);   // SW bridge: map(1,3) ↔ map(1,4) for forest island access
+    fillEll(52, 37, 7, 6, 11);   // 東row陸橋: map(3,2)東部 + 3_2↔4_2 border land
+    fillEll(67, 37, 9, 8, 11);   // map_field_4_2 main land (東row, 中段)
+    fillEll(67, 27, 5, 3, 11);   // map_field_4_1 south → map_field_4_2 north bridge
     // === Terrain overlays (only on existing land) ===
     fillEllCond(6, 70, 4, 3, 19);    fillEllCond(12, 65, 3, 3, 19);    fillEllCond(10, 73, 3, 2, 19);
     fillEllCond(21, 37, 4, 3, 19);   fillEllCond(26, 30, 3, 3, 19);    fillEllCond(42, 34, 3, 3, 19);
@@ -1719,6 +1738,7 @@ function generateFieldMapsForGravityQuest() {
     if (externalMapData["map_field_north_2"]) forceExit("map_field_2_0",7,0,"map_field_north_2",7,13);
     if (externalMapData["map_field_south_2"]) forceExit("map_field_2_4",7,14,"map_field_south_2",7,1);
     if (externalMapData["map_field_east_2"]) forceExit("map_field_4_2",14,7,"map_field_east_2",1,7);
+    if (externalMapData["map_field_east_2"]) forceExit("map_field_east_2",0,7,"map_field_4_2",13,7); // 逆方向: 東の果て→map4_2
     if (externalMapData["map_field_west_2"]) forceExit("map_field_0_2",0,7,"map_field_west_2",13,7);
 
     // === 旅の扉(tile 23)設置 ===
@@ -2263,6 +2283,8 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
             if (externalMapData["map_field_1_2"]) externalMapData["map_field_1_2"].npcs["9,5"] = { id: "obj_seed_def", name: "光る地面" };
             if (externalMapData["map_field_3_0"]) externalMapData["map_field_3_0"].npcs["7,5"] = { id: "obj_seed_hp", name: "光る地面" };
             if (externalMapData["map_field_3_3"]) externalMapData["map_field_3_3"].npcs["12,5"] = { id: "obj_seed_mp", name: "光る地面" };
+            if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["11,9"] = { id: "obj_seed_str", name: "光る地面" };
+            if (externalMapData["map_field_4_3"]) externalMapData["map_field_4_3"].npcs["8,10"] = { id: "obj_seed_life", name: "光る地面" };
             // 追加NPC：町と城に分散配置（_placeNpc で回廊・間隔チェック付き）
             if (externalMapData["map_town_01"]) {
                 const _tM2 = externalMapData["map_town_01"];
@@ -2324,7 +2346,15 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
         generateDQStyleMaps();
         fixExternalMapConnections();
         fixMapExits();
-        fixAllExitLandings(); loading.style.display = 'none'; return true; } } throw new Error("JSONデータなし"); } catch(e) { console.error(e); loading.innerText = '読み込み失敗'; setTimeout(() => { loading.style.display = 'none'; }, 2000); return false; } }
+        fixAllExitLandings();
+        // 東の果てマップのバザー入口を3コマ下に移動
+        { const _em = externalMapData && externalMapData["map_field_east_2"]; if (_em) {
+            const _bNk = Object.keys(_em.npcs).find(k => { const id = _em.npcs[k].id||''; return id.includes('bazaar')||id.includes('market'); });
+            if (_bNk) { const [_bx,_by]=_bNk.split(',').map(Number); const _ny2=Math.min(_by+3,_em.height-2); if (!_em.npcs[`${_bx},${_ny2}`]) { _em.npcs[`${_bx},${_ny2}`]=_em.npcs[_bNk]; delete _em.npcs[_bNk]; } }
+            const _bEk = Object.keys(_em.exits).find(k => { const m=_em.exits[k].map||''; return m.includes('bazaar')||m.includes('market'); });
+            if (_bEk) { const [_ex,_ey]=_bEk.split(',').map(Number); const _ney=Math.min(_ey+3,_em.height-2); if (!_em.exits[`${_ex},${_ney}`]) { if (_em.tiles[_ey*_em.width+_ex]===22) { _em.tiles[_ey*_em.width+_ex]=11; _em.tiles[_ney*_em.width+_ex]=22; } _em.exits[`${_ex},${_ney}`]=_em.exits[_bEk]; delete _em.exits[_bEk]; } }
+        } }
+        loading.style.display = 'none'; return true; } } throw new Error("JSONデータなし"); } catch(e) { console.error(e); loading.innerText = '読み込み失敗'; setTimeout(() => { loading.style.display = 'none'; }, 2000); return false; } }
 
 async function loadExternalData(id) { 
     if (externalMapData && id.includes('map-')) { 
@@ -2337,13 +2367,15 @@ async function loadExternalData(id) {
             let mapCopy = JSON.parse(JSON.stringify(mapData));
             if (partyData && partyData.flags) { 
                 if (partyData.flags.last_boss_defeated || partyData.flags.gate_removed) { let gateKeys = Object.keys(mapCopy.npcs).filter(k => mapCopy.npcs[k].id === 'maou_castle_gate'); gateKeys.forEach(k => { delete mapCopy.npcs[k]; }); } 
-                if(partyData.flags.flag_saved_richman) { let rKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_richman"); if(rKey) delete mapCopy.npcs[rKey]; } 
-                if(partyData.flags.flag_has_star_fragment) { let sKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "obj_chest_star_frag"); if(sKey) delete mapCopy.npcs[sKey]; } 
-                
-                // ★修正: 異世界の旅人を (9,6) に配置
-                if(partyData.flags.is_second_loop && (rawId.includes("town_01") || mapCopy.name === "城下町グラマニア")) {
+                if(partyData.flags.flag_saved_richman) { let rKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_richman"); if(rKey) delete mapCopy.npcs[rKey]; }
+                if(partyData.flags.flag_mage_trial_cleared) { let mKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_mage"); if(mKey) delete mapCopy.npcs[mKey]; }
+                if(partyData.flags.flag_weapon_forged) { let smKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_smith"); if(smKey) delete mapCopy.npcs[smKey]; }
+                if(partyData.flags.flag_has_star_fragment) { let sKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "obj_chest_star_frag"); if(sKey) delete mapCopy.npcs[sKey]; }
+
+                // ★修正: 異世界の旅人を (9,6) に配置（秘密ボス撃破後は消す）
+                if(partyData.flags.is_second_loop && !partyData.flags.flag_beaten_secret_boss && (rawId.includes("town_01") || mapCopy.name === "城下町グラマニア")) {
                     mapCopy.npcs["9,6"] = { id: "npc_sub_2ndloop", name: "異世界の旅人" };
-                }
+                } else if(partyData.flags.flag_beaten_secret_boss) { let tKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_2ndloop"); if(tKey) delete mapCopy.npcs[tKey]; }
                 const _defPfx = 'def_' + rawId + '_';
                 for (const _fk of Object.keys(partyData.flags)) {
                     if (_fk.startsWith(_defPfx)) { const _nk = _fk.slice(_defPfx.length); if (mapCopy.npcs[_nk]) delete mapCopy.npcs[_nk]; }
@@ -2760,7 +2792,31 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
         fr('rgba(255,255,255,0.2)', fl(8 + rand * 6), fl(24 + w1), 7, 1);
     } else if (tile === 0 || tile === 23) {
         if (tile === 23) {
-            fr('#a8d8fc', 0, 0, T, T); fr('rgba(255,255,255,0.45)', 3, 3, T - 6, T - 6); fr('rgba(180,230,255,0.5)', 7, 7, T - 14, T - 14);
+            // 七色の水の渦巻きアニメーション
+            const _vc = px + T/2, _vcy = py + T/2, _vr = T/2 - 0.5;
+            ctx.save();
+            ctx.beginPath(); ctx.arc(_vc, _vcy, _vr, 0, Math.PI * 2); ctx.clip();
+            ctx.fillStyle = '#050215'; ctx.fillRect(px, py, T, T);
+            const _vcl = ['#ff2222','#ff8800','#ffee00','#22ee55','#2288ff','#6622dd','#cc22ff'];
+            const _vrot = (now / 850) % (Math.PI * 2);
+            ctx.lineWidth = 2.4;
+            for (let _va = 0; _va < 7; _va++) {
+                const _bang = _vrot + (_va / 7) * Math.PI * 2;
+                ctx.beginPath(); ctx.strokeStyle = _vcl[_va]; ctx.globalAlpha = 0.9;
+                for (let _vs = 0; _vs <= 14; _vs++) {
+                    const _vt = _vs / 14;
+                    const _ang = _bang + _vt * Math.PI * 2.5;
+                    const _vrad2 = _vt * _vr * 0.93;
+                    const _vx = _vc + Math.cos(_ang) * _vrad2, _vy = _vcy + Math.sin(_ang) * _vrad2;
+                    _vs === 0 ? ctx.moveTo(_vx, _vy) : ctx.lineTo(_vx, _vy);
+                }
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            const _vg = ctx.createRadialGradient(_vc, _vcy, 0, _vc, _vcy, _vr * 0.45);
+            _vg.addColorStop(0, 'rgba(255,255,255,0.92)'); _vg.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = _vg; ctx.fillRect(px, py, T, T);
+            ctx.restore();
         } else if (town) {
             // DQスタイル赤レンガ道路
             fr('#561410', 0, 0, T, T); // 目地（暗い赤褐色）
@@ -3221,6 +3277,64 @@ function drawMap() {
     }
 }
 
+let _tgOv = null;
+async function _tgFade(isOut) {
+    const gc = document.getElementById('game-container'); if (!gc) return;
+    if (!_tgOv) {
+        _tgOv = document.createElement('canvas');
+        _tgOv.style.cssText = 'display:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:90;pointer-events:none;';
+        gc.appendChild(_tgOv);
+    }
+    const W = gc.offsetWidth || 360, H = gc.offsetHeight || 560;
+    _tgOv.width = W; _tgOv.height = H; _tgOv.style.display = 'block';
+    const c = _tgOv.getContext('2d');
+    const cx = W/2, cy = H/2, maxR = Math.hypot(cx, cy) + 20;
+    const cols = ['#ff2222','#ff8800','#ffee00','#22ee55','#2288ff','#6622dd','#cc22ff'];
+    const dur = isOut ? 500 : 440;
+    const t0 = performance.now();
+    await new Promise(resolve => {
+        function frame(ts) {
+            const t = Math.min((ts - t0) / dur, 1);
+            const p = isOut ? t : 1 - t;
+            c.clearRect(0, 0, W, H);
+            const r = maxR * p;
+            if (r > 1) {
+                c.save();
+                c.beginPath(); c.arc(cx, cy, r, 0, Math.PI*2); c.clip();
+                const bg = c.createRadialGradient(cx, cy, 0, cx, cy, r);
+                bg.addColorStop(0, '#030112'); bg.addColorStop(1, '#080230');
+                c.fillStyle = bg; c.fillRect(0, 0, W, H);
+                const rot = (isOut ? t : 1-t) * Math.PI * 5;
+                c.lineWidth = Math.max(1.5, r / 20);
+                for (let a = 0; a < 7; a++) {
+                    const ba = rot + (a/7)*Math.PI*2;
+                    c.beginPath(); c.strokeStyle = cols[a]; c.globalAlpha = 0.85;
+                    for (let s = 0; s <= 20; s++) {
+                        const st = s/20, ang = ba + st*Math.PI*3, rr = st*r*0.95;
+                        const x = cx+Math.cos(ang)*rr, y = cy+Math.sin(ang)*rr;
+                        s===0 ? c.moveTo(x,y) : c.lineTo(x,y);
+                    }
+                    c.stroke();
+                }
+                c.globalAlpha = 1;
+                if (r > 30) {
+                    const cg = c.createRadialGradient(cx, cy, 0, cx, cy, Math.min(r*0.35, 90));
+                    cg.addColorStop(0, 'rgba(255,255,255,0.7)'); cg.addColorStop(1, 'rgba(0,0,0,0)');
+                    c.fillStyle = cg; c.fillRect(0, 0, W, H);
+                }
+                c.restore();
+            }
+            if (t < 1) { requestAnimationFrame(frame); }
+            else {
+                if (isOut) { c.fillStyle = '#030112'; c.fillRect(0, 0, W, H); }
+                else { _tgOv.style.display = 'none'; }
+                resolve();
+            }
+        }
+        requestAnimationFrame(frame);
+    });
+}
+
 async function moveParty(dx, dy) {
     const nx = partyData.pos.x + dx, ny = partyData.pos.y + dy; if(nx<0 || ny<0 || nx>=currentMap.width || ny>=currentMap.height) return;
     const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
@@ -3247,7 +3361,9 @@ async function moveParty(dx, dy) {
     if(currentMap.exits && currentMap.exits[key]) {
         const exit = currentMap.exits[key];
             const _toField = /^(map_)?field_/.test(exit.map);
-            if (!_toField) AudioManager.playSE('stair');
+            const _isTravelGate = (tile === 23);
+            if (_isTravelGate) { AudioManager.playSE('travel_gate'); await _tgFade(true); }
+            else if (!_toField) AudioManager.playSE('stair');
             // 船なしでフィールドの海タイルに着地する移動は禁止
             if (_toField && !(partyData.flags && partyData.flags.has_ship)) {
                 const _chkM = externalMapData[exit.map] || externalMapData['map_'+exit.map] || externalMapData[(exit.map||'').replace(/^map_/,'')];
@@ -3322,6 +3438,27 @@ async function moveParty(dx, dy) {
                 }
                 } // end BFS else block
             }
+            // フィールドから室内マップへの入場: 外周の唯一の移動可能タイルにスナップ
+            const _fromField = /^(map_)?field_/.test(partyData.pos.map);
+            if (!_toField && !_isTravelGate && _fromField) {
+                const _bwList = [];
+                for (let _ix = 0; _ix < nextMap.width; _ix++) {
+                    if (!_isBlocked(_ix, 0)) _bwList.push([_ix, 0]);
+                    if (!_isBlocked(_ix, nextMap.height-1)) _bwList.push([_ix, nextMap.height-1]);
+                }
+                for (let _iy = 1; _iy < nextMap.height-1; _iy++) {
+                    if (!_isBlocked(0, _iy)) _bwList.push([0, _iy]);
+                    if (!_isBlocked(nextMap.width-1, _iy)) _bwList.push([nextMap.width-1, _iy]);
+                }
+                if (_bwList.length > 0) {
+                    let _bwBest = _bwList[0], _bwBestD = Infinity;
+                    for (const [_bx, _by] of _bwList) {
+                        const _bd = Math.abs(_bx - exit.x) + Math.abs(_by - exit.y);
+                        if (_bd < _bwBestD) { _bwBestD = _bd; _bwBest = [_bx, _by]; }
+                    }
+                    _lx = _bwBest[0]; _ly = _bwBest[1];
+                }
+            }
             // フィールドへの遷移: 着地地点から出口へ到達できない孤立陸地は遷移中止
             if (_toField) {
                 let _canExit = !!(nextMap.exits && nextMap.exits[`${_lx},${_ly}`]);
@@ -3344,7 +3481,7 @@ async function moveParty(dx, dy) {
             partyData.pos.map = _normMap;
             if (_toField) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[_normMap] = true; }
             partyData.pos.x = _lx; partyData.pos.y = _ly;
-            moveHistory = []; drawMap(); updateBGM(); return;
+            moveHistory = []; drawMap(); updateBGM(); if (_isTravelGate) await _tgFade(false); return;
         }
         else { partyData.pos.x = moveHistory[0].x; partyData.pos.y = moveHistory[0].y; partyData.dir = moveHistory[0].dir; drawMap(); return; }
     }
@@ -3471,7 +3608,7 @@ async function checkAction() {
                     if (hasFrag) {
                         await typeMessage("【伝説の鍛冶屋】\nおお！ それは 『ほしのカケラ』！！\nよし、約束通り お前の武器を\n最強に 鍛え直してやろう！"); AudioManager.playSE('attack_hit'); await typeMessage("カン！ コン！ カン！……"); fragOwner.inventory.splice(fragIdx, 1);
                         let target = partyData.members[0]; if(target.inventory.length < 8) target.inventory.push("w_star_sword"); else target.inventory[0] = "w_star_sword"; 
-                        AudioManager.playSE('item_get'); await typeMessage(`最強の武器『星砕きの剣』を\nてにいれた！`); partyData.flags.flag_weapon_forged = true;
+                        AudioManager.playSE('item_get'); await typeMessage(`最強の武器『星砕きの剣』を\nてにいれた！`); partyData.flags.flag_weapon_forged = true; delete currentMap.npcs[key];
                     } else { await typeMessage("【伝説の鍛冶屋】\nわしは 伝説の鍛冶屋だ。\n北の山岳地帯に おちている\n『ほしのカケラ』が あれば\nお前の武器を 鍛え直してやれるのだがな……"); }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
@@ -3481,7 +3618,7 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             // 種アイテム（フィールド宝）
-            { const _seedMap = { 'obj_seed_speed': ['i13','flag_seed_speed','すばやさのたね'], 'obj_seed_def': ['i14','flag_seed_def','まもりのたね'], 'obj_seed_hp': ['i15','flag_seed_hp','たいりょくのたね'], 'obj_seed_mp': ['i16','flag_seed_mp','まなのたね'] };
+            { const _seedMap = { 'obj_seed_speed': ['i13','flag_seed_speed','すばやさのたね'], 'obj_seed_def': ['i14','flag_seed_def','まもりのたね'], 'obj_seed_hp': ['i15','flag_seed_hp','たいりょくのたね'], 'obj_seed_mp': ['i16','flag_seed_mp','まなのたね'], 'obj_seed_str': ['i12','flag_seed_str','ちからのたね'], 'obj_seed_life': ['i17','flag_seed_life','いのちのきのみ'] };
               if (_seedMap[npc.id]) {
                 const [_sid, _sflag, _sname] = _seedMap[npc.id];
                 if (!partyData.flags[_sflag]) {
@@ -3518,8 +3655,8 @@ async function checkAction() {
                         hideGoldWindow(); 
                         let isWin = await executeBattle(["boss_trial_phantom"]); 
                         showGoldWindow(); updateGoldWindow();
-                        if(isWin) { 
-                            await typeMessage("【大魔導士 ラムダス】\nみごとだ……！！\n約束通り 究極の 魔法を 授けよう。\nこれは わしの 魔力の 全てじゃ。\n大切に 使いなさい。"); AudioManager.playSE('level_up'); let mage = partyData.members.find(m => m.job === "魔法使い" || m.job === "賢者") || partyData.members[0]; if(!mage.spells.includes("spl_ultima")) mage.spells.push("spl_ultima"); await typeMessage(`${mage.name}は 究極魔法『アルテマ』を\nおぼえた！`); partyData.flags.flag_mage_trial_cleared = true; 
+                        if(isWin) {
+                            await typeMessage("【大魔導士 ラムダス】\nみごとだ……！！\n約束通り 究極の 魔法を 授けよう。\nこれは わしの 魔力の 全てじゃ。\n大切に 使いなさい。"); AudioManager.playSE('level_up'); let mage = partyData.members.find(m => m.job === "魔法使い" || m.job === "賢者") || partyData.members[0]; if(!mage.spells.includes("spl_ultima")) mage.spells.push("spl_ultima"); await typeMessage(`${mage.name}は 究極魔法『アルテマ』を\nおぼえた！`); partyData.flags.flag_mage_trial_cleared = true; delete currentMap.npcs[key];
                         }
                     } else { await typeMessage("【大魔導士 ラムダス】\nまだ 力が 足りぬようじゃ……\n鍛えて また 来るがよい。"); }
                 }
@@ -3538,7 +3675,7 @@ async function checkAction() {
                         if(isWin) {
                             await typeMessage("【異世界の旅人】\n見事だ！ 君たちこそが 真の英雄だ！\nこれを 授けよう！"); AudioManager.playSE('item_get');
                             let target = partyData.members[0]; if(target.inventory.length < 8) target.inventory.push("w_star_sword"); else target.inventory[0] = "w_star_sword";
-                            await typeMessage("『星砕きの剣』を てにいれた！"); partyData.flags.flag_beaten_secret_boss = true;
+                            await typeMessage("『星砕きの剣』を てにいれた！"); partyData.flags.flag_beaten_secret_boss = true; delete currentMap.npcs[key];
                         }
                     } else { await typeMessage("【異世界の旅人】\n準備ができたら また 来るがいい。"); }
                 } else {
@@ -4093,20 +4230,41 @@ async function eventWeaponShop(npcId) {
 
 async function eventShop(npcId) {
     await typeMessage("いらっしゃいませ。\nどうぐを おとりそろえております！");
-    let shopIds = [];
-    let allTools = Object.values(masterData.items).filter(i => i.price > 0 && i.type === 'tool').sort((a, b) => a.price - b.price);
-    if (partyData.pos.map.includes('town_01') || partyData.pos.map.includes('castle_01')) { shopIds = allTools.slice(0, 5).map(i => i.id); }
-    else { let maxP = Math.max(100, partyData.gold / 1.5); let cands = allTools.filter(i => i.price <= maxP); if (cands.length === 0) cands = allTools; shopIds = cands.slice(-6).map(i => i.id); }
-    if (shopIds.length === 0) shopIds = allTools.slice(0, 3).map(i => i.id);
-    shopIds = shopIds.filter(id => masterData.items[id]);
-    if (shopIds.length === 0) { await typeMessage("ただいま もちあわせが ございません。"); return; }
-    let options = shopIds.map(id => { let item = masterData.items[id]; return `${item.name}(${item.price}G)`; }); options.push("やめる");
-    let buyIdx = await selectMenu(options, 'cmd-window', 1, true); if(buyIdx === -1 || buyIdx === options.length - 1) return;
-    let itemData = masterData.items[shopIds[buyIdx]]; if(partyData.gold < itemData.price) { await typeMessage("おかねが たりないようです。"); return; }
-    await typeMessage(`${itemData.price}G ですが かいますか？`); let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true); if(yesno !== 0) return;
-    await typeMessage("だれが もちますか？"); let targetIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true); if(targetIdx===-1) return;
-    let target = partyData.members[targetIdx]; if(target.inventory.length >= 8) { await typeMessage("もちものが いっぱいのようです。"); return; }
-    partyData.gold -= itemData.price; target.inventory.push(itemData.id); updateGoldWindow(); AudioManager.playSE('item_get'); await typeMessage(`${target.name}は ${itemData.name}を うけとった。`);
+    while (true) {
+        let mainChoice = await selectMenu(["かう", "うる", "やめる"], 'cmd-window', 1, true);
+        if (mainChoice === -1 || mainChoice === 2) { await typeMessage("またの おこしを おまちしております！"); break; }
+        if (mainChoice === 0) {
+            let allTools = Object.values(masterData.items).filter(i => i.price > 0 && i.type === 'tool').sort((a, b) => a.price - b.price);
+            let shopIds = [];
+            if (partyData.pos.map.includes('town_01') || partyData.pos.map.includes('castle_01')) { shopIds = allTools.slice(0, 5).map(i => i.id); }
+            else { let maxP = Math.max(100, partyData.gold / 1.5); let cands = allTools.filter(i => i.price <= maxP); if (cands.length === 0) cands = allTools; shopIds = cands.slice(-6).map(i => i.id); }
+            if (shopIds.length === 0) shopIds = allTools.slice(0, 3).map(i => i.id);
+            shopIds = shopIds.filter(id => masterData.items[id]);
+            if (shopIds.length === 0) { await typeMessage("ただいま もちあわせが ございません。"); continue; }
+            let options = shopIds.map(id => { let item = masterData.items[id]; return `${item.name}(${item.price}G)`; }); options.push("やめる");
+            let buyIdx = await selectMenu(options, 'cmd-window', 1, true); if (buyIdx === -1 || buyIdx === options.length - 1) continue;
+            let itemData = masterData.items[shopIds[buyIdx]]; if (partyData.gold < itemData.price) { await typeMessage("おかねが たりないようです。"); continue; }
+            await typeMessage(`${itemData.price}G ですが かいますか？`); let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true); if (yesno !== 0) continue;
+            await typeMessage("だれが もちますか？"); let targetIdx = await selectMenu(partyData.members.map(m => m.name), 'cmd-window', 1, true); if (targetIdx === -1) continue;
+            let target = partyData.members[targetIdx]; if (target.inventory.length >= 8) { await typeMessage("もちものが いっぱいのようです。"); continue; }
+            partyData.gold -= itemData.price; target.inventory.push(itemData.id); updateGoldWindow(); AudioManager.playSE('item_get'); await typeMessage(`${target.name}は ${itemData.name}を うけとった。`);
+        } else {
+            let sellList = [];
+            partyData.members.forEach(m => {
+                m.inventory.forEach((id, idx) => {
+                    let it = masterData.items[id];
+                    if (it && it.type === 'tool' && it.price > 0) sellList.push({ owner: m, invIdx: idx, it });
+                });
+            });
+            if (sellList.length === 0) { await typeMessage("うれるどうぐが ありません。"); continue; }
+            let sellOpts = sellList.map(s => { let half = Math.floor(s.it.price / 2); return `${s.owner.name}: ${s.it.name}(${half}G)`; }); sellOpts.push("やめる");
+            let sellIdx = await selectMenu(sellOpts, 'cmd-window', 1, true); if (sellIdx === -1 || sellIdx === sellOpts.length - 1) continue;
+            let sel = sellList[sellIdx]; let half = Math.floor(sel.it.price / 2);
+            await typeMessage(`${sel.it.name}を ${half}G で うりますか？`); let yn = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true); if (yn !== 0) continue;
+            sel.owner.inventory.splice(sel.invIdx, 1);
+            partyData.gold += half; updateGoldWindow(); AudioManager.playSE('item_get'); await typeMessage(`${sel.it.name}を ${half}G で うった。`);
+        }
+    }
 }
 
 async function openMainMenu() {
@@ -4203,6 +4361,10 @@ async function openMainMenu() {
                                 target.max_mp = (target.max_mp||0) + 5;
                                 target.mp = Math.min(target.max_mp, (target.mp||0) + 5);
                                 await typeMessage(`${target.name}の まりょくが あがった！`);
+                            } else if(itemData.effect === 'life_nut') {
+                                target.max_hp = (target.max_hp||0) + 30;
+                                target.hp = Math.min(target.max_hp, (target.hp||0) + 30);
+                                await typeMessage(`${target.name}の たいりょくが\nぐんと あがった！`);
                             } else {
                                 let val = itemData.value;
                                 if(val === 'max' || itemData.effect === 'full_heal' || isNaN(parseInt(val))) { target.hp = target.max_hp; }
@@ -4650,7 +4812,7 @@ ${act.actor.name}の ちからが すいとられた！`); }
         if(partyData.members[0]) { partyData.members[0].hp = partyData.members[0].max_hp; partyData.members[0].mp = partyData.members[0].max_mp; } for(let i = 1; i < partyData.members.length; i++) { partyData.members[i].hp = 0; partyData.members[i].isPoisoned = false; }
         // 復帰位置: last_save_pos（最後に神父でセーブした場所）を優先
         let respawnPos = null;
-        try { let _s = localStorage.getItem('gravity_quest_save'); if (_s) { let _p = JSON.parse(_s); if (_p && _p.last_save_pos && _p.last_save_pos.map) respawnPos = _p.last_save_pos; else if (_p && _p.pos && _p.pos.map) respawnPos = _p.pos; } } catch(e) {}
+        try { let _s = localStorage.getItem('gravity_quest_save'); if (_s) { let _p = JSON.parse(_s); if (_p && _p.last_save_pos && _p.last_save_pos.map) respawnPos = _p.last_save_pos; } } catch(e) {}
         if (!respawnPos) {
             // セーブなし: 城の神父の前からスタート
             let _ck = externalMapData ? (Object.keys(externalMapData).find(k => k.includes('castle_01') && !k.includes('demon')) || Object.keys(externalMapData).find(k => k.includes('castle') && !k.includes('demon'))) : null;
@@ -4698,11 +4860,19 @@ async function startSecondLoop(parsedOldData) {
 }
 
 async function showTitleScreen() {
+    // ローディングオーバーレイ表示 & アニメーション開始
+    const _lo = document.getElementById('loading-overlay');
+    if (_lo) { _lo.style.display = 'flex'; _lo.style.opacity = '1'; _lo.style.transition = ''; }
+    _loadPct = 2; _animLoad();
+
     // GitHubなど外部から ?data=<url> または window.GRAVITY_CUSTOM_DATA_URL で上書き可能
     const _customDataUrl = (typeof window !== 'undefined' && window.GRAVITY_CUSTOM_DATA_URL) ||
         new URLSearchParams(window.location.search).get('data') || null;
+    _loadPct = 5;
     await fetchExternalMap(_customDataUrl || "https://www.gravity.place/share/ugcGame?id=36783");
+    _loadPct = 65;
     await loadExternalGrowthDatabase("https://www.gravity.place/share/ugcGame?id=38430");
+    _loadPct = 75;
     if (!masterData.growth) masterData.growth = {};
     if (window.EXT_GROWTH) {
         window.EXT_GROWTH.characterData.forEach(char => {
@@ -4710,6 +4880,14 @@ async function showTitleScreen() {
                 masterData.growth[char.job] = char.growth;
         });
     }
+    // BGM事前キャッシュ（音割れ・処理落ち防止）
+    if (AudioManager.db && AudioManager.db.bgm) {
+        await AudioManager.preloadAllBGMsTracked(p => { _loadPct = 75 + Math.floor(p * 20); });
+    }
+    _loadPct = 97; await new Promise(r => setTimeout(r, 120));
+    _loadPct = 100; await new Promise(r => setTimeout(r, 80));
+    // オーバーレイをフェードアウト
+    if (_lo) { _lo.style.transition = 'opacity 0.5s'; _lo.style.opacity = '0'; await new Promise(r => setTimeout(r, 520)); _lo.style.display = 'none'; _lo.style.opacity = '1'; _lo.style.transition = ''; }
     state = 'TITLE'; document.getElementById('title-screen').style.display = 'flex'; AudioManager.playBGM('title');
     while(true) {
         let s = localStorage.getItem('gravity_quest_save'); let hasClearData = false;
@@ -4794,6 +4972,15 @@ setInterval(() => { if (state === 'FIELD' || state === 'MSG') drawMap(); }, 100)
 <script>
 // ═══ STANDALONE OVERRIDE: init() — 外部fetchなしで全DB適用 ═══
 window.onload = null; // 元の onload を解除
+let _loadPct = 0;
+function _animLoad() {
+    const _lo = document.getElementById('loading-overlay');
+    if (!_lo || _lo.style.display === 'none') return;
+    const _lt = document.getElementById('loading-text');
+    if (_lt) { const _d = '.'.repeat((Math.floor(Date.now() / 350) % 3) + 1); _lt.textContent = 'loading' + _d + ' ' + Math.floor(_loadPct) + '%'; }
+    requestAnimationFrame(_animLoad);
+}
+
 async function init() {
     resizeCanvas();
     masterData = await loadExternalData('master');
