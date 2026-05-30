@@ -4401,8 +4401,20 @@ ${act.actor.name}の ちからが すいとられた！`); }
         const screen = document.getElementById('screen'); screen.style.transition = 'opacity 1.5s'; screen.style.opacity = '0'; await new Promise(r => setTimeout(r, 2000));
         partyData.gold = Math.floor(partyData.gold / 2);
         if(partyData.members[0]) { partyData.members[0].hp = partyData.members[0].max_hp; partyData.members[0].mp = partyData.members[0].max_mp; } for(let i = 1; i < partyData.members.length; i++) { partyData.members[i].hp = 0; partyData.members[i].isPoisoned = false; }
-        let savedPos = null; try { let s = localStorage.getItem('gravity_quest_save'); if (s) { let parsed = JSON.parse(s); if (parsed && parsed.pos) savedPos = parsed.pos; } } catch(e) {}
-        if (savedPos) { partyData.pos = { map: savedPos.map, x: savedPos.x, y: savedPos.y }; } else { let startMap = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos = { map: startMap, x: 10, y: 18 }; }
+        // 復帰位置: last_save_pos（最後に神父でセーブした場所）を優先
+        let respawnPos = null;
+        try { let _s = localStorage.getItem('gravity_quest_save'); if (_s) { let _p = JSON.parse(_s); if (_p && _p.last_save_pos && _p.last_save_pos.map) respawnPos = _p.last_save_pos; else if (_p && _p.pos && _p.pos.map) respawnPos = _p.pos; } } catch(e) {}
+        if (!respawnPos) {
+            // セーブなし: 城の神父の前からスタート
+            let _ck = externalMapData ? (Object.keys(externalMapData).find(k => k.includes('castle_01') && !k.includes('demon')) || Object.keys(externalMapData).find(k => k.includes('castle') && !k.includes('demon'))) : null;
+            if (_ck && externalMapData[_ck]) {
+                let _cm = externalMapData[_ck];
+                let _pk = Object.keys(_cm.npcs || {}).find(k => { let _nid = (_cm.npcs[k].id || ''); return _nid.includes('priest') || _nid.includes('church'); });
+                if (_pk) { let [_px, _py] = _pk.split(',').map(Number); let _ry = _py + 1; if (_ry >= _cm.height - 1) _ry = _py - 1; respawnPos = { map: _ck, x: _px, y: _ry }; }
+                else respawnPos = { map: _ck, x: 5, y: 8 };
+            } else { respawnPos = { map: 'map_town_01', x: 10, y: 18 }; }
+        }
+        partyData.pos = { map: respawnPos.map, x: respawnPos.x, y: respawnPos.y };
         partyData.dir = 2; currentMap = await loadExternalData('map-' + partyData.pos.map);
         bScreen.style.display = 'none'; screen.style.display = 'block'; hideAllWindows(); inputCallback = null; drawMap(); updateBGM();
         screen.style.opacity = '1'; await new Promise(r => setTimeout(r, 1000)); screen.style.transition = '';
