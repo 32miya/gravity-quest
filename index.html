@@ -3736,8 +3736,14 @@ async function eventCasino() {
     
     return new Promise((resolve) => {
         const vH = window.innerHeight; const barH = 44;
-        const overlay = document.createElement('div'); overlay.id = 'casino-overlay'; overlay.style.position = 'fixed'; overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.width = '100%'; overlay.style.height = vH + 'px'; overlay.style.backgroundColor = '#000'; overlay.style.zIndex = '9999'; overlay.style.overflow = 'hidden';
-        const iframe = document.createElement('iframe'); iframe.src = casinoSrc; iframe.style.position = 'absolute'; iframe.style.top = barH + 'px'; iframe.style.left = '0'; iframe.style.width = '100%'; iframe.style.height = (vH - barH) + 'px'; iframe.style.border = 'none'; iframe.style.backgroundColor = '#000'; iframe.style.zIndex = '10000'; iframe.style.overflow = 'hidden'; iframe.setAttribute('scrolling', 'no');
+        // カジノゲームのデザイン高さ（実コンテンツ全体を含む想定値）
+        const casinoGameH = 900;
+        // 画面に収まるようにスケール計算（vH全体を使い、topBarはiframe上にフロート表示）
+        const casinoScale = Math.min(1, vH / casinoGameH);
+        // overflowを設定しないことで、transform後のvisual全体が正しく表示・タップできる
+        const overlay = document.createElement('div'); overlay.id = 'casino-overlay'; overlay.style.position = 'fixed'; overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.width = '100%'; overlay.style.height = vH + 'px'; overlay.style.backgroundColor = '#000'; overlay.style.zIndex = '9999';
+        // iframeはカジノゲーム全体の高さで生成しscaleで画面に収める
+        const iframe = document.createElement('iframe'); iframe.src = casinoSrc; iframe.style.position = 'absolute'; iframe.style.top = '0'; iframe.style.left = '0'; iframe.style.width = '100%'; iframe.style.height = casinoGameH + 'px'; iframe.style.border = 'none'; iframe.style.backgroundColor = '#000'; iframe.style.zIndex = '10000'; iframe.style.overflow = 'hidden'; iframe.setAttribute('scrolling', 'no'); if (casinoScale < 1) { iframe.style.transform = `scale(${casinoScale})`; iframe.style.transformOrigin = 'top center'; }
         const topBar = document.createElement('div'); topBar.style.position = 'absolute'; topBar.style.top = '0'; topBar.style.left = '0'; topBar.style.right = '0'; topBar.style.height = barH + 'px'; topBar.style.backgroundColor = 'rgba(34, 34, 34, 0.92)'; topBar.style.borderBottom = '2px solid #fff'; topBar.style.display = 'flex'; topBar.style.justifyContent = 'space-between'; topBar.style.alignItems = 'center'; topBar.style.padding = '0 15px'; topBar.style.boxSizing = 'border-box'; topBar.style.zIndex = '10001'; topBar.style.pointerEvents = 'auto';
         const goldDisplay = document.createElement('div'); goldDisplay.innerText = `所持金: ${partyData.gold} G`; goldDisplay.style.color = '#ff0'; goldDisplay.style.fontWeight = 'bold'; goldDisplay.style.fontFamily = "'Courier New', monospace";
         const closeBtn = document.createElement('div'); closeBtn.innerText = 'カジノを出る'; closeBtn.className = 'btn'; closeBtn.style.fontSize = '14px'; closeBtn.style.padding = '5px 15px'; closeBtn.style.minHeight = '30px';
