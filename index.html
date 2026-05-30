@@ -953,41 +953,34 @@ async function showWorldMap() {
             const mapId = `map_field_${gx}_${gy}`;
             const m = externalMapData[mapId];
             if (!m) continue;
-            const visible = !!vm[mapId];
 
-            if (visible) {
-                // Draw terrain
-                for (let ty = 0; ty < MW; ty++) for (let tx = 0; tx < MW; tx++) {
-                    ctx2.fillStyle = tC(m.tiles[ty*MW+tx]);
-                    ctx2.fillRect((gx*MW+tx)*SCALE, (gy*MW+ty)*SCALE, SCALE, SCALE);
-                }
-                // Building/landmark dots at exit positions
-                if (m.exits) {
-                    for (const [ek, ed] of Object.entries(m.exits)) {
-                        if (!ed || !ed.map) continue;
-                        const [ex2, ey2] = ek.split(',').map(Number);
-                        const dm = ed.map;
-                        let dc = null;
-                        if (dm.includes('town')||dm.includes('village')||dm.includes('market')) dc='#ffe566';
-                        else if (dm.includes('castle')&&!dm.includes('demon')&&!dm.includes('death')) dc='#aaccff';
-                        else if (dm.includes('dharma')) dc='#ffd080';
-                        else if (dm.includes('shrine')) dc='#aaffcc';
-                        else if (dm.includes('tower')&&!dm.includes('demon')) dc='#88aaff';
-                        else if (dm.includes('dungeon')||dm.includes('cave')) dc='#ff9966';
-                        else if (dm.includes('demon')||dm.includes('maou')||dm.includes('death')) dc='#ff3333';
-                        if (dc) {
-                            ctx2.fillStyle = dc;
-                            const bx=(gx*MW+ex2)*SCALE-1, by=(gy*MW+ey2)*SCALE-1;
-                            ctx2.fillRect(bx,by,5,5);
-                            ctx2.fillStyle='rgba(255,255,255,0.7)';
-                            ctx2.fillRect(bx+1,by+1,2,2);
-                        }
+            // 全景表示: 未訪問でも地形を描画
+            for (let ty = 0; ty < MW; ty++) for (let tx = 0; tx < MW; tx++) {
+                ctx2.fillStyle = tC(m.tiles[ty*MW+tx]);
+                ctx2.fillRect((gx*MW+tx)*SCALE, (gy*MW+ty)*SCALE, SCALE, SCALE);
+            }
+            // Building/landmark dots at exit positions
+            if (m.exits) {
+                for (const [ek, ed] of Object.entries(m.exits)) {
+                    if (!ed || !ed.map) continue;
+                    const [ex2, ey2] = ek.split(',').map(Number);
+                    const dm = ed.map;
+                    let dc = null;
+                    if (dm.includes('town')||dm.includes('village')||dm.includes('market')) dc='#ffe566';
+                    else if (dm.includes('castle')&&!dm.includes('demon')&&!dm.includes('death')) dc='#aaccff';
+                    else if (dm.includes('dharma')) dc='#ffd080';
+                    else if (dm.includes('shrine')) dc='#aaffcc';
+                    else if (dm.includes('tower')&&!dm.includes('demon')) dc='#88aaff';
+                    else if (dm.includes('dungeon')||dm.includes('cave')) dc='#ff9966';
+                    else if (dm.includes('demon')||dm.includes('maou')||dm.includes('death')) dc='#ff3333';
+                    if (dc) {
+                        ctx2.fillStyle = dc;
+                        const bx=(gx*MW+ex2)*SCALE-1, by=(gy*MW+ey2)*SCALE-1;
+                        ctx2.fillRect(bx,by,5,5);
+                        ctx2.fillStyle='rgba(255,255,255,0.7)';
+                        ctx2.fillRect(bx+1,by+1,2,2);
                     }
                 }
-            } else {
-                // Fog — draw very dark with slight border hint
-                ctx2.fillStyle = FOG;
-                ctx2.fillRect(gx*MW*SCALE, gy*MW*SCALE, MW*SCALE, MW*SCALE);
             }
         }
     }
@@ -1009,7 +1002,7 @@ async function showWorldMap() {
         // Non-field map: approximate from getCurrentWorldPos
         const wp = getCurrentWorldPos(); pgx = wp.x; pgy = wp.y;
     }
-    if (pgx >= 0 && pgy >= 0 && vm[`map_field_${pgx}_${pgy}`]) {
+    if (pgx >= 0 && pgy >= 0) {
         const _px = pMapId && /^map_field_/.test(pMapId) ? partyData.pos.x : MW/2;
         const _py = pMapId && /^map_field_/.test(pMapId) ? partyData.pos.y : MW/2;
         ppx = (pgx*MW+_px)*SCALE; ppy = (pgy*MW+_py)*SCALE;
@@ -1043,9 +1036,7 @@ async function showWorldMap() {
         {gx:2,gy:3,name:"ほこら"},{gx:0,gy:2,name:"西の大地"},
         {gx:4,gy:2,name:"東の大地"}
     ];
-    const visitedRegions = regionDefs.filter(r => vm[`map_field_${r.gx}_${r.gy}`]);
-    const unknownCount = MG*MG - Object.keys(vm).filter(k => k.startsWith('map_field_')).length;
-    const rHtml = visitedRegions.map(r =>
+    const rHtml = regionDefs.map(r =>
         `<span style="display:inline-block;background:rgba(20,40,80,0.75);color:#cce4ff;font-size:9px;padding:1px 4px;margin:1px;border-radius:2px;border:1px solid rgba(100,160,255,0.3);">${r.name}</span>`
     ).join('');
 
@@ -1054,7 +1045,6 @@ async function showWorldMap() {
             `<img src="${imgSrc}" style="image-rendering:pixelated;image-rendering:crisp-edges;width:160px;height:160px;border:2px solid #446;display:block;margin:0 auto;"/>` +
             `</div>`;
     if (rHtml) html += `<div style="margin-top:5px;text-align:center;line-height:1.6;">${rHtml}</div>`;
-    if (unknownCount > 0) html += `<div style="margin-top:3px;text-align:center;color:#556;font-size:9px;">未探索エリア: ${unknownCount}マップ</div>`;
     html += `<div style="margin-top:5px;text-align:center;line-height:1.8;">${lgHtml}</div>`;
     html += `<div style="margin-top:6px;text-align:right;font-size:13px;" class="blink">▼とじる</div>`;
     document.getElementById('status-window').innerHTML = html;
