@@ -1691,8 +1691,15 @@ function generateFieldMapsForGravityQuest() {
     if (shrp) { externalMapData["map_field_2_3"].tiles[shrp.y*15+shrp.x]=22; externalMapData["map_field_2_3"].exits[shrp.k]={map:"map_shrine_warp",x:6,y:9}; }
     const forceExit = (mapId, tx, ty, destMap, dx, dy) => {
         let m = externalMapData[mapId]; if (!m || !externalMapData[destMap]) return;
+        const dm = externalMapData[destMap];
+        const _cx = Math.max(0, Math.min(dx, dm.width-1)), _cy = Math.max(0, Math.min(dy, dm.height-1));
+        let _fx = dx, _fy = dy;
+        if (dm.tiles[_cy*dm.width+_cx] === 5) {
+            const p = findLand(destMap, dx, dy) || findLand(destMap, Math.floor(dm.width/2), Math.floor(dm.height/2));
+            if (p) { _fx = p.x; _fy = p.y; } else return;
+        }
         if (m.tiles[ty*m.width+tx]===5) m.tiles[ty*m.width+tx]=11;
-        m.exits[`${tx},${ty}`]={map:destMap,x:dx,y:dy};
+        m.exits[`${tx},${ty}`]={map:destMap,x:_fx,y:_fy};
     };
     if (externalMapData["map_field_north_2"]) forceExit("map_field_2_0",7,0,"map_field_north_2",7,13);
     if (externalMapData["map_field_south_2"]) forceExit("map_field_2_4",7,14,"map_field_south_2",7,1);
@@ -1874,7 +1881,7 @@ function fixAllExitLandings() {
             if (!destMap) { const _b = destId.replace(/^map_/, ''); if (_b !== destId && externalMapData[_b]) { destId = _b; destMap = externalMapData[_b]; } }
             if (!destMap) continue;
             let lx = ex.x, ly = ex.y;
-            const toField = /^map_field_/.test(destId) || /^field_\d/.test(destId);
+            const toField = /^map_field_/.test(destId) || /^field_/.test(destId);
             // 範囲外チェック
             if (lx < 0 || ly < 0 || lx >= destMap.width || ly >= destMap.height) {
                 const cx = Math.floor(destMap.width / 2), cy = Math.floor(destMap.height / 2);
@@ -3173,7 +3180,7 @@ async function moveParty(dx, dy) {
     drawMap();
     if(currentMap.exits && currentMap.exits[key]) {
         const exit = currentMap.exits[key];
-            const _toField = /^(map_)?field_\d/.test(exit.map);
+            const _toField = /^(map_)?field_/.test(exit.map);
             if (!_toField) AudioManager.playSE('stair');
             // 船なしでフィールドの海タイルに着地する移動は禁止
             if (_toField && !(partyData.flags && partyData.flags.has_ship)) {
