@@ -3193,13 +3193,10 @@ async function moveParty(dx, dy) {
             }
             let nextMapId = 'map-' + exit.map; let nextMap = await loadExternalData(nextMapId);
         if (nextMap) {
-            currentMap = nextMap;
             // マップIDを externalMapData の正規キーに正規化
             let _normMap = exit.map;
             if (!externalMapData[_normMap] && externalMapData['map_' + _normMap]) _normMap = 'map_' + _normMap;
             else if (!externalMapData[_normMap] && _normMap.startsWith('map_') && externalMapData[_normMap.substring(4)]) _normMap = _normMap.substring(4);
-            partyData.pos.map = _normMap;
-            if (_toField) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[_normMap] = true; }
             let _lx = exit.x, _ly = exit.y;
             const _solid = _toField ? [1, 2, 4, 5, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
             const _isBlocked = (x, y) => {
@@ -3236,6 +3233,27 @@ async function moveParty(dx, dy) {
                     }
                 }
             }
+            // フィールドへの遷移: 着地地点から出口へ到達できない孤立陸地は遷移中止
+            if (_toField) {
+                let _canExit = !!(nextMap.exits && nextMap.exits[`${_lx},${_ly}`]);
+                if (!_canExit) {
+                    const _isoS=[1,2,4,5,15,16,17,18,19,20];
+                    const _isoV=new Set([`${_lx},${_ly}`]); const _isoQ=[[_lx,_ly]];
+                    isoLoop: while(_isoQ.length>0&&_isoV.size<400){
+                        const[icx,icy]=_isoQ.shift();
+                        for(const[idx,idy]of[[0,1],[0,-1],[1,0],[-1,0]]){
+                            const inx=icx+idx,iny=icy+idy,ik=`${inx},${iny}`;
+                            if(_isoV.has(ik))continue; _isoV.add(ik);
+                            if(nextMap.exits&&nextMap.exits[ik]){_canExit=true;break isoLoop;}
+                            if(inx>=0&&iny>=0&&inx<nextMap.width&&iny<nextMap.height&&!_isoS.includes(nextMap.tiles[iny*nextMap.width+inx]))_isoQ.push([inx,iny]);
+                        }
+                    }
+                }
+                if (!_canExit) return; // 孤立陸地：遷移中止
+            }
+            currentMap = nextMap;
+            partyData.pos.map = _normMap;
+            if (_toField) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[_normMap] = true; }
             partyData.pos.x = _lx; partyData.pos.y = _ly;
             moveHistory = []; drawMap(); updateBGM(); return;
         }
@@ -4047,9 +4065,9 @@ async function openMainMenu() {
                 if(spellData.id.includes('rula')) {
                     let _rMapId = partyData.pos.map || '';
                     if (_rMapId.includes('dungeon') || _rMapId.includes('tower') || _rMapId.includes('demon') || _rMapId.includes('castle') || _rMapId.includes('shrine')) { await typeMessage(`しかし ここでは つかえなかった。\nルーラは フィールドや まちで つかえます。`); }
-                    else { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); const _lsp1 = partyData.last_save_pos || { map: "map_town_01", x: 10, y: 18 }; partyData.pos.map = _lsp1.map; partyData.pos.x = _lsp1.x; partyData.pos.y = _lsp1.y; currentMap = await loadExternalData('map-' + _lsp1.map); await typeMessage(`セーブポイントへ もどってきた！`); hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; }
+                    else { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); const _lsp1 = partyData.last_save_pos || { map: "map_town_01", x: 10, y: 18 }; partyData.pos.map = _lsp1.map; partyData.pos.x = _lsp1.x; partyData.pos.y = _lsp1.y; currentMap = await loadExternalData('map-' + _lsp1.map); await typeMessage(`セーブポイントへ もどってきた！`); moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; }
                 }
-                else if(spellData.id.includes('remi')) { let _rMapId2 = partyData.pos.map || ''; if (_rMapId2.includes('dungeon') || _rMapId2.includes('cave') || _rMapId2.includes('tower') || _rMapId2.includes('demon') || _rMapId2.includes('shrine')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); const _lfp = partyData.last_field_pos; if (_lfp && externalMapData && externalMapData[_lfp.map]) { partyData.pos.map = _lfp.map; partyData.pos.x = _lfp.x; partyData.pos.y = _lfp.y; currentMap = await loadExternalData('map-' + _lfp.map); } else { partyData.pos.map = "map_field_2_2"; partyData.pos.x = 7; partyData.pos.y = 7; currentMap = await loadExternalData('map-map_field_2_2'); } await typeMessage(`ダンジョンから だしゅつした！`); hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; } else { await typeMessage(`しかし ここでは つかえなかった。\nレミトは ダンジョンや たいせつな しせつの 中で つかえます。`); } } 
+                else if(spellData.id.includes('remi')) { let _rMapId2 = partyData.pos.map || ''; if (_rMapId2.includes('dungeon') || _rMapId2.includes('cave') || _rMapId2.includes('tower') || _rMapId2.includes('demon') || _rMapId2.includes('shrine')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); const _lfp = partyData.last_field_pos; if (_lfp && externalMapData && externalMapData[_lfp.map]) { partyData.pos.map = _lfp.map; partyData.pos.x = _lfp.x; partyData.pos.y = _lfp.y; currentMap = await loadExternalData('map-' + _lfp.map); } else { partyData.pos.map = "map_field_2_2"; partyData.pos.x = 7; partyData.pos.y = 7; currentMap = await loadExternalData('map-map_field_2_2'); } await typeMessage(`ダンジョンから だしゅつした！`); moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; } else { await typeMessage(`しかし ここでは つかえなかった。\nレミトは ダンジョンや たいせつな しせつの 中で つかえます。`); } } 
                 else if(spellData.id.includes('tohe')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.tohero_steps = 100; await typeMessage(`まものが ちかづかなくなった！`); }
                 else if(spellData.id.includes('trama')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.tramana_steps = 100; await typeMessage(`ダメージゾーンから みをまもる じゅもんを はった！`); }
             } else { await typeMessage("ここでは つかえない！"); }
