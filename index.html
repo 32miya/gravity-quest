@@ -1698,6 +1698,58 @@ function generateFieldMapsForGravityQuest() {
     if (externalMapData["map_field_east_2"]) forceExit("map_field_4_2",14,7,"map_field_east_2",1,7);
     if (externalMapData["map_field_west_2"]) forceExit("map_field_0_2",0,7,"map_field_west_2",13,7);
 }
+function fixExternalMapConnections() {
+    if (!externalMapData) return;
+    const _solid = [1,2,4,5,15,16,17,18,19,20];
+
+    // 1. 城 ↔ map_field_2_2 の双方向接続
+    const ck = Object.keys(externalMapData).find(k => k.includes('castle_01') && !k.includes('demon'));
+    const fm22 = externalMapData['map_field_2_2'];
+    if (ck && fm22) {
+        const cm = externalMapData[ck];
+        // 城のフィールド出口を1本だけ field_2_2 に向ける（複数あれば余剰削除）
+        const cFExits = Object.keys(cm.exits || {}).filter(k => { const m = cm.exits[k].map||''; return /^map_field_/.test(m)||m.startsWith('field_'); });
+        if (cFExits.length > 0) {
+            cm.exits[cFExits[0]].map = 'map_field_2_2'; cm.exits[cFExits[0]].x = 7; cm.exits[cFExits[0]].y = 7;
+            for (let i=1;i<cFExits.length;i++){const[kx,ky]=cFExits[i].split(',').map(Number);if(kx>=0&&ky>=0&&kx<cm.width&&ky<cm.height)cm.tiles[ky*cm.width+kx]=0;delete cm.exits[cFExits[i]];}
+        } else {
+            // 城にフィールド出口がない場合、最下段付近の歩けるタイルに作成
+            let ex=Math.floor(cm.width/2),ey=cm.height-2;
+            for(let y=cm.height-2;y>=2;y--){let f=false;for(let x=2;x<cm.width-2;x++){if(!_solid.includes(cm.tiles[y*cm.width+x])&&!cm.exits[`${x},${y}`]&&!cm.npcs[`${x},${y}`]){ex=x;ey=y;f=true;break;}}if(f)break;}
+            cm.tiles[ey*cm.width+ex]=22;
+            cm.exits[`${ex},${ey}`]={map:'map_field_2_2',x:7,y:7};
+        }
+        // field_2_2 に城への入口がなければ追加
+        const hasCastle=Object.values(fm22.exits||{}).some(e=>(e.map||'').includes('castle')&&!(e.map||'').includes('demon'));
+        if(!hasCastle){
+            const cp=findLand('map_field_2_2',5,5);
+            if(cp){fm22.tiles[cp.y*15+cp.x]=22;fm22.exits[cp.k]={map:ck,x:Math.floor(cm.width/2),y:cm.height-2};}
+        }
+    }
+
+    // 2. 町のフィールド出口を map_field_2_2 に修正
+    const tk=Object.keys(externalMapData).find(k=>k.includes('town_01'));
+    if(tk&&externalMapData[tk]){
+        for(const k of Object.keys(externalMapData[tk].exits||{})){
+            const ex=externalMapData[tk].exits[k];
+            if(ex&&ex.map&&(/^map_field_/.test(ex.map)||ex.map.startsWith('field_'))&&ex.map!=='map_field_2_2'){ex.map='map_field_2_2';ex.x=7;ex.y=7;}
+        }
+    }
+
+    // 3. 外部JSONのダンジョン深層（dungeon_b*）のフィールド直通出口を除去
+    for(const mapId of Object.keys(externalMapData)){
+        if(!/dungeon_b/.test(mapId))continue;
+        const m=externalMapData[mapId];
+        for(const k of Object.keys(m.exits||{})){
+            const ex=m.exits[k];
+            if(ex&&ex.map&&(/^map_field_/.test(ex.map)||ex.map.startsWith('field_'))){
+                const[kx,ky]=k.split(',').map(Number);
+                if(kx>=0&&ky>=0&&kx<m.width&&ky<m.height)m.tiles[ky*m.width+kx]=0;
+                delete m.exits[k];
+            }
+        }
+    }
+}
 function fixMapExits() {
     if(!externalMapData) return;
     const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
@@ -2146,6 +2198,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
         }
 
         generateDQStyleMaps();
+        fixExternalMapConnections();
         fixMapExits();
         fixAllExitLandings(); loading.style.display = 'none'; return true; } } throw new Error("JSONデータなし"); } catch(e) { console.error(e); loading.innerText = '読み込み失敗'; setTimeout(() => { loading.style.display = 'none'; }, 2000); return false; } }
 
