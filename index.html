@@ -1587,6 +1587,17 @@ function applyGrowthDataToParty(isNewGame = false) {
 
 function convertMapData(extMap) { let tiles = []; for (let y = 0; y < extMap.height; y++) { for (let x = 0; x < extMap.width; x++) tiles.push(extMap.terrain_layer[y][x]); } let exits = {}; if (extMap.warp_points) extMap.warp_points.forEach(w => { exits[`${w.x},${w.y}`] = { map: w.target_map, x: w.target_x, y: w.target_y }; }); let npcs = {}; if (extMap.objects) extMap.objects.forEach(obj => { npcs[`${obj.x},${obj.y}`] = { id: obj.entity_id, name: obj.entity_id }; }); let isSafe = extMap.map_id.includes('town') || extMap.map_id.includes('market') || extMap.map_id.includes('village') || extMap.map_id.includes('shrine') || extMap.map_id.includes('port'); if (extMap.map_id.includes('castle') && !extMap.map_id.includes('death')) { isSafe = true; } let encounters = extMap.encounters || []; if (!isSafe && encounters.length === 0) { let isCave = extMap.map_id.includes('dungeon') || extMap.map_id.includes('cave'); let isLate = extMap.map_id.includes('death') || extMap.map_id.includes('demon') || extMap.map_id.includes('volcano'); let isMid = extMap.map_id.includes('tower') || extMap.map_id.includes('dungeon_2') || extMap.map_id.includes('mountain') || extMap.map_id.includes('desert'); let pool = []; if (isLate) pool = ["ancient_dragon", "cyclops", "vampire_lord", "death_knight", "behemoth", "lich", "archdemon", "bahamut", "hagure_gura"]; else if (isMid) pool = ["killer_mantis", "dark_mage", "minotaur", "troll", "chimera", "dullahan", "cockatrice", "succubus", "flame_elemental", "gargoyle", "hagure_gura"]; else if (isCave) pool = ["ghost", "skeleton", "giant_bat", "ghost_mushroom", "golem", "dark_mage"]; else pool = ["slime", "goblin", "wild_wolf", "orc", "red_dragon"]; encounters = pool.filter(id => masterData.monsters[id]); if(encounters.length === 0) encounters = isCave ? ["m02"] : ["m01", "m02"]; } else if (isSafe) { encounters = []; } return { width: extMap.width, height: extMap.height, tiles: tiles, encounters: encounters, exits: exits, npcs: npcs, name: extMap.name || extMap.map_name || getMapDisplayName(extMap.map_id) }; }
 
+function findLand(mapId, cx, cy) {
+    let m = externalMapData[mapId]; if (!m) return null;
+    for (let r = 0; r <= 7; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx)!==r && Math.abs(dy)!==r) continue;
+        let tx=cx+dx, ty=cy+dy;
+        if (tx<1||ty<1||tx>=m.width-1||ty>=m.height-1) continue;
+        let t=m.tiles[ty*m.width+tx], k=`${tx},${ty}`;
+        if (t!==5 && t!==20 && !m.exits[k] && !m.npcs[k]) return {x:tx,y:ty,k};
+    }
+    return null;
+}
 function generateFieldMapsForGravityQuest() {
     const GW = 75, GH = 75;
     const world = new Array(GW * GH).fill(5);
@@ -1671,17 +1682,6 @@ function generateFieldMapsForGravityQuest() {
         }
     }
     // === Special building exits ===
-    const findLand = (mapId, cx, cy) => {
-        let m = externalMapData[mapId]; if (!m) return null;
-        for (let r = 0; r <= 7; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-            if (Math.abs(dx)!==r && Math.abs(dy)!==r) continue;
-            let tx=cx+dx, ty=cy+dy;
-            if (tx<1||ty<1||tx>=m.width-1||ty>=m.height-1) continue;
-            let t=m.tiles[ty*m.width+tx], k=`${tx},${ty}`;
-            if (t!==5 && t!==20 && !m.exits[k] && !m.npcs[k]) return {x:tx,y:ty,k};
-        }
-        return null;
-    };
     let tp = findLand("map_field_2_2", 7, 7);
     if (tp) { externalMapData["map_field_2_2"].tiles[tp.y*15+tp.x]=21; externalMapData["map_field_2_2"].exits[tp.k]={map:"map_town_01",x:10,y:18}; }
     let dp = findLand("map_field_2_0", 7, 6);
@@ -1805,10 +1805,10 @@ function generateDQStyleMaps() {
     // ===== 試練の洞窟 B1F (20x20) =====
     externalMapData['map_dungeon_b1f'] = mkMap(20, 20,
         [[1,1,6,6],[9,1,10,5],[1,8,8,6],[11,7,8,6],[5,15,10,4]],
-        [[6,3,9,3],[6,6,6,8],[13,6,13,7],[6,13,5,13],[13,12,13,13],[6,15,6,13],[13,15,13,13],[3,18,3,17]],
+        [[6,3,9,3],[6,6,6,8],[13,6,13,7],[6,13,5,13],[13,12,13,13],[6,15,6,13],[13,15,13,13]],
         [[16,2]],
-        [[3,17]],
-        { '3,17': { map: 'map_dungeon_1f', x: 16, y: 3 }, '16,2': { map: 'map_dungeon_b2f', x: 3, y: 17 } },
+        [[5,17]],
+        { '5,17': { map: 'map_dungeon_1f', x: 16, y: 3 }, '16,2': { map: 'map_dungeon_b2f', x: 3, y: 17 } },
         { '3,3': { id: 'obj_chest_item', name: '宝箱' }, '15,10': { id: 'obj_chest_weapon', name: '宝箱' }, '12,17': { id: 'obj_chest_item', name: '宝箱' } },
         encD2.length ? encD2 : fb, '試練の洞窟 B1F');
 
@@ -2043,13 +2043,13 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 }
             }
             // フィールドNPC追加
-            if (externalMapData["map_field_1_1"]) externalMapData["map_field_1_1"].npcs["5,10"] = { id: "npc_field_fisherman", name: "釣り人" };
-            if (externalMapData["map_field_3_2"]) externalMapData["map_field_3_2"].npcs["8,8"]  = { id: "npc_field_monk",      name: "旅の僧侶" };
+            { let _p=findLand("map_field_1_1",5,10); if(_p&&externalMapData["map_field_1_1"]) externalMapData["map_field_1_1"].npcs[_p.k]={ id:"npc_field_fisherman", name:"釣り人" }; }
+            { let _p=findLand("map_field_3_2",8,8);  if(_p&&externalMapData["map_field_3_2"]) externalMapData["map_field_3_2"].npcs[_p.k]={ id:"npc_field_monk",      name:"旅の僧侶" }; }
             // ストーリー導線ガイドNPC（の字ルート）
-            if (externalMapData["map_field_2_1"]) externalMapData["map_field_2_1"].npcs["7,7"] = { id: "npc_guide_north", name: "旅の案内人" };
-            if (externalMapData["map_field_3_0"]) externalMapData["map_field_3_0"].npcs["5,7"] = { id: "npc_guide_east_tower", name: "旅の案内人" };
-            if (externalMapData["map_field_4_1"]) externalMapData["map_field_4_1"].npcs["7,10"] = { id: "npc_guide_south", name: "旅の案内人" };
-            if (externalMapData["map_field_3_3"]) externalMapData["map_field_3_3"].npcs["5,5"] = { id: "npc_guide_demon", name: "旅の案内人" };
+            { let _p=findLand("map_field_2_1",7,7);  if(_p&&externalMapData["map_field_2_1"]) externalMapData["map_field_2_1"].npcs[_p.k]={ id:"npc_guide_north",       name:"旅の案内人" }; }
+            { let _p=findLand("map_field_3_0",5,7);  if(_p&&externalMapData["map_field_3_0"]) externalMapData["map_field_3_0"].npcs[_p.k]={ id:"npc_guide_east_tower",  name:"旅の案内人" }; }
+            { let _p=findLand("map_field_4_1",7,10); if(_p&&externalMapData["map_field_4_1"]) externalMapData["map_field_4_1"].npcs[_p.k]={ id:"npc_guide_south",       name:"旅の案内人" }; }
+            { let _p=findLand("map_field_3_3",5,5);  if(_p&&externalMapData["map_field_3_3"]) externalMapData["map_field_3_3"].npcs[_p.k]={ id:"npc_guide_demon",       name:"旅の案内人" }; }
 
         // ダーマ神殿入口（フィールドに建物出口を設置）
         {
@@ -3027,8 +3027,8 @@ async function moveParty(dx, dy) {
                 return _solid.includes(_t) || !!(nextMap.npcs && nextMap.npcs[`${x},${y}`]);
             };
             const _isExit = (x, y) => !!(nextMap.exits && nextMap.exits[`${x},${y}`]);
-            // 着地位置が壁・NPC・出口タイルならBFSで最近接の安全タイルを探す
-            if (_isBlocked(_lx, _ly)) {
+            // 着地位置が壁・NPCなら最近接の安全タイルをBFSで探す（出口タイル自体は着地可能）
+            if (!_isExit(_lx, _ly) && _isBlocked(_lx, _ly)) {
                 const _vis = new Set([`${_lx},${_ly}`]);
                 const _q = [[_lx, _ly]];
                 outer: while (_q.length > 0) {
