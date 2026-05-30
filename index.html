@@ -2855,6 +2855,35 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
 }
 
 function drawMap() {
+    // フィールド海上救済: 海タイルにいる場合、周囲と最寄り陸地までのパスをタイル書き換えで陸にする
+    if (partyData && currentMap && partyData.pos && partyData.pos.map && /^map_field_/.test(partyData.pos.map) && !(partyData.flags && partyData.flags.has_ship)) {
+        const _ox=partyData.pos.x, _oy=partyData.pos.y;
+        if (_ox>=0&&_oy>=0&&_ox<currentMap.width&&_oy<currentMap.height&&currentMap.tiles[_oy*currentMap.width+_ox]===5) {
+            const _srcM=externalMapData[partyData.pos.map];
+            // プレイヤー周囲3×3を陸地(11)に書き換え
+            for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+                const tx=_ox+dx,ty=_oy+dy;
+                if(tx>=0&&ty>=0&&tx<currentMap.width&&ty<currentMap.height&&currentMap.tiles[ty*currentMap.width+tx]===5){
+                    currentMap.tiles[ty*currentMap.width+tx]=11;
+                    if(_srcM)_srcM.tiles[ty*_srcM.width+tx]=11;
+                }
+            }
+            // BFSで最寄り非海タイルを探し、そこまでの経路を陸地(11)で繋ぐ（半島状に延伸）
+            const _par=new Map([[`${_ox},${_oy}`,null]]); const _q=[[_ox,_oy]]; let _tgt=null;
+            bfsR:while(_q.length>0&&_par.size<currentMap.width*currentMap.height){
+                const[cx,cy]=_q.shift();
+                for(const[rdx,rdy]of[[0,1],[0,-1],[1,0],[-1,0]]){
+                    const nx=cx+rdx,ny=cy+rdy,k=`${nx},${ny}`;
+                    if(_par.has(k)||nx<0||ny<0||nx>=currentMap.width||ny>=currentMap.height)continue;
+                    _par.set(k,`${cx},${cy}`);
+                    if(currentMap.tiles[ny*currentMap.width+nx]!==5){_tgt=k;break bfsR;}
+                    _q.push([nx,ny]);
+                }
+            }
+            if(_tgt){let c=_par.get(_tgt);while(c){const[px,py]=c.split(',').map(Number);if(currentMap.tiles[py*currentMap.width+px]===5){currentMap.tiles[py*currentMap.width+px]=11;if(_srcM)_srcM.tiles[py*_srcM.width+px]=11;}c=_par.get(c);}}
+            moveHistory=[];
+        }
+    }
     const canvas = document.getElementById('screen'); const ctx = canvas.getContext('2d'); const cWidth = canvas.width; const cHeight = canvas.height; ctx.clearRect(0, 0, cWidth, cHeight);
     const camX = partyData.pos.x * TILE_SIZE - cWidth/2 + TILE_SIZE/2; const camY = partyData.pos.y * TILE_SIZE - Math.floor(cHeight * 0.3) + TILE_SIZE/2;
     const _mapId = partyData.pos.map;
