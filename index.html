@@ -1061,7 +1061,7 @@ function injectSafeScript(code, debugName) { let safeCode = code; safeCode = saf
 async function loadExternalAudioDatabase(url) { try { let targetUrl = url; if (url.includes('id=37967')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260416/game_1776339312498957168.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); let scriptFound = false; doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('window.SOUND_DATABASE')) { injectSafeScript(s.textContent, 'Audio DB'); scriptFound = true; } }); if (scriptFound) { await new Promise(r => setTimeout(r, 100)); if (window.SOUND_DATABASE) { AudioManager.db = window.SOUND_DATABASE; AudioManager.preloadAllBGMs(); } } } catch(e) { console.error(e); } }
 function updateBGM() { let mapId = partyData.pos.map; if(!mapId) return; if (partyData.flags && partyData.flags.last_boss_defeated) { AudioManager.playBGM('ending'); return; } if (mapId.includes('castle')) { if(mapId.includes('demon') || mapId.includes('death')) AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); else if(mapId.includes('sky')) AudioManager.playBGM(AudioManager.db.bgm['sky_castle'] ? 'sky_castle' : 'castle'); else AudioManager.playBGM('castle'); } else if (mapId.includes('town') || mapId.includes('village')) { AudioManager.playBGM('town'); } else if (mapId.includes('market') || mapId.includes('bazaar')) { AudioManager.playBGM('market'); } else if (mapId.includes('shrine')) { AudioManager.playBGM('shrine'); } else if (mapId.includes('dungeon') || mapId.includes('cave')) { AudioManager.playBGM('dungeon'); } else if (mapId.includes('tower')) { AudioManager.playBGM('tower'); } else { if (mapId.includes('death') || mapId.includes('demon')) AudioManager.playBGM('field_late'); else AudioManager.playBGM('field_early'); } }
 
-async function playSpellEffect(spellData, targetObj) {
+async function playSpellEffect(spellData, targetObj, screenPos) {
     const layer = document.getElementById('global-effect-layer');
     layer.innerHTML = '';
     const sid = (spellData.id || '').toLowerCase();
@@ -1099,7 +1099,8 @@ async function playSpellEffect(spellData, targetObj) {
 
     const isEnemy = targetObj === 'enemies' || stype === 'attack' || stype === 'debuff' || stype === 'status';
     let tcx = W * 0.5, tcy = isEnemy ? H * 0.38 : H * 0.72;
-    if (isEnemy) {
+    if (screenPos) { tcx = screenPos.x; tcy = screenPos.y; }
+    else if (isEnemy) {
         const _econt = document.querySelectorAll('#enemies-area .enemy-container');
         if (_econt.length > 0) {
             const _gcr = gc.getBoundingClientRect();
@@ -1719,6 +1720,43 @@ function generateFieldMapsForGravityQuest() {
     if (externalMapData["map_field_south_2"]) forceExit("map_field_2_4",7,14,"map_field_south_2",7,1);
     if (externalMapData["map_field_east_2"]) forceExit("map_field_4_2",14,7,"map_field_east_2",1,7);
     if (externalMapData["map_field_west_2"]) forceExit("map_field_0_2",0,7,"map_field_west_2",13,7);
+
+    // === 旅の扉(tile 23)設置 ===
+    // [task4] ほこら(map_shrine_warp)の入口スポーン位置確保: tile(6,9)を歩行可能に
+    if (externalMapData['map_shrine_warp']) {
+        const _sw = externalMapData['map_shrine_warp'];
+        const _swW = _sw.width || 12;
+        if (_sw.tiles[9*_swW+6] !== 22) { _sw.tiles[9*_swW+6] = 9; }
+        delete _sw.npcs['6,9'];
+    }
+
+    // [task5/6] 西の果て(map_field_west_2)入口付近に時の扉(tile 23)を設置し
+    // 最寄りの東の陸地(map_field_1_2中央)に旅の扉(tile 23)を設置、双方向ワープ
+    const _findWalkable = (mapId, cx, cy) => {
+        const _m = externalMapData[mapId]; if (!_m) return null;
+        const _bad = [1,2,4,5,15,16,17,18,19,20];
+        for (let _r = 0; _r <= 7; _r++) {
+            for (let _dy = -_r; _dy <= _r; _dy++) for (let _dx = -_r; _dx <= _r; _dx++) {
+                if (Math.abs(_dx)!==_r && Math.abs(_dy)!==_r) continue;
+                const _tx=cx+_dx, _ty=cy+_dy;
+                if (_tx<1||_ty<1||_tx>=_m.width-1||_ty>=_m.height-1) continue;
+                if (!_bad.includes(_m.tiles[_ty*_m.width+_tx]) && !_m.exits[`${_tx},${_ty}`] && !_m.npcs[`${_tx},${_ty}`]) return {x:_tx,y:_ty};
+            }
+        }
+        return null;
+    };
+    const _w2entry = externalMapData["map_field_west_2"] ? _findWalkable("map_field_west_2", 11, 7) : null;
+    const _eastGate = externalMapData["map_field_1_2"] ? _findWalkable("map_field_1_2", 7, 7)
+                    : (externalMapData["map_field_0_2"] ? _findWalkable("map_field_0_2", 10, 7) : null);
+    const _eastMapId = externalMapData["map_field_1_2"] ? "map_field_1_2" : "map_field_0_2";
+    if (_w2entry && _eastGate) {
+        const _w2m = externalMapData["map_field_west_2"];
+        const _em = externalMapData[_eastMapId];
+        _w2m.tiles[_w2entry.y*_w2m.width+_w2entry.x] = 23;
+        _em.tiles[_eastGate.y*_em.width+_eastGate.x] = 23;
+        _w2m.exits[`${_w2entry.x},${_w2entry.y}`] = {map:_eastMapId, x:_eastGate.x, y:_eastGate.y};
+        _em.exits[`${_eastGate.x},${_eastGate.y}`] = {map:"map_field_west_2", x:_w2entry.x, y:_w2entry.y};
+    }
 }
 function fixExternalMapConnections() {
     if (!externalMapData) return;
@@ -3237,6 +3275,28 @@ async function moveParty(dx, dy) {
                 // OOB座標はマップ内に収めてからBFS
                 _lx = Math.max(1, Math.min(_lx, nextMap.width-2));
                 _ly = Math.max(1, Math.min(_ly, nextMap.height-2));
+                // フィールド遷移: 入口ボーダー行/列を優先スキャンして自然な出現位置を確保
+                if (_toField) {
+                    const _ol3 = _lx, _ot3 = _ly;
+                    const _nearTopEdge = _ot3 <= 2, _nearBotEdge = _ot3 >= nextMap.height - 3;
+                    const _nearLftEdge = _ol3 <= 2, _nearRgtEdge = _ol3 >= nextMap.width - 3;
+                    let _bPlaced = false;
+                    if (_nearTopEdge || _nearBotEdge) {
+                        for (let _dd3 = 0; _dd3 <= 6 && !_bPlaced; _dd3++) {
+                            for (const _sx3 of (_dd3 === 0 ? [_ol3] : [_ol3 + _dd3, _ol3 - _dd3])) {
+                                if (_sx3 >= 1 && _sx3 <= nextMap.width - 2 && !_isBlocked(_sx3, _ot3)) { _lx = _sx3; _bPlaced = true; break; }
+                            }
+                        }
+                    } else if (_nearLftEdge || _nearRgtEdge) {
+                        for (let _dd3 = 0; _dd3 <= 6 && !_bPlaced; _dd3++) {
+                            for (const _sy3 of (_dd3 === 0 ? [_ot3] : [_ot3 + _dd3, _ot3 - _dd3])) {
+                                if (_sy3 >= 1 && _sy3 <= nextMap.height - 2 && !_isBlocked(_ol3, _sy3)) { _ly = _sy3; _bPlaced = true; break; }
+                            }
+                        }
+                    }
+                    if (_bPlaced && !_isBlocked(_lx, _ly)) { /* _lx/_ly updated in-place above */ }
+                }
+                if (!_isBlocked(_lx, _ly)) { /* border scan found valid spot */ } else {
                 const _vis = new Set([`${_lx},${_ly}`]);
                 const _q = [[_lx, _ly]];
                 outer: while (_q.length > 0) {
@@ -3260,6 +3320,7 @@ async function moveParty(dx, dy) {
                         if (!_isBlocked(nx, ny)) { _lx=nx; _ly=ny; break outer2; }
                     }
                 }
+                } // end BFS else block
             }
             // フィールドへの遷移: 着地地点から出口へ到達できない孤立陸地は遷移中止
             if (_toField) {
@@ -3985,7 +4046,7 @@ async function eventPriest() {
                 await typeMessage("だれを いきかえらせますか？"); let tIdx = await selectMenu(deadMembers.map(m=>m.name), 'cmd-window', 1, true);
                 if(tIdx !== -1) {
                     let target = deadMembers[tIdx]; let cost = target.lv * 10; await typeMessage(`${target.name}を いきかえらせるには\n${cost}G かかりますが よろしいですか？`); let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
-                    if(yesno === 0) { if(partyData.gold >= cost) { partyData.gold -= cost; target.hp = target.max_hp; target.isPoisoned = false; updateGoldWindow(); AudioManager.playSE('church'); await playSpellEffect({id:'zaorn', type:'heal'}, target); await typeMessage(`${target.name}は いきかえった！`); } else await typeMessage("おかねが たりないようです。"); }
+                    if(yesno === 0) { if(partyData.gold >= cost) { partyData.gold -= cost; target.hp = target.max_hp; target.isPoisoned = false; updateGoldWindow(); AudioManager.playSE('church'); const _pgc=document.getElementById('game-container'); const _pgW=_pgc?_pgc.offsetWidth:360,_pgH=_pgc?_pgc.offsetHeight:560; let _ptx=partyData.pos.x,_pty=partyData.pos.y; if(partyData.dir===0)_pty--;else if(partyData.dir===1)_ptx++;else if(partyData.dir===2)_pty++;else _ptx--; const _pcX=partyData.pos.x*TILE_SIZE-_pgW/2+TILE_SIZE/2,_pcY=partyData.pos.y*TILE_SIZE-Math.floor(_pgH*0.3)+TILE_SIZE/2; await playSpellEffect({id:'zaorn', type:'heal'}, target, {x:_ptx*TILE_SIZE-_pcX+TILE_SIZE/2, y:_pty*TILE_SIZE-_pcY+TILE_SIZE/2}); await typeMessage(`${target.name}は いきかえった！`); } else await typeMessage("おかねが たりないようです。"); }
                 }
             }
         } else { await typeMessage("かみの ごかごが あらんことを！"); break; }
@@ -4601,7 +4662,7 @@ ${act.actor.name}の ちからが すいとられた！`); }
             } else { respawnPos = { map: 'map_town_01', x: 10, y: 18 }; }
         }
         partyData.pos = { map: respawnPos.map, x: respawnPos.x, y: respawnPos.y };
-        partyData.dir = 2; currentMap = await loadExternalData('map-' + partyData.pos.map);
+        partyData.dir = 2; moveHistory = []; currentMap = await loadExternalData('map-' + partyData.pos.map);
         bScreen.style.display = 'none'; screen.style.display = 'block'; hideAllWindows(); inputCallback = null; drawMap(); updateBGM();
         screen.style.opacity = '1'; await new Promise(r => setTimeout(r, 1000)); screen.style.transition = '';
         let leaderName = partyData.members[0] ? partyData.members[0].name : "ゆうしゃ"; await typeMessage(`おお ${leaderName}！\nしんでしまうとは なにごとだ！`); await typeMessage(`そなたに もういちど 機会をあたえよう。\nふたたび たびだつのだ！`);
