@@ -1828,11 +1828,13 @@ function fixAllExitLandings() {
         for (const key in srcMap.exits) {
             const ex = srcMap.exits[key];
             if (!ex || !ex.map) continue;
-            const destId = ex.map;
-            const destMap = externalMapData[destId];
+            let destId = ex.map;
+            let destMap = externalMapData[destId];
+            if (!destMap) { const _a = 'map_' + destId; if (externalMapData[_a]) { destId = _a; destMap = externalMapData[_a]; } }
+            if (!destMap) { const _b = destId.replace(/^map_/, ''); if (_b !== destId && externalMapData[_b]) { destId = _b; destMap = externalMapData[_b]; } }
             if (!destMap) continue;
             let lx = ex.x, ly = ex.y;
-            const toField = /^map_field_/.test(destId);
+            const toField = /^map_field_/.test(destId) || /^field_\d/.test(destId);
             // 範囲外チェック
             if (lx < 0 || ly < 0 || lx >= destMap.width || ly >= destMap.height) {
                 const cx = Math.floor(destMap.width / 2), cy = Math.floor(destMap.height / 2);
@@ -3121,31 +3123,51 @@ async function moveParty(dx, dy) {
     if (_onField) partyData.last_field_pos = { map: partyData.pos.map, x: partyData.pos.x, y: partyData.pos.y };
     drawMap();
     if(currentMap.exits && currentMap.exits[key]) {
-        const exit = currentMap.exits[key]; if (!exit.map.startsWith('map_field_')) AudioManager.playSE('stair'); let nextMapId = 'map-' + exit.map; let nextMap = await loadExternalData(nextMapId);
+        const exit = currentMap.exits[key];
+            const _toField = /^(map_)?field_\d/.test(exit.map);
+            if (!_toField) AudioManager.playSE('stair');
+            let nextMapId = 'map-' + exit.map; let nextMap = await loadExternalData(nextMapId);
         if (nextMap) {
-            currentMap = nextMap; partyData.pos.map = exit.map;
-            if (/^map_field_/.test(exit.map)) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[exit.map] = true; }
+            currentMap = nextMap;
+            // マップIDを externalMapData の正規キーに正規化
+            let _normMap = exit.map;
+            if (!externalMapData[_normMap] && externalMapData['map_' + _normMap]) _normMap = 'map_' + _normMap;
+            else if (!externalMapData[_normMap] && _normMap.startsWith('map_') && externalMapData[_normMap.substring(4)]) _normMap = _normMap.substring(4);
+            partyData.pos.map = _normMap;
+            if (_toField) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[_normMap] = true; }
             let _lx = exit.x, _ly = exit.y;
-            const _solid = exit.map && /^map_field_/.test(exit.map) ? [1, 2, 4, 5, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
+            const _solid = _toField ? [1, 2, 4, 5, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
             const _isBlocked = (x, y) => {
                 if (x<0||y<0||x>=nextMap.width||y>=nextMap.height) return true;
                 const _t = nextMap.tiles[y*nextMap.width+x];
                 return _solid.includes(_t) || !!(nextMap.npcs && nextMap.npcs[`${x},${y}`]);
             };
             const _isExit = (x, y) => !!(nextMap.exits && nextMap.exits[`${x},${y}`]);
-            // 着地位置が壁・NPCなら最近接の安全タイルをBFSで探す（出口タイル自体は着地可能）
             if (!_isExit(_lx, _ly) && _isBlocked(_lx, _ly)) {
+                // OOB座標はマップ内に収めてからBFS
+                _lx = Math.max(1, Math.min(_lx, nextMap.width-2));
+                _ly = Math.max(1, Math.min(_ly, nextMap.height-2));
                 const _vis = new Set([`${_lx},${_ly}`]);
                 const _q = [[_lx, _ly]];
                 outer: while (_q.length > 0) {
                     const [cx, cy] = _q.shift();
-                    for (const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]) {
-                        const nx=cx+dx, ny=cy+dy, k=`${nx},${ny}`;
+                    for (const [ddx,ddy] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+                        const nx=cx+ddx, ny=cy+ddy, k=`${nx},${ny}`;
                         if (_vis.has(k)) continue;
                         if (nx<0||ny<0||nx>=nextMap.width||ny>=nextMap.height) continue;
                         _vis.add(k);
                         if (!_isBlocked(nx, ny)) { _lx=nx; _ly=ny; break outer; }
                         if (_vis.size < 225) _q.push([nx, ny]);
+                    }
+                }
+                // BFSで通行可タイルが見つからなかった場合はマップ中央から再探索
+                if (_isBlocked(_lx, _ly) && !_isExit(_lx, _ly)) {
+                    const _mc = Math.floor(nextMap.width/2), _mr = Math.floor(nextMap.height/2);
+                    outer2: for (let r=0; r<=7; r++) for (let dy=-r; dy<=r; dy++) for (let dx=-r; dx<=r; dx++) {
+                        if (Math.abs(dx)!==r && Math.abs(dy)!==r) continue;
+                        const nx=_mc+dx, ny=_mr+dy;
+                        if (nx<1||ny<1||nx>=nextMap.width-1||ny>=nextMap.height-1) continue;
+                        if (!_isBlocked(nx, ny)) { _lx=nx; _ly=ny; break outer2; }
                     }
                 }
             }
