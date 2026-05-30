@@ -1750,6 +1750,45 @@ function fixExternalMapConnections() {
             }
         }
     }
+
+    // 4. 外部JSONマップ（森・港など）のフィールド出口に対応するフィールド側の入口を保証
+    // JSONから読み込んだマップ（プレフィックスなし）でcastle/town以外を対象とする
+    const _handled = new Set([ck, tk].filter(Boolean));
+    for(const mapId of Object.keys(externalMapData)){
+        if(/^map_/.test(mapId) || _handled.has(mapId)) continue; // 生成マップ・処理済みはスキップ
+        const m = externalMapData[mapId];
+        for(const exitKey of Object.keys(m.exits||{})){
+            const ex = m.exits[exitKey];
+            if(!ex || !ex.map) continue;
+            // フィールドマップIDを解決
+            let tFId = null;
+            if(/^map_field_/.test(ex.map)) tFId = ex.map;
+            else if(ex.map.startsWith('field_') && externalMapData['map_'+ex.map]) tFId = 'map_'+ex.map;
+            if(!tFId || !externalMapData[tFId]) continue;
+            const fMap = externalMapData[tFId];
+            // フィールドマップにこのmapIdへの入口があるか確認
+            const hasEntry = Object.values(fMap.exits||{}).some(e=>{
+                const em=e.map||'';
+                return em===mapId||em==='map_'+mapId||em.replace(/^map_/,'')===mapId.replace(/^map_/,'');
+            });
+            if(hasEntry) continue;
+            // 入口をマップ中央から findLand で探して設置
+            const ep = findLand(tFId, Math.floor(fMap.width/2), Math.floor(fMap.height/2));
+            if(!ep || fMap.exits[ep.k]) continue;
+            fMap.tiles[ep.y*fMap.width+ep.x] = 22;
+            // 建物内着地点: 出口タイルの近傍の歩けるタイル
+            const [bx,by] = exitKey.split(',').map(Number);
+            let destX=Math.floor(m.width/2), destY=Math.max(1,m.height-3);
+            const bSolid=[1,2,4,5,15,16,17,18,19,20];
+            outer_b: for(let r=0;r<=4;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){
+                if(r>0&&Math.abs(dx)!==r&&Math.abs(dy)!==r) continue;
+                const nx=bx+dx,ny=by+dy;
+                if(nx<1||ny<1||nx>=m.width-1||ny>=m.height-1) continue;
+                if(!bSolid.includes(m.tiles[ny*m.width+nx])&&!m.exits[`${nx},${ny}`]){destX=nx;destY=ny;break outer_b;}
+            }
+            fMap.exits[ep.k] = {map:mapId, x:destX, y:destY};
+        }
+    }
 }
 function fixMapExits() {
     if(!externalMapData) return;
@@ -1856,7 +1895,10 @@ function fixAllExitLandings() {
             if (toField) {
                 // フィールド: 海(5)・山岳(20)は着地不可
                 if (t === 5 || t === 20) {
-                    const p = findLand(destId, lx, ly); if (p) { ex.x = p.x; ex.y = p.y; }
+                    let p = findLand(destId, lx, ly);
+                    // 近傍に陸地がない場合はマップ中央から再探索
+                    if (!p) p = findLand(destId, Math.floor(destMap.width/2), Math.floor(destMap.height/2));
+                    if (p) { ex.x = p.x; ex.y = p.y; }
                 }
             } else {
                 // 建物/ダンジョン: 壁などの固体タイルへの着地を修正（出口タイル自体はOK）
@@ -1977,12 +2019,15 @@ function generateDQStyleMaps() {
         externalMapData['map_tower_3f'] = t3f;
     }
 
-    // Add tower entrance to map_field_4_0
+    // Add tower entrance to map_field_4_0 (findLand で陸地に設置)
     if (externalMapData['map_field_4_0']) {
-        const fw = externalMapData['map_field_4_0'].width;
-        externalMapData['map_field_4_0'].tiles[12 * fw + 7] = 22;
-        externalMapData['map_field_4_0'].exits['7,12'] = { map: 'map_tower_1f', x: 7, y: 12 };
-        if (!externalMapData['map_field_4_0'].npcs['7,11']) externalMapData['map_field_4_0'].npcs['7,11'] = { id: 'npc_tower_gate', name: '天空の塔' };
+        const _twrP = findLand('map_field_4_0', 7, 12);
+        if (_twrP) {
+            externalMapData['map_field_4_0'].tiles[_twrP.y*15+_twrP.x] = 22;
+            externalMapData['map_field_4_0'].exits[_twrP.k] = { map: 'map_tower_1f', x: 7, y: 12 };
+            const _ng = `${_twrP.x},${_twrP.y-1}`;
+            if (_twrP.y > 1 && !externalMapData['map_field_4_0'].npcs[_ng]) externalMapData['map_field_4_0'].npcs[_ng] = { id: 'npc_tower_gate', name: '天空の塔' };
+        }
     }
 
     // ===== 魔王城 1F (20x20) =====
@@ -2052,12 +2097,15 @@ function generateDQStyleMaps() {
         externalMapData['map_demon_castle_4f'] = dc4;
     }
 
-    // Add demon castle entrance to map_field_4_4
+    // Add demon castle entrance to map_field_4_4 (findLand で陸地に設置、タイル22で統一)
     if (externalMapData['map_field_4_4']) {
-        const fw = externalMapData['map_field_4_4'].width;
-        externalMapData['map_field_4_4'].tiles[6 * fw + 7] = 9;
-        externalMapData['map_field_4_4'].exits['7,6'] = { map: 'map_demon_castle_1f', x: 9, y: 17 };
-        if (!externalMapData['map_field_4_4'].npcs['7,5']) externalMapData['map_field_4_4'].npcs['7,5'] = { id: 'npc_maou_castle_gate', name: '魔王城の門' };
+        const _dcP = findLand('map_field_4_4', 7, 6);
+        if (_dcP) {
+            externalMapData['map_field_4_4'].tiles[_dcP.y*15+_dcP.x] = 22;
+            externalMapData['map_field_4_4'].exits[_dcP.k] = { map: 'map_demon_castle_1f', x: 9, y: 17 };
+            const _dg = `${_dcP.x},${_dcP.y-1}`;
+            if (_dcP.y > 1 && !externalMapData['map_field_4_4'].npcs[_dg]) externalMapData['map_field_4_4'].npcs[_dg] = { id: 'npc_maou_castle_gate', name: '魔王城の門' };
+        }
     }
 
     // ===== ダーマ神殿 (map_dharma_temple) =====
