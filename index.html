@@ -1660,6 +1660,30 @@ function generateFieldMapsForGravityQuest() {
     fillEllCond(29, 40, 3, 2, 12);   fillEllCond(36, 44, 3, 2, 12);    fillEllCond(24, 13, 3, 2, 12);
     fillEllCond(62, 17, 3, 2, 12);
     fillEllCond(37, 67, 7, 5, 0);    fillEllCond(43, 63, 4, 3, 0);     // 砂漠エリア
+    // === 各15×15マップ内の陸地連結保証 ===
+    // 孤立した陸地パッチを最大連結成分にBFS最短経路の地峡で繋ぐ
+    for(let gy=0;gy<5;gy++) for(let gx=0;gx<5;gx++){
+        const x0=gx*15,y0=gy*15;
+        // 最大連結陸地成分を特定
+        let mainComp=null,bestSz=0;
+        const seen=new Set();
+        for(let ty=0;ty<15;ty++) for(let tx=0;tx<15;tx++){
+            const wx=x0+tx,wy=y0+ty,k=`${wx},${wy}`;
+            if(world[wy*GW+wx]===5||seen.has(k))continue;
+            const comp=new Set([k]);const bq=[[wx,wy]];seen.add(k);
+            while(bq.length){const[cx,cy]=bq.shift();for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy,nk=`${nx},${ny}`;if(seen.has(nk)||nx<x0||ny<y0||nx>=x0+15||ny>=y0+15||world[ny*GW+nx]===5)continue;seen.add(nk);comp.add(nk);bq.push([nx,ny]);}}
+            if(comp.size>bestSz){bestSz=comp.size;mainComp=comp;}
+        }
+        if(!mainComp)continue;
+        // 孤立陸地を最大成分にBFS経路（海を通過可）で繋ぐ
+        for(let ty=0;ty<15;ty++) for(let tx=0;tx<15;tx++){
+            const wx=x0+tx,wy=y0+ty,k=`${wx},${wy}`;
+            if(world[wy*GW+wx]===5||mainComp.has(k))continue;
+            const par=new Map([[k,null]]);const pq=[[wx,wy]];let tgt=null;
+            pfl:while(pq.length&&par.size<300){const[cx,cy]=pq.shift();for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy,nk=`${nx},${ny}`;if(par.has(nk)||nx<x0||ny<y0||nx>=x0+15||ny>=y0+15)continue;par.set(nk,`${cx},${cy}`);if(mainComp.has(nk)){tgt=nk;break pfl;}pq.push([nx,ny]);}}
+            if(tgt){let c=par.get(tgt);while(c){const[px,py]=c.split(',').map(Number);if(world[py*GW+px]===5){world[py*GW+px]=11;mainComp.add(`${px},${py}`);}c=par.get(c);}}
+        }
+    }
     // === Build 25 field maps ===
     const _ef = id => masterData.monsters && masterData.monsters[id];
     for (let gy = 0; gy < 5; gy++) {
@@ -2855,35 +2879,6 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
 }
 
 function drawMap() {
-    // フィールド海上救済: 海タイルにいる場合、周囲と最寄り陸地までのパスをタイル書き換えで陸にする
-    if (partyData && currentMap && partyData.pos && partyData.pos.map && /^map_field_/.test(partyData.pos.map) && !(partyData.flags && partyData.flags.has_ship)) {
-        const _ox=partyData.pos.x, _oy=partyData.pos.y;
-        if (_ox>=0&&_oy>=0&&_ox<currentMap.width&&_oy<currentMap.height&&currentMap.tiles[_oy*currentMap.width+_ox]===5) {
-            const _srcM=externalMapData[partyData.pos.map];
-            // プレイヤー周囲3×3を陸地(11)に書き換え
-            for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
-                const tx=_ox+dx,ty=_oy+dy;
-                if(tx>=0&&ty>=0&&tx<currentMap.width&&ty<currentMap.height&&currentMap.tiles[ty*currentMap.width+tx]===5){
-                    currentMap.tiles[ty*currentMap.width+tx]=11;
-                    if(_srcM)_srcM.tiles[ty*_srcM.width+tx]=11;
-                }
-            }
-            // BFSで最寄り非海タイルを探し、そこまでの経路を陸地(11)で繋ぐ（半島状に延伸）
-            const _par=new Map([[`${_ox},${_oy}`,null]]); const _q=[[_ox,_oy]]; let _tgt=null;
-            bfsR:while(_q.length>0&&_par.size<currentMap.width*currentMap.height){
-                const[cx,cy]=_q.shift();
-                for(const[rdx,rdy]of[[0,1],[0,-1],[1,0],[-1,0]]){
-                    const nx=cx+rdx,ny=cy+rdy,k=`${nx},${ny}`;
-                    if(_par.has(k)||nx<0||ny<0||nx>=currentMap.width||ny>=currentMap.height)continue;
-                    _par.set(k,`${cx},${cy}`);
-                    if(currentMap.tiles[ny*currentMap.width+nx]!==5){_tgt=k;break bfsR;}
-                    _q.push([nx,ny]);
-                }
-            }
-            if(_tgt){let c=_par.get(_tgt);while(c){const[px,py]=c.split(',').map(Number);if(currentMap.tiles[py*currentMap.width+px]===5){currentMap.tiles[py*currentMap.width+px]=11;if(_srcM)_srcM.tiles[py*_srcM.width+px]=11;}c=_par.get(c);}}
-            moveHistory=[];
-        }
-    }
     const canvas = document.getElementById('screen'); const ctx = canvas.getContext('2d'); const cWidth = canvas.width; const cHeight = canvas.height; ctx.clearRect(0, 0, cWidth, cHeight);
     const camX = partyData.pos.x * TILE_SIZE - cWidth/2 + TILE_SIZE/2; const camY = partyData.pos.y * TILE_SIZE - Math.floor(cHeight * 0.3) + TILE_SIZE/2;
     const _mapId = partyData.pos.map;
