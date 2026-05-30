@@ -1687,7 +1687,7 @@ function generateFieldMapsForGravityQuest() {
     let dp = findLand("map_field_2_0", 7, 6);
     if (dp) { externalMapData["map_field_2_0"].tiles[dp.y*15+dp.x]=22; externalMapData["map_field_2_0"].exits[dp.k]={map:"map_dungeon_1f",x:7,y:14}; }
     let shrp = findLand("map_field_2_3", 7, 7);
-    if (shrp) { externalMapData["map_field_2_3"].tiles[shrp.y*15+shrp.x]=22; externalMapData["map_field_2_3"].exits[shrp.k]={map:"map_shrine_warp",x:7,y:13}; }
+    if (shrp) { externalMapData["map_field_2_3"].tiles[shrp.y*15+shrp.x]=22; externalMapData["map_field_2_3"].exits[shrp.k]={map:"map_shrine_warp",x:6,y:9}; }
     const forceExit = (mapId, tx, ty, destMap, dx, dy) => {
         let m = externalMapData[mapId]; if (!m || !externalMapData[destMap]) return;
         if (m.tiles[ty*m.width+tx]===5) m.tiles[ty*m.width+tx]=11;
@@ -1766,6 +1766,58 @@ function fixMapExits() {
     }
 }
 
+function fixAllExitLandings() {
+    // すべての出口の着地座標を検証・修正する
+    // ・フィールドへの帰還: 海・山岳タイルなら findLand で陸地を探す
+    // ・建物/ダンジョンへの入場: 範囲外や壁タイルなら近傍の歩行可タイルを探す
+    for (const srcId in externalMapData) {
+        const srcMap = externalMapData[srcId];
+        if (!srcMap || !srcMap.exits) continue;
+        for (const key in srcMap.exits) {
+            const ex = srcMap.exits[key];
+            if (!ex || !ex.map) continue;
+            const destId = ex.map;
+            const destMap = externalMapData[destId];
+            if (!destMap) continue;
+            let lx = ex.x, ly = ex.y;
+            const toField = /^map_field_/.test(destId);
+            // 範囲外チェック
+            if (lx < 0 || ly < 0 || lx >= destMap.width || ly >= destMap.height) {
+                const cx = Math.floor(destMap.width / 2), cy = Math.floor(destMap.height / 2);
+                if (toField) {
+                    const p = findLand(destId, cx, cy); if (p) { ex.x = p.x; ex.y = p.y; }
+                } else {
+                    const sol = [1,2,4,5,15,16,17,18,19,20];
+                    outer: for (let r=0; r<=6; r++) for (let dy=-r; dy<=r; dy++) for (let dx=-r; dx<=r; dx++) {
+                        if (Math.abs(dx)!==r&&Math.abs(dy)!==r) continue;
+                        const nx=cx+dx, ny=cy+dy;
+                        if (nx<1||ny<1||nx>=destMap.width-1||ny>=destMap.height-1) continue;
+                        if (!sol.includes(destMap.tiles[ny*destMap.width+nx])) { ex.x=nx; ex.y=ny; break outer; }
+                    }
+                }
+                continue;
+            }
+            const t = destMap.tiles[ly * destMap.width + lx];
+            if (toField) {
+                // フィールド: 海(5)・山岳(20)は着地不可
+                if (t === 5 || t === 20) {
+                    const p = findLand(destId, lx, ly); if (p) { ex.x = p.x; ex.y = p.y; }
+                }
+            } else {
+                // 建物/ダンジョン: 壁などの固体タイルへの着地を修正（出口タイル自体はOK）
+                const sol = [1,2,4,5,15,16,17,18,19,20];
+                if (sol.includes(t) && !destMap.exits[`${lx},${ly}`]) {
+                    outer: for (let r=1; r<=6; r++) for (let dy=-r; dy<=r; dy++) for (let dx=-r; dx<=r; dx++) {
+                        if (Math.abs(dx)!==r&&Math.abs(dy)!==r) continue;
+                        const nx=lx+dx, ny=ly+dy;
+                        if (nx<1||ny<1||nx>=destMap.width-1||ny>=destMap.height-1) continue;
+                        if (!sol.includes(destMap.tiles[ny*destMap.width+nx])) { ex.x=nx; ex.y=ny; break outer; }
+                    }
+                }
+            }
+        }
+    }
+}
 function generateDQStyleMaps() {
     function mkMap(w, h, rooms, corridors, downstairs, upstairs, exits, npcs, enc, name) {
         let tiles = new Array(w * h).fill(1);
@@ -2094,7 +2146,8 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
         }
 
         generateDQStyleMaps();
-        fixMapExits(); loading.style.display = 'none'; return true; } } throw new Error("JSONデータなし"); } catch(e) { console.error(e); loading.innerText = '読み込み失敗'; setTimeout(() => { loading.style.display = 'none'; }, 2000); return false; } }
+        fixMapExits();
+        fixAllExitLandings(); loading.style.display = 'none'; return true; } } throw new Error("JSONデータなし"); } catch(e) { console.error(e); loading.innerText = '読み込み失敗'; setTimeout(() => { loading.style.display = 'none'; }, 2000); return false; } }
 
 async function loadExternalData(id) { 
     if (externalMapData && id.includes('map-')) { 
@@ -3039,7 +3092,7 @@ async function moveParty(dx, dy) {
                         if (nx<0||ny<0||nx>=nextMap.width||ny>=nextMap.height) continue;
                         _vis.add(k);
                         if (!_isBlocked(nx, ny)) { _lx=nx; _ly=ny; break outer; }
-                        if (_vis.size < 100) _q.push([nx, ny]);
+                        if (_vis.size < 225) _q.push([nx, ny]);
                     }
                 }
             }
@@ -3682,7 +3735,7 @@ async function eventCasino() {
     loading.style.display = 'none';
     
     return new Promise((resolve) => {
-        const overlay = document.createElement('div'); overlay.id = 'casino-overlay'; overlay.style.position = 'absolute'; overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.backgroundColor = '#000'; overlay.style.zIndex = '9999';
+        const overlay = document.createElement('div'); overlay.id = 'casino-overlay'; overlay.style.position = 'fixed'; overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.backgroundColor = '#000'; overlay.style.zIndex = '9999';
         const topExHeight = window.innerHeight >= 812 ? 98 : 74;
         const iframe = document.createElement('iframe'); iframe.src = casinoSrc; iframe.style.position = 'absolute'; iframe.style.top = '0'; iframe.style.left = '0'; iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.border = 'none'; iframe.style.backgroundColor = '#000'; iframe.style.zIndex = '10000';
         const topBar = document.createElement('div'); topBar.style.position = 'absolute'; topBar.style.top = (topExHeight + 10) + 'px'; topBar.style.left = '10px'; topBar.style.right = '10px'; topBar.style.height = '50px'; topBar.style.backgroundColor = 'rgba(34, 34, 34, 0.85)'; topBar.style.border = '2px solid #fff'; topBar.style.borderRadius = '8px'; topBar.style.display = 'flex'; topBar.style.justifyContent = 'space-between'; topBar.style.alignItems = 'center'; topBar.style.padding = '0 15px'; topBar.style.boxSizing = 'border-box'; topBar.style.zIndex = '10001'; topBar.style.pointerEvents = 'auto'; 
