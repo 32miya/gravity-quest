@@ -20,7 +20,7 @@
     #map-name-window { top: 55px; left: 5px; min-width: 80px; text-align: center; z-index: 15; }
     #msg-window { bottom: 0; left: 0; width: 100%; height: 100px; border-bottom: none; border-left: none; border-right: none; border-radius: 0; }
     #cmd-window { bottom: 105px; right: 5px; min-width: 100px; }
-    #status-window { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 350px; background: rgba(0, 0, 0, 0.95); z-index: 20; padding: 15px; border: 2px solid #fff; border-radius: 8px; }
+    #status-window { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 94%; max-width: 440px; background: rgba(0, 0, 0, 0.95); z-index: 20; padding: 10px 12px; border: 2px solid #fff; border-radius: 8px; }
     #title-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; background-image: url('https://cdn.gravity.place/aiugc/game/material/2026-04-11/2aecbdb7-a98b-4ba8-9a3e-5d8970aa99a0.jpeg'); background-size: cover; background-position: center; background-repeat: no-repeat; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 30px; }
     #battle-screen { position: absolute; top: 50px; left: 0; width: 100%; height: calc(100% - 150px); background: #000; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     #enemies-area { display: flex; flex-direction: row; justify-content: center; flex-wrap: wrap; align-items: flex-end; align-content: center; width: 100%; padding: 0 10px; box-sizing: border-box; gap: 15px; }
@@ -1164,280 +1164,538 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
         ctx.globalAlpha=1;
     };
 
+    // ── 炎 (メラン / FF Fire / HP Incendio) ──────────────────────────
     const drawFire = (t) => {
-        drawImpact(t, 'rgba(255,80,0,0.7)', 'rgba(255,160,0,0.9)');
-        for (const p of parts) {
-            const pt = Math.max(0, (t - p.phase) / (1 - p.phase));
-            if (pt <= 0) continue;
-            const spd = 100 + p.spd * (100 + tier * 65);
-            const lx = tcx + Math.cos(p.angle)*spd*pt*0.45 + p.wobble*22*pt;
-            const ly = tcy - spd*pt*0.9 + 220*pt*pt*(0.3+p.spd*0.4);
-            const sz = (6+p.size*10*tier*0.35) * Math.max(0,1-pt*0.88);
-            const alpha = pt < 0.2 ? pt/0.2 : Math.max(0,1-(pt-0.2)/0.8);
-            if (sz<=0||alpha<=0) continue;
-            ctx.globalAlpha = alpha;
-            ctx.shadowColor = `hsl(${15+p.hue*30},100%,60%)`; ctx.shadowBlur = sz*1.5;
-            ctx.fillStyle = rg(lx,ly,sz,'#ffffff',`hsla(${15+p.hue*30},100%,50%,0)`);
-            ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
+        // 画面全体オレンジ環境光
+        ctx.globalAlpha = Math.sin(t*Math.PI)*(0.18+tier*0.09);
+        ctx.fillStyle='rgba(255,55,0,0.5)'; ctx.fillRect(0,0,W,H);
+        drawImpact(t,'rgba(255,130,0,0.92)','rgba(255,210,60,1)');
+
+        // 地面から噴き上がる炎柱 (FF Fira スタイル)
+        const colN=tier+1;
+        for(let ci=0;ci<colN;ci++){
+            const cOff=(ci-(colN-1)/2)*(24+tier*14), cT=Math.max(0,t-ci*0.07);
+            if(cT<=0) continue;
+            const cH=Math.min(cT/0.32,1)*(80+tier*65), cW=(16+tier*8)*Math.max(0,1-(cT-0.58)/0.42);
+            if(cH<=0||cW<=0) continue;
+            ctx.globalAlpha=Math.max(0,cT<0.5?cT*2.2:Math.max(0,(1-cT)*1.9))*0.85;
+            ctx.shadowColor='#ff7700'; ctx.shadowBlur=24+tier*12;
+            const fg=ctx.createLinearGradient(tcx+cOff,tcy,tcx+cOff,tcy-cH);
+            fg.addColorStop(0,'rgba(255,248,140,1)'); fg.addColorStop(0.35,'rgba(255,100,0,0.92)'); fg.addColorStop(1,'rgba(255,0,0,0)');
+            ctx.fillStyle=fg;
+            ctx.beginPath(); ctx.ellipse(tcx+cOff,tcy-cH*0.48,cW/2,cH/2,0,0,Math.PI*2); ctx.fill();
         }
         clearGlow();
-        // Core fireball — bigger
-        const ct = Math.min(1,t*2.5);
-        const coreR = (22+tier*32)*(ct<0.5?ct*2:Math.max(0,2-ct*2));
-        if (coreR>0) {
-            ctx.globalAlpha = 0.95;
-            ctx.shadowColor='#ff8800'; ctx.shadowBlur=coreR*1.2;
-            ctx.fillStyle = rg(tcx,tcy,coreR*1.8,'#ffffff','rgba(255,60,0,0)');
-            ctx.beginPath(); ctx.arc(tcx,tcy,coreR*1.8,0,Math.PI*2); ctx.fill();
-            clearGlow();
-        }
-        // Fire pillar (tier2+)
-        if (tier>=2 && t<0.8) {
-            const pilarN = tier-1;
-            for(let pi=0;pi<pilarN;pi++){
-                const pOff=(pi-(pilarN-1)/2)*(18+tier*6);
-                const ph = (0.8-t)/0.8*(130+tier*90), pw = 14+tier*10+Math.abs(pOff)*0.3;
-                ctx.globalAlpha = (0.8-t)/0.8*0.75;
-                ctx.fillStyle = lg(tcx+pOff,tcy,tcx+pOff,tcy-ph,'rgba(255,220,0,0.95)','rgba(255,30,0,0)');
-                ctx.fillRect(tcx+pOff-pw/2,tcy-ph,pw,ph);
+
+        // 爆発炎弾 (core fireball)
+        const fbP=Math.max(0,(t-0.06)/0.58);
+        if(fbP>0&&fbP<1){
+            const fbR=fbP<0.62?fbP/0.62*(58+tier*44):(1-(fbP-0.62)/0.38)*(58+tier*44);
+            if(fbR>1){
+                ctx.globalAlpha=0.96; ctx.shadowColor='#ff4400'; ctx.shadowBlur=fbR*2;
+                const cg=ctx.createRadialGradient(tcx,tcy-fbR*0.15,0,tcx,tcy,fbR*1.55);
+                cg.addColorStop(0,'#ffffff'); cg.addColorStop(0.12,'#fffaaa'); cg.addColorStop(0.45,'#ff8800'); cg.addColorStop(0.78,'#ff2200'); cg.addColorStop(1,'rgba(200,0,0,0)');
+                ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(tcx,tcy,fbR*1.55,0,Math.PI*2); ctx.fill(); clearGlow();
             }
         }
-        // Ember sparks
-        if(tier>=2){for(let i=0;i<tier*4;i++){const p2=parts[(i*3)%N],pt2=Math.max(0,(t-0.05-p2.phase*0.5)/(0.95-p2.phase*0.5));if(pt2<=0||pt2>=1)continue;const ex=tcx+(Math.cos(p2.angle)*1.8+p2.wobble*0.5)*(80+tier*30)*pt2;const ey=tcy-pt2*(120+tier*40)+240*pt2*pt2;ctx.globalAlpha=Math.max(0,1-pt2*1.3)*0.7;ctx.fillStyle=`hsl(${20+p2.hue*50},100%,70%)`;ctx.beginPath();ctx.arc(ex,ey,1.5+p2.size*2,0,Math.PI*2);ctx.fill();}}
-        const stA = Math.max(0,0.5*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(255,40,0,0.4)';ctx.fillRect(0,0,W,H);}
+
+        // 重力に引かれる残り火パーティクル
+        for(const p of parts){
+            const pt=Math.max(0,(t-p.phase*0.35)/(1-p.phase*0.35)); if(pt<=0||pt>=1) continue;
+            const spd=62+p.spd*(118+tier*68);
+            const ex=tcx+Math.cos(p.angle)*spd*pt*0.62+p.wobble*20*pt;
+            const ey=tcy-spd*pt*0.82+260*pt*pt*(0.38+p.spd*0.44);
+            const sz=(3+p.size*(9+tier*2.8))*Math.max(0,1-pt*0.84);
+            const al=pt<0.12?pt/0.12:Math.max(0,1-(pt-0.12)/0.88);
+            if(sz<=0||al<=0) continue;
+            ctx.globalAlpha=al; ctx.shadowColor=`hsl(${10+p.hue*42},100%,56%)`; ctx.shadowBlur=sz*2.5;
+            const fg=ctx.createRadialGradient(ex,ey,0,ex,ey,sz);
+            fg.addColorStop(0,'#fff'); fg.addColorStop(0.28,`hsl(${16+p.hue*44},100%,72%)`); fg.addColorStop(1,`hsla(${p.hue*38},100%,42%,0)`);
+            ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(ex,ey,sz,0,Math.PI*2); ctx.fill();
+        }
+        clearGlow();
+
+        // 高Tier: 放射状スパークジェット
+        if(tier>=3){
+            for(let ji=0;ji<8;ji++){
+                const ja=(ji/8)*Math.PI*2+t*Math.PI*4;
+                const jp=parts[ji*5%N], jT=Math.max(0,t-0.08); if(jT<=0) continue;
+                const jr=(28+tier*22)*Math.min(1,jT*3)*Math.max(0,1-jT*1.4);
+                if(jr<=0) continue;
+                ctx.globalAlpha=Math.min(1,jT*3)*Math.max(0,1-jT*1.4)*0.72;
+                ctx.shadowColor='#ffcc00'; ctx.shadowBlur=10;
+                ctx.strokeStyle=`hsl(${22+jp.hue*44},100%,68%)`; ctx.lineWidth=2+tier*0.6;
+                ctx.beginPath(); ctx.moveTo(tcx,tcy); ctx.lineTo(tcx+Math.cos(ja)*jr,tcy+Math.sin(ja)*jr*0.8); ctx.stroke();
+            }
+            clearGlow();
+        }
         ctx.globalAlpha=1;
     };
 
+    // ── 氷 (ヒャド / FF Blizzard / HP Glacius) ──────────────────────
     const drawIce = (t) => {
-        drawImpact(t, 'rgba(100,220,255,0.65)', 'rgba(180,240,255,0.9)');
-        for (const p of parts) {
-            const pt = Math.max(0,(t-p.phase)/(1-p.phase));
-            if (pt<=0) continue;
-            const spd = 80+p.spd*(85+tier*55);
-            const lx = tcx+Math.cos(p.angle)*spd*pt, ly = tcy+Math.sin(p.angle)*spd*pt;
-            const sz = (4+p.size*9)*Math.max(0,1-pt*0.55);
-            const alpha = pt<0.2?pt/0.2:Math.max(0,1-(pt-0.2)/0.8);
-            if (sz<=0||alpha<=0) continue;
-            ctx.globalAlpha = alpha*0.95;
-            ctx.shadowColor='#aaeeff'; ctx.shadowBlur=sz*2.5;
-            ctx.save(); ctx.translate(lx,ly); ctx.rotate(p.angle+pt*Math.PI*2);
-            ctx.fillStyle = `hsl(${190+p.hue*30},${70+p.size*30}%,${72+p.hue*18}%)`;
-            ctx.beginPath(); ctx.moveTo(0,-sz); ctx.lineTo(sz*0.55,0); ctx.lineTo(0,sz*1.6); ctx.lineTo(-sz*0.55,0); ctx.closePath(); ctx.fill();
+        // 冷気の画面青染め
+        ctx.globalAlpha=Math.sin(t*Math.PI)*(0.15+tier*0.07);
+        ctx.fillStyle='rgba(40,160,255,0.38)'; ctx.fillRect(0,0,W,H);
+        drawImpact(t,'rgba(100,230,255,0.7)','rgba(200,248,255,0.95)');
+
+        // 氷晶シャード放射 (射出後に減速停止)
+        for(const p of parts){
+            const pt=Math.max(0,(t-p.phase*0.3)/(1-p.phase*0.3)); if(pt<=0||pt>=1) continue;
+            const spd=85+p.spd*(92+tier*58);
+            const decel=1-pt*0.7;
+            const lx=tcx+Math.cos(p.angle)*spd*pt*decel;
+            const ly=tcy+Math.sin(p.angle)*spd*pt*decel;
+            const sz=(5+p.size*10)*Math.max(0,1-pt*0.42);
+            const al=pt<0.18?pt/0.18:Math.max(0,1-(pt-0.18)/0.82);
+            if(sz<=0||al<=0) continue;
+            ctx.globalAlpha=al*0.95; ctx.shadowColor='#88ddff'; ctx.shadowBlur=sz*2.8;
+            ctx.save(); ctx.translate(lx,ly); ctx.rotate(p.angle+pt*Math.PI*3);
+            const ig=ctx.createRadialGradient(0,0,0,0,0,sz);
+            ig.addColorStop(0,'rgba(255,255,255,1)'); ig.addColorStop(0.5,`hsl(${192+p.hue*28},85%,${74+p.hue*16}%)`); ig.addColorStop(1,'rgba(100,200,255,0)');
+            ctx.fillStyle=ig;
+            ctx.beginPath(); ctx.moveTo(0,-sz); ctx.lineTo(sz*0.42,0); ctx.lineTo(0,sz*1.7); ctx.lineTo(-sz*0.42,0); ctx.closePath(); ctx.fill();
             ctx.restore(); clearGlow();
         }
-        // Frost rings — dense
-        const _ringN=tier>=3?6:tier>=2?4:2;
-        for (let ri=0;ri<_ringN;ri++) {
-            const rp=Math.max(0,t-ri*0.09); if(rp<=0)continue;
-            const r=rp*(90+tier*45), ra=Math.max(0,(1-rp)*0.85);
-            ctx.globalAlpha=ra; ctx.strokeStyle=`rgba(190,240,255,${ra})`; ctx.lineWidth=3+tier*0.5-ri*0.4;
-            ctx.shadowColor='#88ddff'; ctx.shadowBlur=10;
+
+        // 霜リング群 (拡散)
+        const ringN=tier>=3?7:tier>=2?5:3;
+        for(let ri=0;ri<ringN;ri++){
+            const rp=Math.max(0,t-ri*0.08); if(rp<=0) continue;
+            const r=rp*(95+tier*48), ra=Math.max(0,(1-rp)*0.88);
+            ctx.globalAlpha=ra; ctx.lineWidth=3.5+tier*0.6-ri*0.5;
+            ctx.shadowColor='#66ccff'; ctx.shadowBlur=12+tier*4;
+            ctx.strokeStyle=`hsla(${196+ri*5},90%,${78+ri*3}%,${ra})`;
             ctx.beginPath(); ctx.arc(tcx,tcy,r,0,Math.PI*2); ctx.stroke(); clearGlow();
         }
-        // Large glowing snowflake
-        if (t<0.55) {
-            const ft=1-t/0.55, fSz=(35+tier*28)*ft;
-            ctx.globalAlpha=ft*0.95; ctx.strokeStyle='#e8f8ff'; ctx.lineWidth=2.5;
-            ctx.shadowColor='#66ccff'; ctx.shadowBlur=14;
-            for (let a=0;a<6;a++) {
-                const ag=a*Math.PI/3;
+
+        // 大雪の結晶 (中心に降臨)
+        if(t<0.62){
+            const ft=1-t/0.62, fSz=(38+tier*30)*ft;
+            ctx.globalAlpha=ft*0.98; ctx.lineWidth=2.5+tier*0.5;
+            ctx.shadowColor='#aaeeff'; ctx.shadowBlur=16;
+            for(let arm=0;arm<6;arm++){
+                const ag=arm*Math.PI/3+t*0.4;
+                ctx.strokeStyle=`hsla(${200+arm*5},90%,${80+arm*2}%,${ft})`;
                 ctx.beginPath(); ctx.moveTo(tcx,tcy); ctx.lineTo(tcx+Math.cos(ag)*fSz,tcy+Math.sin(ag)*fSz); ctx.stroke();
-                const bx=tcx+Math.cos(ag)*fSz*0.6, by=tcy+Math.sin(ag)*fSz*0.6;
-                for (let b=-1;b<=1;b+=2){ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+Math.cos(ag+b*Math.PI/3)*fSz*0.42,by+Math.sin(ag+b*Math.PI/3)*fSz*0.42);ctx.stroke();}
+                const bx=tcx+Math.cos(ag)*fSz*0.62, by=tcy+Math.sin(ag)*fSz*0.62;
+                for(let b=-1;b<=1;b+=2){
+                    ctx.beginPath(); ctx.moveTo(bx,by);
+                    ctx.lineTo(bx+Math.cos(ag+b*Math.PI/3)*fSz*0.44,by+Math.sin(ag+b*Math.PI/3)*fSz*0.44); ctx.stroke();
+                }
+                // 枝先のダイヤモンド粒
+                const dp=tcx+Math.cos(ag)*fSz, dq=tcy+Math.sin(ag)*fSz;
+                ctx.save(); ctx.translate(dp,dq); ctx.rotate(ag+Math.PI/4);
+                ctx.fillStyle='rgba(220,245,255,0.9)';
+                ctx.beginPath(); ctx.arc(0,0,2+tier,0,Math.PI*2); ctx.fill();
+                ctx.restore();
             }
             clearGlow();
         }
-        const cg=(18+tier*22)*Math.max(0,1-t*2);if(cg>0){ctx.globalAlpha=0.75;ctx.fillStyle=rg(tcx,tcy,cg,'#ffffff','rgba(80,200,255,0)');ctx.beginPath();ctx.arc(tcx,tcy,cg,0,Math.PI*2);ctx.fill();}
-        const stA=Math.max(0,0.5*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(80,190,255,0.3)';ctx.fillRect(0,0,W,H);}
+
+        // 中心核の氷塊グロー
+        const cg=(20+tier*24)*Math.max(0,1-t*2.2);
+        if(cg>0){ctx.globalAlpha=0.82;ctx.fillStyle=rg(tcx,tcy,cg,'rgba(230,250,255,1)','rgba(80,200,255,0)');ctx.beginPath();ctx.arc(tcx,tcy,cg,0,Math.PI*2);ctx.fill();}
+
+        // 高Tier: 地面から氷柱
+        if(tier>=3&&t>0.15&&t<0.75){
+            for(let sp=0;sp<tier+1;sp++){
+                const sx=tcx+(sp-(tier)/2)*(22+tier*6), sT=(t-0.15)/0.6;
+                const sh=(30+tier*18)*Math.sin(Math.min(sT*2,1)*Math.PI*0.5);
+                if(sh<=0) continue;
+                ctx.globalAlpha=0.72*Math.sin(Math.min(sT,1)*Math.PI);
+                ctx.shadowColor='#ccf0ff'; ctx.shadowBlur=10;
+                const sg=ctx.createLinearGradient(sx,tcy,sx,tcy-sh);
+                sg.addColorStop(0,'rgba(210,240,255,0.9)'); sg.addColorStop(1,'rgba(180,230,255,0)');
+                ctx.fillStyle=sg;
+                ctx.beginPath(); ctx.moveTo(sx-6-tier,tcy); ctx.lineTo(sx,tcy-sh); ctx.lineTo(sx+6+tier,tcy); ctx.closePath(); ctx.fill(); clearGlow();
+            }
+        }
         ctx.globalAlpha=1;
     };
 
-    const _buildBolt = (x1,y1,x2,y2,d,dep,segs) => {
-        if (dep<=0||d<2){segs.push([x1,y1,x2,y2]);return;}
+    // ── 雷 (ギラ / FF Thunder / HP Fulmen) ──────────────────────────
+    const _buildBolt=(x1,y1,x2,y2,d,dep,segs)=>{
+        if(dep<=0||d<2){segs.push([x1,y1,x2,y2]);return;}
         const mx=(x1+x2)/2+(Math.random()-0.5)*d, my=(y1+y2)/2+(Math.random()-0.5)*d;
         _buildBolt(x1,y1,mx,my,d/2,dep-1,segs); _buildBolt(mx,my,x2,y2,d/2,dep-1,segs);
-        if (Math.random()<0.35&&dep>1){const bx=mx+(Math.random()-0.5)*d*1.5,by=my+Math.random()*d*0.6;_buildBolt(mx,my,bx,by,d/3,dep-2,segs);}
+        if(Math.random()<0.4&&dep>1){const bx=mx+(Math.random()-0.5)*d*1.6,by=my+Math.random()*d*0.7;_buildBolt(mx,my,bx,by,d/3,dep-2,segs);}
     };
-    const _drawBolt = (x1,y1,x2,y2,d,dep,al) => {
+    const _drawBolt=(x1,y1,x2,y2,d,dep,al)=>{
         const segs=[]; _buildBolt(x1,y1,x2,y2,d,dep,segs);
-        ctx.strokeStyle=`rgba(120,120,255,${al*0.4})`; ctx.lineWidth=(2+dep)*1.5;
+        ctx.shadowColor='rgba(160,160,255,0.8)'; ctx.shadowBlur=18+tier*5;
+        ctx.strokeStyle=`rgba(120,120,255,${al*0.45})`; ctx.lineWidth=(2.5+dep)*1.6;
         ctx.beginPath(); segs.forEach(([a,b,c,e])=>{ctx.moveTo(a,b);ctx.lineTo(c,e);}); ctx.stroke();
-        ctx.strokeStyle=`rgba(255,255,255,${al})`; ctx.lineWidth=1+dep*0.4;
+        ctx.strokeStyle=`rgba(255,255,255,${al})`; ctx.lineWidth=1.2+dep*0.5;
         ctx.beginPath(); segs.forEach(([a,b,c,e])=>{ctx.moveTo(a,b);ctx.lineTo(c,e);}); ctx.stroke();
+        clearGlow();
     };
 
     const drawLightning = (t) => {
-        drawImpact(t, 'rgba(240,240,120,0.8)', 'rgba(180,180,255,0.95)');
-        const flashes = tier>=3?8:tier>=2?5:3;
-        const cycleT = (t*flashes)%1;
-        if (cycleT<0.6) {
-            const fa=Math.sin(cycleT/0.6*Math.PI);
-            const boltN=2+tier*2;
-            for (let b=0;b<boltN;b++) {
-                const sx=W*(0.05+b*0.9/boltN)+(Math.random()-0.5)*50;
-                const sy=isEnemy?-10:H*0.55;
-                const spread=(Math.random()-0.5)*50;
-                _drawBolt(sx,sy,tcx+spread,tcy+(Math.random()-0.5)*25,25+tier*14,4+tier,fa);
-            }
-            // Electric sparks radiating from target
-            ctx.globalAlpha=fa; ctx.fillStyle='#ffffcc';
-            for (let i=0;i<10+tier*6;i++){const sa=i/(10+tier*6)*Math.PI*2+Math.random(),sr=10+Math.random()*(40+tier*18);ctx.beginPath();ctx.arc(tcx+Math.cos(sa)*sr,tcy+Math.sin(sa)*sr,1+Math.random()*2,0,Math.PI*2);ctx.fill();}
-            // Impact glow at target
-            ctx.globalAlpha=fa*0.6;
-            ctx.fillStyle=rg(tcx,tcy,25+tier*15,'rgba(255,255,200,0.9)','transparent');
-            ctx.beginPath(); ctx.arc(tcx,tcy,25+tier*15,0,Math.PI*2); ctx.fill();
-            // Screen fill — stronger
-            ctx.globalAlpha=fa*(0.18+tier*0.1); ctx.fillStyle='#ffffcc'; ctx.fillRect(0,0,W,H);
-        }
-        ctx.globalAlpha=1;
-    };
+        // 電光が走るたびに黄白に染まる
+        const flashes=tier>=3?9:tier>=2?6:4;
+        const cycleT=(t*flashes)%1;
+        const fa=cycleT<0.55?Math.sin(cycleT/0.55*Math.PI):0;
 
-    const drawWind = (t) => {
-        for (let i=0;i<2+tier;i++) {
-            const p=parts[i*2%N], ph=p.phase+i*0.12;
-            const pt=Math.max(0,(t-ph)/(1-ph)); if(pt<=0||pt>=1) continue;
-            const alpha=pt<0.25?pt/0.25:Math.max(0,1-(pt-0.25)/0.75);
-            const yOff=p.wobble*0.5*70;
-            ctx.globalAlpha=alpha*0.85;
-            const hue=85+p.hue*50;
-            ctx.strokeStyle=`hsl(${hue},85%,65%)`; ctx.lineWidth=2+tier*0.7;
-            ctx.shadowColor=`hsl(${hue},100%,70%)`; ctx.shadowBlur=6;
-            ctx.beginPath();
-            const sx=-80+pt*(W+160);
-            ctx.moveTo(sx-50,tcy+yOff-15); ctx.bezierCurveTo(sx,tcy+yOff-35,sx+50,tcy+yOff+35,sx+100,tcy+yOff); ctx.stroke();
+        // 画面フラッシュ
+        if(fa>0.05){ctx.globalAlpha=fa*(0.22+tier*0.1);ctx.fillStyle='rgba(255,255,200,0.9)';ctx.fillRect(0,0,W,H);}
+
+        drawImpact(t,'rgba(255,255,120,0.9)','rgba(180,180,255,1)');
+
+        // 上空・左右から複数の電撃が収束
+        if(fa>0.02){
+            const boltN=3+tier*2;
+            for(let b=0;b<boltN;b++){
+                const bAngle=(b/boltN)*Math.PI*2;
+                const dist=W*0.6+tier*40;
+                const sx=tcx+Math.cos(bAngle)*dist+(Math.random()-0.5)*40;
+                const sy=tcy+Math.sin(bAngle)*dist+(Math.random()-0.5)*40;
+                _drawBolt(sx,sy,tcx+(Math.random()-0.5)*22,tcy+(Math.random()-0.5)*18,28+tier*16,4+tier,fa);
+            }
+            // 着弾点の電球グロー
+            ctx.globalAlpha=fa*0.75;
+            ctx.shadowColor='#ffffaa'; ctx.shadowBlur=30+tier*14;
+            ctx.fillStyle=rg(tcx,tcy,28+tier*18,'rgba(255,255,200,0.95)','transparent');
+            ctx.beginPath(); ctx.arc(tcx,tcy,28+tier*18,0,Math.PI*2); ctx.fill(); clearGlow();
+            // 放電スパーク
+            ctx.globalAlpha=fa*0.9; ctx.fillStyle='#ffffee';
+            for(let i=0;i<14+tier*8;i++){
+                const sa=i/(14+tier*8)*Math.PI*2+Math.random();
+                const sr=8+Math.random()*(44+tier*22);
+                ctx.beginPath(); ctx.arc(tcx+Math.cos(sa)*sr,tcy+Math.sin(sa)*sr,1.2+Math.random()*2.5,0,Math.PI*2); ctx.fill();
+            }
+            // 電気リング
+            ctx.globalAlpha=fa*0.6; ctx.strokeStyle='rgba(200,200,255,0.8)'; ctx.lineWidth=2;
+            ctx.shadowColor='#aaaaff'; ctx.shadowBlur=15;
+            for(let ri=0;ri<tier+1;ri++){
+                const rr=(12+ri*16+fa*20)*(1+ri*0.3);
+                ctx.beginPath(); ctx.arc(tcx,tcy,rr,0,Math.PI*2); ctx.stroke();
+            }
             clearGlow();
         }
-        if (tier>=2) {
-            for (const p of parts) {
-                const pt=Math.max(0,(t-p.phase*0.5)/(1-p.phase*0.5)); if(pt<=0||pt>=1) continue;
-                const angle=p.angle+t*(3+tier)*Math.PI;
-                const r=(25+p.spd*(40+tier*20))*Math.min(1,pt*4)*Math.max(0,1-pt*0.7);
-                const lx=tcx+Math.cos(angle)*r, ly=tcy+Math.sin(angle)*r*0.55-t*40;
-                const alpha=pt<0.4?pt/0.4:Math.max(0,1-(pt-0.4)/0.6);
-                ctx.globalAlpha=alpha*0.7; ctx.fillStyle=`hsl(${90+p.hue*70},85%,62%)`;
-                ctx.beginPath(); ctx.arc(lx,ly,1.5+p.size*2.5,0,Math.PI*2); ctx.fill();
-            }
-        }
-        const stA=Math.max(0,0.18*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#88dd44';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
 
+    // ── 風 (バギ / FF Aero / HP Ventus) ─────────────────────────────
+    const drawWind = (t) => {
+        // 緑の画面フィルター
+        ctx.globalAlpha=Math.sin(t*Math.PI)*(0.1+tier*0.05);
+        ctx.fillStyle='rgba(60,200,60,0.3)'; ctx.fillRect(0,0,W,H);
+
+        // 竜巻渦 — 中心に向かうスパイラル
+        const spiralN=3+tier;
+        for(let si=0;si<spiralN;si++){
+            const sp=parts[si*4%N], sPhase=si*0.1;
+            const st=Math.max(0,t-sPhase); if(st<=0) continue;
+            const spiralT=Math.min(st/0.8,1);
+            const spiralR=(55+si*22+tier*18)*Math.max(0,1-spiralT*0.75);
+            const angle=sp.angle+st*Math.PI*(5+tier*1.5+si*0.4);
+            const lx=tcx+Math.cos(angle)*spiralR;
+            const ly=tcy+Math.sin(angle)*spiralR*0.55-st*18;
+            const alpha=Math.max(0,Math.sin(spiralT*Math.PI)*0.85);
+            if(alpha<=0) continue;
+            ctx.globalAlpha=alpha;
+            ctx.shadowColor=`hsl(${88+sp.hue*55},100%,65%)`; ctx.shadowBlur=10+tier*4;
+            ctx.strokeStyle=`hsla(${90+sp.hue*60},90%,62%,${alpha})`;
+            ctx.lineWidth=2+sp.size*3+tier*0.7;
+            ctx.beginPath(); ctx.moveTo(lx,ly);
+            const nAngle=angle+0.35, nR=spiralR*0.88;
+            ctx.lineTo(tcx+Math.cos(nAngle)*nR, tcy+Math.sin(nAngle)*nR*0.55-st*18); ctx.stroke();
+            clearGlow();
+        }
+
+        // 横断する風刃スラッシュ (HP Wind Slash)
+        const slashN=2+tier;
+        for(let i=0;i<slashN;i++){
+            const p=parts[i*6%N], ph=p.phase*0.4+i*0.15;
+            const pt=Math.max(0,(t-ph)/(0.85-ph)); if(pt<=0||pt>=1) continue;
+            const alpha=pt<0.22?pt/0.22:Math.max(0,1-(pt-0.22)/0.78);
+            const yOff=p.wobble*65, curveH=35+p.size*25;
+            const sx=-60+pt*(W+120);
+            ctx.globalAlpha=alpha*0.92;
+            const hue=82+p.hue*55;
+            ctx.shadowColor=`hsl(${hue},100%,68%)`; ctx.shadowBlur=8+tier*3;
+            ctx.strokeStyle=`hsl(${hue},88%,65%)`; ctx.lineWidth=2.5+tier*1;
+            ctx.beginPath();
+            ctx.moveTo(sx-55,tcy+yOff);
+            ctx.bezierCurveTo(sx,tcy+yOff-curveH,sx+55,tcy+yOff+curveH,sx+110,tcy+yOff);
+            ctx.stroke(); clearGlow();
+            // 刃の先端グロー
+            ctx.globalAlpha=alpha*0.5; ctx.fillStyle=`hsl(${hue},80%,80%)`;
+            ctx.beginPath(); ctx.arc(sx+55,tcy+yOff,3+tier*2,0,Math.PI*2); ctx.fill();
+        }
+
+        // 旋回パーティクル
+        for(const p of parts){
+            const pt=Math.max(0,(t-p.phase*0.5)/(1-p.phase*0.5)); if(pt<=0||pt>=1) continue;
+            const angle=p.angle+t*(3.5+tier)*Math.PI*(p.hue>0.5?1:-1);
+            const r=(22+p.spd*(42+tier*22))*Math.min(1,pt*3)*Math.max(0,1-pt*0.65);
+            const lx=tcx+Math.cos(angle)*r, ly=tcy+Math.sin(angle)*r*0.52-t*35;
+            const al=pt<0.35?pt/0.35:Math.max(0,1-(pt-0.35)/0.65);
+            ctx.globalAlpha=al*0.75; ctx.fillStyle=`hsl(${88+p.hue*72},88%,65%)`;
+            ctx.beginPath(); ctx.arc(lx,ly,1.8+p.size*2.8,0,Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha=1;
+    };
+
+    // ── 回復 (ホイム / FF Cure / HP Episkey) ────────────────────────
     const drawHeal = (t) => {
         const isRevive=sid.includes('zao')||sid.includes('zaorn');
         const gold=isRevive||tier>=4;
-        for (const p of parts) {
-            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0||pt>=1) continue;
-            const lx=tcx+p.wobble*(35+tier*15)+Math.sin(pt*Math.PI*2.5+p.hue*6)*12;
-            const ly=tcy+30-pt*(80+tier*35);
-            const sz=(2.5+p.size*4)*Math.min(1,pt*4)*Math.max(0,1-pt);
-            ctx.globalAlpha=Math.max(0,1-pt*1.1);
-            ctx.fillStyle=rg(lx,ly,sz*1.8,'#ffffff',gold?'rgba(255,220,80,0)':'rgba(100,255,150,0)');
-            ctx.beginPath(); ctx.arc(lx,ly,sz*1.8,0,Math.PI*2); ctx.fill();
+        const hue1=gold?'rgba(255,240,120,':'rgba(120,255,180,';
+        const hue2=gold?'#ffee55':'#55ffaa';
+
+        // 上空から降り注ぐ光の柱
+        if(t>0.05&&t<0.85){
+            const pillarN=tier>=3?3:tier>=2?2:1;
+            for(let pi=0;pi<pillarN;pi++){
+                const pOff=(pi-(pillarN-1)/2)*(20+tier*12);
+                const pT=Math.max(0,t-pi*0.1);
+                const pillarH=H*0.6*(Math.min(pT/0.35,1));
+                const pillarA=pT<0.5?pT/0.25:Math.max(0,(0.85-t)/0.35);
+                if(pillarA<=0||pillarH<=0) continue;
+                ctx.globalAlpha=pillarA*0.62;
+                ctx.shadowColor=hue2; ctx.shadowBlur=18+tier*8;
+                const pg=ctx.createLinearGradient(tcx+pOff,tcy-pillarH,tcx+pOff,tcy);
+                pg.addColorStop(0,`${hue1}0)`); pg.addColorStop(0.6,`${hue1}0.55)`); pg.addColorStop(1,`${hue1}0.9)`);
+                ctx.fillStyle=pg;
+                ctx.fillRect(tcx+pOff-(8+tier*4),tcy-pillarH,18+tier*8,pillarH);
+                clearGlow();
+            }
         }
-        const glowT=t<0.35?t/0.35:Math.max(0,1-(t-0.35)/0.65);
-        const glowR=(35+tier*25)*glowT;
-        if (glowR>0) {
-            ctx.globalAlpha=glowT*0.55;
-            ctx.fillStyle=rg(tcx,tcy,glowR*1.5,gold?'rgba(255,240,150,0.9)':'rgba(100,255,150,0.9)','transparent');
-            ctx.fillRect(tcx-glowR*1.5,tcy-glowR*1.5,glowR*3,glowR*3);
+
+        // 上昇する癒しパーティクル
+        for(const p of parts){
+            const pt=Math.max(0,(t-p.phase*0.5)/(1-p.phase*0.5)); if(pt<=0||pt>=1) continue;
+            const lx=tcx+p.wobble*(38+tier*16)+Math.sin(pt*Math.PI*2.8+p.hue*6)*14;
+            const ly=tcy+25-pt*(88+tier*38);
+            const sz=(2.8+p.size*4.5)*Math.min(1,pt*4)*Math.max(0,1-pt);
+            const al=Math.max(0,1-pt*1.05);
+            if(sz<=0||al<=0) continue;
+            ctx.globalAlpha=al;
+            ctx.shadowColor=hue2; ctx.shadowBlur=sz*2;
+            ctx.fillStyle=rg(lx,ly,sz*2,'#ffffff',`${hue1}0)`);
+            ctx.beginPath(); ctx.arc(lx,ly,sz*2,0,Math.PI*2); ctx.fill();
         }
-        if (tier>=3&&t<0.8) {
-            const ph=(0.8-t)/0.8*(120+tier*60), pw=18+tier*6;
-            ctx.globalAlpha=(0.8-t)/0.8*0.5;
-            ctx.fillStyle=lg(tcx,tcy,tcx,tcy-ph,gold?'rgba(255,255,180,0.8)':'rgba(150,255,200,0.8)','transparent');
-            ctx.fillRect(tcx-pw/2,tcy-ph,pw,ph);
+        clearGlow();
+
+        // 中心のグロー球
+        const glowT=t<0.38?t/0.38:Math.max(0,1-(t-0.38)/0.62);
+        const glowR=(38+tier*28)*glowT;
+        if(glowR>0){
+            ctx.globalAlpha=glowT*0.62;
+            ctx.fillStyle=rg(tcx,tcy,glowR*1.6,gold?'rgba(255,245,160,0.92)':'rgba(120,255,180,0.92)','transparent');
+            ctx.beginPath(); ctx.arc(tcx,tcy,glowR*1.6,0,Math.PI*2); ctx.fill();
         }
-        if (tier>=4&&t<0.65) {
-            const wt=(0.65-t)/0.65;
-            ctx.globalAlpha=wt*0.8; ctx.strokeStyle=gold?'#ffffaa':'#aaffcc'; ctx.lineWidth=2;
-            ctx.shadowColor=gold?'#ffff44':'#44ff88'; ctx.shadowBlur=8;
+
+        // tier3+: 光の十字閃光
+        if(tier>=3&&t>0.08&&t<0.7){
+            const cT=(t-0.08)/0.62, crossA=Math.sin(cT*Math.PI)*0.75;
+            const crossL=55+tier*35;
+            ctx.globalAlpha=crossA; ctx.lineWidth=4+tier*2;
+            ctx.shadowColor=hue2; ctx.shadowBlur=20;
+            ctx.strokeStyle=gold?'rgba(255,255,200,0.9)':'rgba(180,255,220,0.9)';
             ctx.beginPath();
-            ctx.moveTo(tcx,tcy-10); ctx.bezierCurveTo(tcx-50,tcy-75,tcx-90,tcy-30,tcx-70,tcy+15);
-            ctx.moveTo(tcx,tcy-10); ctx.bezierCurveTo(tcx+50,tcy-75,tcx+90,tcy-30,tcx+70,tcy+15);
+            ctx.moveTo(tcx-crossL,tcy); ctx.lineTo(tcx+crossL,tcy);
+            ctx.moveTo(tcx,tcy-crossL); ctx.lineTo(tcx,tcy+crossL);
             ctx.stroke(); clearGlow();
         }
-        const stA=Math.max(0,0.15*glowT); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle=gold?'#ffffaa':'#44ff88';ctx.fillRect(0,0,W,H);}
+
+        // tier4/ザオーン: 天使の翼シルエット
+        if((isRevive||tier>=4)&&t<0.72){
+            const wT=(0.72-t)/0.72;
+            ctx.globalAlpha=wT*0.82; ctx.lineWidth=2.5;
+            ctx.shadowColor=gold?'#ffee44':'#44ffaa'; ctx.shadowBlur=12;
+            ctx.strokeStyle=gold?'rgba(255,255,180,0.9)':'rgba(180,255,220,0.9)';
+            ctx.beginPath();
+            ctx.moveTo(tcx,tcy-8); ctx.bezierCurveTo(tcx-52,tcy-78,tcx-94,tcy-28,tcx-72,tcy+18);
+            ctx.moveTo(tcx,tcy-8); ctx.bezierCurveTo(tcx+52,tcy-78,tcx+94,tcy-28,tcx+72,tcy+18);
+            ctx.stroke(); clearGlow();
+        }
+
+        // 画面淡染め
+        const stA=Math.max(0,0.18*glowT); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle=gold?'rgba(255,245,130,0.8)':'rgba(80,255,140,0.5)';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
 
+    // ── 爆発 (イオ / FF Bio / HP Bombarda) ──────────────────────────
     const drawExplosion = (t) => {
-        // Bright initial flash
-        if(t<0.18){ctx.globalAlpha=(0.18-t)/0.18*0.95;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);}
-        // Multiple expanding rings
-        const ringN=Math.min(tier+2,5);
-        for (let ri=0;ri<ringN;ri++) {
-            const rp=Math.max(0,t-ri*0.09); if(rp<=0) continue;
-            const r=rp*(100+tier*55), alpha=Math.max(0,1-rp*1.1);
-            ctx.globalAlpha=alpha;
-            ctx.shadowColor=`hsl(${20+ri*18},100%,60%)`; ctx.shadowBlur=12;
-            ctx.strokeStyle=`hsl(${20+ri*18},100%,${60+ri*8}%)`;
-            ctx.lineWidth=Math.max(0.5,5-ri*0.7-rp*2.5+tier*0.4);
+        // フェーズ1: 眩いホワイトフラッシュ
+        if(t<0.16){ctx.globalAlpha=(0.16-t)/0.16*0.98;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);}
+        // フェーズ2以降: 橙〜赤の環境光
+        if(t>0.08){
+            ctx.globalAlpha=Math.sin(Math.min((t-0.08)/0.7,1)*Math.PI)*(0.22+tier*0.1);
+            ctx.fillStyle='rgba(255,80,0,0.4)'; ctx.fillRect(0,0,W,H);
+        }
+
+        // 複数の衝撃波リング
+        const ringN=Math.min(tier+3,6);
+        for(let ri=0;ri<ringN;ri++){
+            const rp=Math.max(0,t-ri*0.07); if(rp<=0) continue;
+            const r=rp*(105+tier*58), al=Math.max(0,1-rp*1.05);
+            ctx.globalAlpha=al;
+            ctx.shadowColor=`hsl(${18+ri*22},100%,58%)`; ctx.shadowBlur=14+tier*4;
+            ctx.strokeStyle=`hsl(${18+ri*22},100%,${62+ri*6}%)`;
+            ctx.lineWidth=Math.max(0.5,5.5-ri*0.6-rp*2.8+tier*0.5);
             ctx.beginPath(); ctx.arc(tcx,tcy,r,0,Math.PI*2); ctx.stroke(); clearGlow();
         }
-        for (const p of parts) {
-            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0) continue;
-            const spd=70+p.spd*(130+tier*55);
-            const lx=tcx+Math.cos(p.angle)*spd*pt, ly=tcy+Math.sin(p.angle)*spd*pt+220*pt*pt;
-            const sz=(3+p.size*6)*Math.max(0,1-pt*0.75);
-            ctx.globalAlpha=Math.max(0,1-pt*0.85);
-            ctx.shadowColor=`hsl(${p.hue*80+20},100%,65%)`; ctx.shadowBlur=sz*2;
-            ctx.fillStyle=`hsl(${p.hue*80+20},100%,${60+p.hue*22}%)`;
+
+        // 爆発コア (白→黄→橙)
+        if(t<0.32){
+            const cr=(0.32-t)/0.32*(82+tier*55);
+            ctx.globalAlpha=(0.32-t)/0.32*0.9;
+            ctx.shadowColor='#ff6600'; ctx.shadowBlur=cr*1.5;
+            const cg=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,cr);
+            cg.addColorStop(0,'#ffffff'); cg.addColorStop(0.2,'#ffffaa'); cg.addColorStop(0.55,'#ff8800'); cg.addColorStop(1,'rgba(255,20,0,0)');
+            ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(tcx,tcy,cr,0,Math.PI*2); ctx.fill(); clearGlow();
+        }
+
+        // デブリ (重力付き)
+        for(const p of parts){
+            const pt=Math.max(0,(t-p.phase*0.3)/(1-p.phase*0.3)); if(pt<=0||pt>=1) continue;
+            const spd=72+p.spd*(135+tier*58);
+            const lx=tcx+Math.cos(p.angle)*spd*pt;
+            const ly=tcy+Math.sin(p.angle)*spd*pt+230*pt*pt*(0.3+p.spd*0.5);
+            const sz=(3+p.size*6.5)*Math.max(0,1-pt*0.7);
+            const al=Math.max(0,1-pt*0.82);
+            if(sz<=0||al<=0) continue;
+            ctx.globalAlpha=al;
+            const dh=p.hue*85+18;
+            ctx.shadowColor=`hsl(${dh},100%,62%)`; ctx.shadowBlur=sz*2.2;
+            ctx.fillStyle=`hsl(${dh},100%,${58+p.hue*24}%)`;
             ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
         }
         clearGlow();
-        // Central flash glow
-        if(t<0.25){ctx.globalAlpha=(0.25-t)/0.25*0.85;const cr=(0.25-t)/0.25*(75+tier*50);ctx.fillStyle=rg(tcx,tcy,cr,'rgba(255,255,200,0.95)','transparent');ctx.beginPath();ctx.arc(tcx,tcy,cr,0,Math.PI*2);ctx.fill();}
-        const stA=Math.max(0,0.5*(1-t*1.8));if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(255,80,0,0.35)';ctx.fillRect(0,0,W,H);}
+
+        // 高Tier: 煙霧リング
+        if(tier>=3&&t>0.2){
+            const sT=(t-0.2)/0.8;
+            ctx.globalAlpha=Math.max(0,0.35*(1-sT));
+            ctx.strokeStyle='rgba(180,120,60,0.5)'; ctx.lineWidth=18+tier*6;
+            ctx.beginPath(); ctx.arc(tcx,tcy,sT*(140+tier*50),0,Math.PI*2); ctx.stroke();
+        }
         ctx.globalAlpha=1;
     };
 
+    // ── 闇 (ドルマ / FF Death / HP Obscuro) ─────────────────────────
     const drawDark = (t) => {
-        // Dark screen at start
-        if(t<0.2){ctx.globalAlpha=(0.2-t)/0.2*0.85;ctx.fillStyle='#000000';ctx.fillRect(0,0,W,H);}
-        // Purple flash after dark
-        if(t>=0.15&&t<0.35){ctx.globalAlpha=(t-0.15)/0.2*0.7;ctx.fillStyle='rgba(80,0,160,0.5)';ctx.fillRect(0,0,W,H);}
-        for (const p of parts) {
+        // 冒頭の暗転
+        if(t<0.22){ctx.globalAlpha=(0.22-t)/0.22*0.88;ctx.fillStyle='#000000';ctx.fillRect(0,0,W,H);}
+        // 紫フラッシュ
+        if(t>=0.14&&t<0.4){ctx.globalAlpha=(t-0.14)/0.26*0.72;ctx.fillStyle='rgba(70,0,160,0.55)';ctx.fillRect(0,0,W,H);}
+        // 後期の暗い残像
+        if(t>0.6){ctx.globalAlpha=(t-0.6)/0.4*0.45;ctx.fillStyle='rgba(8,0,20,0.55)';ctx.fillRect(0,0,W,H);}
+
+        // 螺旋収束する闇パーティクル
+        for(const p of parts){
             const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0||pt>=1) continue;
-            const startR=100+p.spd*(80+tier*40);
-            const angle=p.angle+t*Math.PI*(3+tier*0.7);
-            const curR=startR*(1-Math.min(1,t*1.2)*0.88);
-            const lx=tcx+Math.cos(angle)*curR, ly=tcy+Math.sin(angle)*curR*0.7;
-            const sz=(3+p.size*5)*Math.max(0,t<0.7?1:(1-t)*3.3);
-            const alpha=Math.max(0,(t<0.7?Math.min(1,t*2.5):(1-t)*3.3)*0.9);
-            ctx.globalAlpha=alpha;
-            ctx.shadowColor=`hsl(${280+p.hue*40},100%,50%)`; ctx.shadowBlur=sz*2;
-            ctx.fillStyle=`hsl(${270+p.hue*60},${70+p.hue*30}%,${25+p.size*35}%)`;
+            const startR=105+p.spd*(85+tier*42);
+            const angle=p.angle+t*Math.PI*(3.5+tier*0.8);
+            const curR=startR*(1-Math.min(1,t*1.15)*0.9);
+            const lx=tcx+Math.cos(angle)*curR, ly=tcy+Math.sin(angle)*curR*0.72;
+            const sz=(3.5+p.size*5.5)*Math.max(0,t<0.65?1:(1-t)*3.2);
+            const al=Math.max(0,(t<0.65?Math.min(1,t*2.8):(1-t)*3.2)*0.92);
+            if(sz<=0||al<=0) continue;
+            ctx.globalAlpha=al;
+            ctx.shadowColor=`hsl(${278+p.hue*42},100%,52%)`; ctx.shadowBlur=sz*2.5;
+            ctx.fillStyle=`hsl(${268+p.hue*62},${72+p.hue*28}%,${22+p.size*36}%)`;
             ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
         }
         clearGlow();
-        // Void black hole at center — grows then collapses
-        const vr=(t<0.5?t*2:Math.max(0,(1-t)*2))*(40+tier*25);
-        if(vr>0){ctx.globalAlpha=0.9;ctx.fillStyle=rg(tcx,tcy,vr,'#000000','rgba(60,0,100,0)');ctx.beginPath();ctx.arc(tcx,tcy,vr,0,Math.PI*2);ctx.fill();}
-        // Dark tendrils (all tiers)
-        const tc2=3+tier*2;
-        for(let i=0;i<tc2;i++){const ag=(i/tc2)*Math.PI*2+t*Math.PI*1.5,len=(50+tier*30)*Math.min(1,t*2.5)*Math.max(0,1-t);if(len<=0)continue;ctx.globalAlpha=Math.min(1,t*2.5)*Math.max(0,1-t)*0.75;ctx.strokeStyle=`rgba(180,0,255,0.8)`;ctx.lineWidth=2+tier*0.5;ctx.shadowColor='#8800ff';ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(tcx,tcy);ctx.lineTo(tcx+Math.cos(ag)*len,tcy+Math.sin(ag)*len*0.7);ctx.stroke();}
-        clearGlow();
-        const stA=Math.max(0,0.5*(1-t*1.8)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(10,0,25,0.5)';ctx.fillRect(0,0,W,H);}
+
+        // ブラックホール (開いて閉じる)
+        const vr=(t<0.48?t/0.48:Math.max(0,(1-t)/0.52))*(42+tier*28);
+        if(vr>0){
+            ctx.globalAlpha=0.92;
+            const vg=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,vr);
+            vg.addColorStop(0,'#000000'); vg.addColorStop(0.6,'rgba(30,0,60,0.8)'); vg.addColorStop(1,'rgba(60,0,120,0)');
+            ctx.fillStyle=vg; ctx.beginPath(); ctx.arc(tcx,tcy,vr,0,Math.PI*2); ctx.fill();
+        }
+
+        // 闇の触手
+        const tenN=4+tier*2;
+        for(let i=0;i<tenN;i++){
+            const ag=(i/tenN)*Math.PI*2+t*Math.PI*1.8+(i%2)*Math.PI;
+            const len=(52+tier*32)*Math.min(1,t*2.8)*Math.max(0,1-t*1.05);
+            if(len<=0) continue;
+            ctx.globalAlpha=Math.min(1,t*2.8)*Math.max(0,1-t*1.05)*0.8;
+            ctx.shadowColor='#9900ff'; ctx.shadowBlur=12+tier*5;
+            ctx.strokeStyle=`rgba(${160+tier*20},0,${220+tier*15},0.85)`; ctx.lineWidth=2.5+tier*0.7;
+            ctx.beginPath(); ctx.moveTo(tcx,tcy);
+            const mx=tcx+Math.cos(ag+0.4)*len*0.55, my=tcy+Math.sin(ag+0.4)*len*0.55*0.7;
+            ctx.quadraticCurveTo(mx,my,tcx+Math.cos(ag)*len,tcy+Math.sin(ag)*len*0.72);
+            ctx.stroke(); clearGlow();
+        }
+
+        // 闇の稲妻 (tier3+)
+        if(tier>=3&&t>0.15&&t<0.75){
+            const dlT=(t-0.15)/0.6;
+            const dlA=Math.sin(dlT*Math.PI)*0.7;
+            for(let dl=0;dl<tier;dl++){
+                const dsx=tcx+(Math.random()-0.5)*80, dsy=tcy+(Math.random()-0.5)*40;
+                const dex=tcx+(Math.random()-0.5)*60, dey=tcy+(Math.random()-0.5)*40;
+                ctx.globalAlpha=dlA*0.85;
+                ctx.shadowColor='#cc00ff'; ctx.shadowBlur=14;
+                ctx.strokeStyle=`rgba(200,0,255,${dlA})`; ctx.lineWidth=1.5;
+                ctx.beginPath(); ctx.moveTo(dsx,dsy); ctx.lineTo(dex,dey); ctx.stroke(); clearGlow();
+            }
+        }
         ctx.globalAlpha=1;
     };
 
+    // ── バフ / デバフ (スカラ / HP Protego) ─────────────────────────
     const drawBuff = (t) => {
-        const isDebuff=etype==='debuff', baseHue=isDebuff?280:60;
-        for (const p of parts) {
-            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0||pt>=1) continue;
-            const orbitR=(25+p.spd*40)*Math.min(1,pt*2.5)*Math.max(0,1-(pt-0.5)*2);
-            const angle=p.angle+t*Math.PI*(isDebuff?-3.5:2.5);
-            const lx=tcx+Math.cos(angle)*orbitR, ly=tcy+Math.sin(angle)*orbitR*0.6+(isDebuff?pt*30:-pt*25);
-            const sz=(2+p.size*3)*Math.max(0,Math.sin(pt*Math.PI));
-            ctx.globalAlpha=Math.max(0,Math.sin(pt*Math.PI)*0.9);
-            ctx.fillStyle=`hsl(${baseHue+p.hue*50},85%,${isDebuff?45+p.hue*20:60+p.hue*20}%)`; ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
+        const isDebuff=etype==='debuff', baseHue=isDebuff?280:55;
+        const dir=isDebuff?-1:1;
+
+        // 魔法陣 (ルーン円) が出現して回転
+        if(t<0.82){
+            const runeT=Math.min(t/0.22,1), runeA=Math.sin(Math.min(t,0.82)/0.82*Math.PI)*(0.85);
+            const runeR=(28+tier*22)*runeT;
+            ctx.globalAlpha=runeA;
+            ctx.shadowColor=isDebuff?'#aa00ff':'#aaff44'; ctx.shadowBlur=14+tier*5;
+            ctx.strokeStyle=isDebuff?'rgba(180,0,255,0.85)':'rgba(180,255,60,0.85)'; ctx.lineWidth=2+tier*0.5;
+            ctx.beginPath(); ctx.arc(tcx,tcy,runeR,0,Math.PI*2); ctx.stroke();
+            // 内側の六芒星
+            for(let pt=0;pt<6;pt++){
+                const a=(pt/6)*Math.PI*2+t*Math.PI*dir*1.5;
+                const bx=tcx+Math.cos(a)*runeR*0.7, by=tcy+Math.sin(a)*runeR*0.7;
+                ctx.globalAlpha=runeA*0.65;
+                ctx.beginPath(); ctx.moveTo(tcx,tcy); ctx.lineTo(bx,by); ctx.stroke();
+            }
+            clearGlow();
         }
-        const stA=Math.max(0,0.12*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle=isDebuff?'#aa44ff':'#aaff44';ctx.fillRect(0,0,W,H);}
+
+        // 軌道パーティクル (バフ: 収束上昇 / デバフ: 拡散落下)
+        for(const p of parts){
+            const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0||pt>=1) continue;
+            const orbitR=(28+p.spd*44)*Math.min(1,pt*2.8)*Math.max(0,1-(pt-0.48)*2.2);
+            const angle=p.angle+t*Math.PI*(isDebuff?-4:3)*p.spd;
+            const lx=tcx+Math.cos(angle)*orbitR;
+            const ly=tcy+Math.sin(angle)*orbitR*0.62+(isDebuff?pt*36:-pt*30);
+            const sz=(2.2+p.size*3.5)*Math.max(0,Math.sin(pt*Math.PI));
+            const al=Math.max(0,Math.sin(pt*Math.PI)*0.92);
+            if(sz<=0||al<=0) continue;
+            ctx.globalAlpha=al;
+            ctx.shadowColor=`hsl(${baseHue+p.hue*55},100%,60%)`; ctx.shadowBlur=sz*2.2;
+            ctx.fillStyle=`hsl(${baseHue+p.hue*55},88%,${isDebuff?42+p.hue*22:58+p.hue*22}%)`;
+            ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
+        }
+        clearGlow();
+
+        // オーラ光輪
+        const auraT=Math.sin(t*Math.PI), auraR=(18+tier*16)*auraT;
+        if(auraR>0){
+            ctx.globalAlpha=auraT*0.48;
+            ctx.fillStyle=rg(tcx,tcy,auraR,isDebuff?'rgba(180,0,255,0.7)':'rgba(200,255,80,0.7)','transparent');
+            ctx.beginPath(); ctx.arc(tcx,tcy,auraR,0,Math.PI*2); ctx.fill();
+        }
+        const stA=Math.max(0,0.14*(1-t*2)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle=isDebuff?'rgba(100,0,200,0.6)':'rgba(160,255,60,0.4)';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
 
     const drawWarp = (t) => {
-        for (const p of parts) {
+        for(const p of parts){
             const angle=p.angle+t*Math.PI*5, r=p.spd*100*Math.max(0.1,1-t);
             const lx=tcx+Math.cos(angle)*r, ly=tcy+Math.sin(angle)*r*0.6;
             ctx.globalAlpha=(1-t)*0.7; ctx.fillStyle=`hsl(${220+p.hue*60},75%,${50+p.hue*25}%)`;
@@ -1449,13 +1707,18 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
     };
 
     const drawGeneric = (t) => {
-        for (const p of parts) {
+        ctx.globalAlpha=Math.sin(t*Math.PI)*0.12; ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.fillRect(0,0,W,H);
+        for(const p of parts){
             const pt=Math.max(0,(t-p.phase)/(1-p.phase)); if(pt<=0) continue;
-            const spd=40+p.spd*80, lx=tcx+Math.cos(p.angle)*spd*pt, ly=tcy+Math.sin(p.angle)*spd*pt;
-            ctx.globalAlpha=Math.max(0,1-pt*1.2); ctx.fillStyle=`hsl(${p.hue*360},60%,80%)`;
-            ctx.beginPath(); ctx.arc(lx,ly,(3+p.size*5)*Math.max(0,1-pt),0,Math.PI*2); ctx.fill();
+            const spd=42+p.spd*85, lx=tcx+Math.cos(p.angle)*spd*pt, ly=tcy+Math.sin(p.angle)*spd*pt;
+            const sz=(3+p.size*5.5)*Math.max(0,1-pt);
+            ctx.globalAlpha=Math.max(0,1-pt*1.15);
+            ctx.shadowColor=`hsl(${p.hue*360},70%,75%)`; ctx.shadowBlur=sz*1.8;
+            ctx.fillStyle=`hsl(${p.hue*360},65%,80%)`;
+            ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill();
         }
-        const stA=Math.max(0,0.2*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);}
+        clearGlow();
+        const stA=Math.max(0,0.22*(1-t*2.5)); if(stA>0){ctx.globalAlpha=stA;ctx.fillStyle='rgba(255,255,255,0.6)';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
 
@@ -1469,6 +1732,118 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
         ctx.clearRect(0, 0, W, H);
         drawFn(t);
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+        if (t < 1) { rafId = requestAnimationFrame(animate); } else { layer.innerHTML = ''; }
+    };
+    rafId = requestAnimationFrame(animate);
+    await new Promise(r => setTimeout(r, dur + 80));
+    cancelAnimationFrame(rafId);
+    layer.innerHTML = '';
+}
+
+async function playFieldWarpEffect(spellId) {
+    const layer = document.getElementById('global-effect-layer');
+    layer.innerHTML = '';
+    const gc = document.getElementById('game-container');
+    const W = gc.offsetWidth || 360, H = gc.offsetHeight || 560;
+    const cvs = document.createElement('canvas');
+    cvs.width = W; cvs.height = H;
+    Object.assign(cvs.style, {position:'absolute',top:'0',left:'0',width:'100%',height:'100%',pointerEvents:'none'});
+    layer.appendChild(cvs);
+    const ctx = cvs.getContext('2d');
+
+    // プレイヤーはフィールドマップ上で常にこの座標に描画される
+    const cx = W / 2, cy = Math.floor(H * 0.3) + 12;
+
+    // ルーラ=青紫ポータル, レミト=シアン脱出光
+    const isRula = spellId.includes('rula');
+    const hueBase = isRula ? 270 : 160;
+    const hueRange = isRula ? 60 : 50;
+
+    // パーティクル生成
+    const N = 80;
+    const rng = (s) => { let x = ((s+1)*1664525+1013904223)&0x7fffffff; return x/0x7fffffff; };
+    const parts = Array.from({length:N}, (_,i) => ({
+        angle: rng(i*3)*Math.PI*2,
+        r: 20 + rng(i*3+1)*80,
+        spd: 0.4 + rng(i*3+2)*0.8,
+        size: rng(i*7)*1.2,
+        hue: rng(i*11)
+    }));
+
+    const dur = 1600;
+    let rafId;
+    const start = performance.now();
+    const animate = (now) => {
+        const t = Math.min(1, (now - start) / dur);
+        ctx.clearRect(0, 0, W, H);
+
+        // フェーズ1(0→0.5): 外から中心へ収束しながら回転
+        // フェーズ2(0.5→0.8): 魔法陣リング点滅
+        // フェーズ3(0.8→1.0): 白フラッシュ
+
+        // パーティクル
+        const spin = t * Math.PI * 8;
+        for (const p of parts) {
+            const converge = Math.max(0, (t - 0.0) / 0.75);
+            const r = p.r * (1 - converge * converge) + 4;
+            const ang = p.angle + spin * p.spd;
+            const px = cx + Math.cos(ang) * r;
+            const py = cy + Math.sin(ang) * r * 0.55;
+            const alpha = Math.max(0, (1 - t * 1.1) * 0.85);
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = `hsl(${hueBase + p.hue*hueRange},80%,${60+p.size*25}%)`;
+            ctx.beginPath();
+            ctx.arc(px, py, 1.5 + p.size * 3.5, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // 魔法陣リング (中心)
+        if (t < 0.85) {
+            const rings = isRula ? 3 : 2;
+            for (let ri = 0; ri < rings; ri++) {
+                const rr = (12 + ri * 18) * (1 - t * 0.6);
+                const ralpha = Math.max(0, (0.85 - t) / 0.85) * (0.5 + 0.5 * Math.sin(t * Math.PI * 10 + ri));
+                ctx.globalAlpha = ralpha;
+                ctx.strokeStyle = `hsl(${hueBase + ri*20},90%,80%)`;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(cx, cy, rr, 0, Math.PI*2);
+                ctx.stroke();
+
+                // 回転する点線分割線
+                const segs = 6 + ri * 2;
+                for (let si = 0; si < segs; si++) {
+                    const sa = (si / segs) * Math.PI * 2 + spin * (ri % 2 === 0 ? 1 : -1) * 0.3;
+                    ctx.beginPath();
+                    ctx.moveTo(cx + Math.cos(sa) * rr * 0.5, cy + Math.sin(sa) * rr * 0.5);
+                    ctx.lineTo(cx + Math.cos(sa) * rr, cy + Math.sin(sa) * rr);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // 中心グロー
+        const glowR = 18 * Math.max(0, 1 - t * 0.8);
+        if (glowR > 1) {
+            const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+            grd.addColorStop(0, `hsla(${hueBase+20},100%,95%,${0.7*(1-t)})`);
+            grd.addColorStop(1, `hsla(${hueBase},80%,60%,0)`);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = grd;
+            ctx.beginPath();
+            ctx.arc(cx, cy, glowR, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // フラッシュ (t > 0.8)
+        if (t > 0.8) {
+            const fa = Math.min(1, (t - 0.8) / 0.2);
+            ctx.globalAlpha = fa * 0.9;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, W, H);
+        }
+
+        ctx.globalAlpha = 1;
         if (t < 1) { rafId = requestAnimationFrame(animate); } else { layer.innerHTML = ''; }
     };
     rafId = requestAnimationFrame(animate);
@@ -2461,6 +2836,97 @@ function getSpd(char) {
     return Math.max(0, spd);
 }
 
+// ── 職業別装備制限 (DQスタイル) ──────────────────────────────
+function canEquip(char, item) {
+    if (!item || !char) return true;
+    const job  = char.job || '';
+    const type = item.type || '';
+    const id   = item.id   || '';
+    const name = item.name || '';
+
+    // 遊び人(ネコ)は何でも装備可
+    if (job === 'ネコ') return true;
+    // アクセサリは全職業OK
+    if (type === 'accessory') return true;
+
+    // ─── 武器 ────────────────────────────────────────────────
+    if (type === 'weapon') {
+        const isSpear = id.startsWith('w_spear_') || /（槍）|ヤリ|スピア|ランス|さすまた|フォーク|ハルバード/.test(name);
+        const isStaff = id.startsWith('w_staff_') || name.includes('（杖）') ||
+                        ['w19','w25','w33','w36','w_2nd_06','w_2nd_07'].includes(id);
+        const isClaw  = /（爪）|ツメ|ピアス/.test(name) || ['w17','w30'].includes(id);
+        const isWhip  = /ムチ|（鞭）/.test(name) || ['w14','w32'].includes(id);
+        const isAxe   = /カナヅチ|かなづち|斧|鉄球/.test(name) || ['w13','w26','w27','w35'].includes(id);
+        const isKnife = /ナイフ|（短剣）/.test(name) || id === 'w16';
+        const isBow   = /ボウ|（弓）/.test(name) || id === 'w08';
+        const isClub  = /（棒）|棒きれ|こんぼう/.test(name) || ['w01','w02'].includes(id);
+        const isCard  = /タロット|そろばん/.test(name) || ['w09','w22'].includes(id);
+
+        if (isClub)  return true; // 棒/こんぼうは全員OK
+        if (isSpear) return ['勇者','戦士','僧侶','パラディン'].includes(job);
+        if (isStaff) return ['僧侶','魔法使い','賢者'].includes(job);
+        if (isClaw)  return ['パンダ','忍者'].includes(job);
+        if (isWhip)  return ['踊り子','魔法使い','賢者'].includes(job);
+        if (isAxe)   return ['戦士','パラディン'].includes(job);
+        if (isKnife) return ['忍者','踊り子','魔法使い','賢者'].includes(job);
+        if (isBow)   return ['勇者','戦士','忍者'].includes(job);
+        if (isCard)  return ['勇者','踊り子','賢者'].includes(job);
+        // 剣・その他: 勇者/戦士/パラディン/サムライ/忍者
+        return ['勇者','戦士','パラディン','サムライ','忍者'].includes(job);
+    }
+
+    // ─── 防具(鎧) ─────────────────────────────────────────────
+    if (type === 'armor') {
+        // 天空シリーズ・特定専用品
+        if (id === 'a05' || id === 'a_grav_01') return job === '勇者';
+        if (id === 'a_2nd_01') return ['勇者','戦士'].includes(job);
+        if (id === 'a_2nd_02') return job === '戦士';
+        if (id === 'a_2nd_03') return job === '僧侶';
+        if (id === 'a_2nd_04') return job === '魔法使い';
+
+        // 軽装/法衣系: 魔法使い/僧侶/賢者/踊り子/パンダ向け
+        const isRobe = /法衣|ローブ|はごろも/.test(name) ||
+                       /服|ドレス|ビキニ|レオタード/.test(name) ||
+                       ['a01','a04','a07','a12','a17','a20','a22','a23','a24'].includes(id);
+        // 重鎧: 勇者/戦士/パラディン専用
+        const isHeavy = /ドラゴンメイル|あくまのよろい|厚手のよろい|刃のよろい|ミラーアーマー|メタルキング/.test(name) ||
+                        ['a03','a08','a09','a10','a15','a18','a19','a21','a25','a26'].includes(id);
+
+        if (isRobe)  return ['魔法使い','僧侶','賢者','踊り子','パンダ'].includes(job);
+        if (isHeavy) return ['勇者','戦士','パラディン'].includes(job);
+        // 中量鎧 (革/くさり/前掛け等): 魔法使い・踊り子は不可
+        return !['魔法使い','踊り子','パンダ'].includes(job);
+    }
+
+    // ─── 盾 ──────────────────────────────────────────────────
+    if (type === 'shield') {
+        if (['魔法使い','踊り子','パンダ'].includes(job)) return false;
+        if (['s03','s15'].includes(id)) return job === '勇者'; // 天空のたて
+        if (id === 's_grav_01') return ['勇者','パラディン'].includes(job);
+        if (id === 's_2nd_01')  return ['勇者','戦士'].includes(job);
+        if (id === 's_2nd_02')  return job === '僧侶';
+        if (id === 's_2nd_03')  return ['魔法使い','賢者'].includes(job); // 魔法盾は例外
+        return true;
+    }
+
+    // ─── 兜/帽子 ─────────────────────────────────────────────
+    if (type === 'helmet') {
+        if (id === 'h04') return job === '勇者'; // 天空のかぶと
+        if (id === 'h_grav_01') return ['勇者','パラディン'].includes(job);
+        if (id === 'h_2nd_01')  return ['勇者','戦士'].includes(job);
+        if (id === 'h_2nd_02')  return ['僧侶','魔法使い','賢者'].includes(job);
+        // 重兜: 勇者/戦士/パラディン/サムライ
+        const isHeavy = /かぶと|兜|てっかめん|グレートヘルム|メタルキング/.test(name) ||
+                        ['h03','h05','h08','h12','h15'].includes(id);
+        if (isHeavy) return ['勇者','戦士','パラディン','サムライ'].includes(job);
+        // 知力の兜: 知力型向け
+        if (id === 'h11') return ['勇者','戦士','魔法使い','賢者'].includes(job);
+        return true; // 帽子・ぼうし系は全員OK
+    }
+
+    return true;
+}
+
 function calculateDamage(attacker, defender) {
     let atkMod = attacker.tmpAtk > 0 ? 1.5 : attacker.tmpAtk < 0 ? 0.5 : 1.0;
     let defMod = defender.tmpDef > 0 ? 1.5 : defender.tmpDef < 0 ? 0.5 : 1.0;
@@ -2724,36 +3190,91 @@ function getEnemyImageHtml(enemyId) {
     if (externalImages[enemyId]?.src) return `<img src="${externalImages[enemyId].src}" class="${cls}" style="${extraStyle}" />`;
 
     if (enemyId === 'boss_sky') {
-        return `<svg class="${cls}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" style="overflow:visible;">
-<defs><radialGradient id="sk_bg" cx="50%" cy="55%" r="50%"><stop offset="0%" stop-color="#b0e0ff" stop-opacity="0.55"/><stop offset="100%" stop-color="#80c8ff" stop-opacity="0"/></radialGradient><radialGradient id="sk_bd" cx="30%" cy="30%" r="70%"><stop offset="0%" stop-color="#ffffff"/><stop offset="55%" stop-color="#eaf3ff"/><stop offset="100%" stop-color="#c8dcf4"/></radialGradient></defs>
-<ellipse cx="70" cy="84" rx="60" ry="54" fill="url(#sk_bg)"/>
-<path d="M60,62 Q28,36 12,58 Q26,74 52,68 Z" fill="#daeeff" stroke="#9cc8e8" stroke-width="0.8"/>
-<line x1="60" y1="62" x2="28" y2="46" stroke="#9ac0e0" stroke-width="0.7" opacity="0.7"/><line x1="60" y1="62" x2="18" y2="60" stroke="#9ac0e0" stroke-width="0.7" opacity="0.7"/><line x1="60" y1="62" x2="24" y2="70" stroke="#9ac0e0" stroke-width="0.7" opacity="0.7"/>
-<path d="M80,62 Q112,36 128,58 Q114,74 88,68 Z" fill="#daeeff" stroke="#9cc8e8" stroke-width="0.8"/>
-<line x1="80" y1="62" x2="112" y2="46" stroke="#9ac0e0" stroke-width="0.7" opacity="0.7"/><line x1="80" y1="62" x2="122" y2="60" stroke="#9ac0e0" stroke-width="0.7" opacity="0.7"/><line x1="80" y1="62" x2="116" y2="70" stroke="#9ac0e0" stroke-width="0.7" opacity="0.7"/>
-<path d="M64,112 Q44,126 36,136 Q50,124 68,116 Z" fill="#dff0ff" stroke="#b8d4f0" stroke-width="0.6"/>
-<ellipse cx="70" cy="92" rx="20" ry="25" fill="url(#sk_bd)" stroke="#c0dcf4" stroke-width="0.8"/>
-<ellipse cx="67" cy="94" rx="11" ry="15" fill="rgba(210,235,255,0.45)"/>
-<path d="M60,84 Q70,79 80,84 Q70,90 60,84 Z" fill="rgba(190,225,255,0.4)" stroke="#aac8e6" stroke-width="0.4"/>
-<path d="M60,94 Q70,89 80,94 Q70,100 60,94 Z" fill="rgba(190,225,255,0.4)" stroke="#aac8e6" stroke-width="0.4"/>
-<path d="M60,104 Q70,99 80,104 Q70,110 60,104 Z" fill="rgba(190,225,255,0.4)" stroke="#aac8e6" stroke-width="0.4"/>
-<path d="M62,62 L78,62 L76,82 L64,82 Z" fill="#eef8ff" stroke="#c4dcf4" stroke-width="0.6"/>
-<ellipse cx="70" cy="50" rx="17" ry="13" fill="#f5fbff" stroke="#c8dff4" stroke-width="0.8"/>
-<path d="M57,54 Q50,60 54,66 Q59,69 70,67 L68,56 Z" fill="#eef7ff" stroke="#c0d8f0" stroke-width="0.6"/>
-<ellipse cx="58" cy="62" rx="2" ry="1.5" fill="rgba(150,200,240,0.5)"/>
-<path d="M54,40 L48,30 L58,38 Z" fill="#c0d8f0" stroke="#a8c8e0" stroke-width="0.5"/><path d="M86,40 L92,30 L82,38 Z" fill="#c0d8f0" stroke="#a8c8e0" stroke-width="0.5"/>
-<path d="M58,38 L52,18 L62,36 Z" fill="#b0d0f0" stroke="#98c0de" stroke-width="0.5"/><path d="M70,36 L70,14 L75,35 Z" fill="#a8cef0" stroke="#90bee0" stroke-width="0.5"/><path d="M82,38 L88,18 L78,36 Z" fill="#b0d0f0" stroke="#98c0de" stroke-width="0.5"/>
-<path d="M54,40 L86,40 L88,44 L84,42 L80,47 L70,44 L60,47 L56,42 L52,44 Z" fill="#ffd840" stroke="#e0b820" stroke-width="0.7"/>
-<circle cx="70" cy="44" r="4.5" fill="#40c8ff" stroke="rgba(255,255,255,0.9)" stroke-width="1"/>
-<circle cx="58" cy="42" r="3" fill="#ff8030" opacity="0.85"/><circle cx="82" cy="42" r="3" fill="#ff8030" opacity="0.85"/>
-<path d="M56,41 Q70,38 84,41" stroke="rgba(255,245,180,0.7)" stroke-width="1.5" fill="none"/>
-<circle cx="61" cy="48" r="6" fill="rgba(80,200,255,0.22)"/><circle cx="79" cy="48" r="6" fill="rgba(80,200,255,0.22)"/>
-<circle cx="61" cy="48" r="4" fill="#48c4ff" stroke="rgba(255,255,255,0.7)" stroke-width="0.8"/><circle cx="79" cy="48" r="4" fill="#48c4ff" stroke="rgba(255,255,255,0.7)" stroke-width="0.8"/>
-<ellipse cx="61" cy="48" rx="2" ry="2.5" fill="rgba(0,20,70,0.9)"/><ellipse cx="79" cy="48" rx="2" ry="2.5" fill="rgba(0,20,70,0.9)"/>
-<circle cx="59.5" cy="46.5" r="1.2" fill="white"/><circle cx="77.5" cy="46.5" r="1.2" fill="white"/>
-<path d="M58,64 L51,76 L53,77 L60,66 Z" fill="#dcedfc" stroke="#a8c8e8" stroke-width="0.5"/><path d="M82,64 L89,76 L87,77 L80,66 Z" fill="#dcedfc" stroke="#a8c8e8" stroke-width="0.5"/>
-<path d="M60,114 L55,125 L57,126 L63,116 L65,126 L68,126 L68,114 Z" fill="#dee8fc" stroke="#b0cce8" stroke-width="0.6"/><path d="M80,114 L85,125 L83,126 L77,116 L75,126 L72,126 L72,114 Z" fill="#dee8fc" stroke="#b0cce8" stroke-width="0.6"/>
-<path d="M44,50 Q32,46 24,53" stroke="rgba(210,240,255,0.8)" stroke-width="2" fill="none"/><path d="M96,50 Q108,46 116,53" stroke="rgba(210,240,255,0.8)" stroke-width="2" fill="none"/>
+        return `<svg class="${cls}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 155" style="overflow:visible;">
+<defs>
+<radialGradient id="wdb" cx="30%" cy="25%" r="75%"><stop offset="0%" stop-color="#ffffff"/><stop offset="52%" stop-color="#ecf6ff"/><stop offset="100%" stop-color="#c0dbf2"/></radialGradient>
+<radialGradient id="wde" cx="30%" cy="25%" r="70%"><stop offset="0%" stop-color="#ff7070"/><stop offset="42%" stop-color="#cc0000"/><stop offset="100%" stop-color="#780000"/></radialGradient>
+<linearGradient id="wdw" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#cce6ff" stop-opacity="0.88"/><stop offset="100%" stop-color="#a2c8ee" stop-opacity="0.52"/></linearGradient>
+<linearGradient id="wdv" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#e8f4ff"/><stop offset="50%" stop-color="#ffffff"/><stop offset="100%" stop-color="#e4f0ff"/></linearGradient>
+</defs>
+<!-- 神秘オーラ -->
+<ellipse cx="70" cy="102" rx="68" ry="65" fill="rgba(180,220,255,0.13)"/>
+<!-- 左翼 -->
+<path d="M56,80 Q30,54 4,18 Q22,42 37,63 L18,34 Q33,56 47,73 L32,44 Q46,66 53,78 Z" fill="url(#wdw)" stroke="#1a1a1a" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="56" y1="80" x2="4" y2="18" stroke="#5577bb" stroke-width="0.9" opacity="0.58"/>
+<line x1="54" y1="78" x2="18" y2="34" stroke="#5577bb" stroke-width="0.9" opacity="0.58"/>
+<line x1="52" y1="77" x2="32" y2="44" stroke="#5577bb" stroke-width="0.9" opacity="0.58"/>
+<!-- 右翼 -->
+<path d="M86,80 Q112,54 138,18 Q120,42 105,63 L124,34 Q109,56 95,73 L110,44 Q96,66 89,78 Z" fill="url(#wdw)" stroke="#1a1a1a" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="86" y1="80" x2="138" y2="18" stroke="#5577bb" stroke-width="0.9" opacity="0.58"/>
+<line x1="88" y1="78" x2="124" y2="34" stroke="#5577bb" stroke-width="0.9" opacity="0.58"/>
+<line x1="90" y1="77" x2="110" y2="44" stroke="#5577bb" stroke-width="0.9" opacity="0.58"/>
+<!-- 首 -->
+<path d="M58,80 Q52,62 58,48 Q64,34 73,30 Q77,58 80,78 Z" fill="url(#wdb)" stroke="#1a1a1a" stroke-width="2.2"/>
+<!-- 胴体 -->
+<path d="M55,80 Q32,88 30,107 Q28,126 48,136 Q64,143 85,139 Q104,134 110,115 Q116,96 102,84 Q88,74 73,74 Q61,74 55,80 Z" fill="url(#wdb)" stroke="#1a1a1a" stroke-width="2.8" stroke-linejoin="round"/>
+<!-- 腹部の白板鱗 -->
+<path d="M52,88 Q70,84 90,89 Q94,118 90,132 Q70,138 52,132 Q48,116 52,88 Z" fill="url(#wdv)" stroke="#aecce0" stroke-width="1.2"/>
+<path d="M52,96 Q70,92 90,97" fill="none" stroke="#a0c0da" stroke-width="0.9"/>
+<path d="M50,106 Q70,102 92,107" fill="none" stroke="#a0c0da" stroke-width="0.9"/>
+<path d="M50,116 Q70,112 92,117" fill="none" stroke="#a0c0da" stroke-width="0.9"/>
+<path d="M52,126 Q70,122 90,127" fill="none" stroke="#a0c0da" stroke-width="0.9"/>
+<!-- 尻尾 -->
+<path d="M94,133 Q114,140 130,132 Q145,124 146,112 Q148,100 140,96 Q131,92 125,103 Q119,114 117,124 Q114,130 107,133 Z" fill="url(#wdb)" stroke="#1a1a1a" stroke-width="2.2"/>
+<path d="M142,98 L156,90 L143,108 Z" fill="#cce0f5" stroke="#1a1a1a" stroke-width="1.8"/>
+<path d="M147,108 L160,102 L147,118 Z" fill="#c4d8f0" stroke="#1a1a1a" stroke-width="1.8"/>
+<!-- 左前足 -->
+<ellipse cx="48" cy="132" rx="9" ry="10" fill="url(#wdb)" stroke="#1a1a1a" stroke-width="2.2"/>
+<path d="M48,132 Q40,142 34,154" stroke="#1a1a1a" stroke-width="4" fill="none" stroke-linecap="round"/>
+<path d="M30,154 L23,165 L32,157 Z" fill="white" stroke="#1a1a1a" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M34,157 L30,167 L39,159 Z" fill="white" stroke="#1a1a1a" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M40,159 L38,169 L46,160 Z" fill="white" stroke="#1a1a1a" stroke-width="1.8" stroke-linejoin="round"/>
+<!-- 右前足 -->
+<ellipse cx="95" cy="130" rx="9" ry="10" fill="url(#wdb)" stroke="#1a1a1a" stroke-width="2.2"/>
+<path d="M95,130 Q104,140 112,152" stroke="#1a1a1a" stroke-width="4" fill="none" stroke-linecap="round"/>
+<path d="M116,152 L124,163 L114,155 Z" fill="white" stroke="#1a1a1a" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M112,156 L118,165 L109,158 Z" fill="white" stroke="#1a1a1a" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M108,157 L112,167 L103,159 Z" fill="white" stroke="#1a1a1a" stroke-width="1.8" stroke-linejoin="round"/>
+<!-- 頭部（太いアウトライン） -->
+<path d="M58,48 Q56,22 70,12 Q86,3 102,12 Q120,21 120,42 Q120,62 103,70 Q86,78 70,70 Q56,60 58,48 Z" fill="url(#wdb)" stroke="#1a1a1a" stroke-width="3" stroke-linejoin="round"/>
+<!-- 上顎 -->
+<path d="M58,48 Q44,50 34,44 Q36,57 51,60 Q60,61 66,55 Z" fill="url(#wdb)" stroke="#1a1a1a" stroke-width="2.4"/>
+<!-- 牙 -->
+<path d="M42,56 L37,67 L46,58 Z" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+<path d="M53,59 L50,69 L57,61 Z" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+<!-- 鼻孔 -->
+<ellipse cx="40" cy="46" rx="3.5" ry="2.5" fill="#88aacc" stroke="#1a1a1a" stroke-width="1.2"/>
+<!-- 口の線 -->
+<path d="M34,50 Q55,58 80,53" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round"/>
+<!-- ひげ（鳥山明ドラゴンの象徴 — 先端に玉） -->
+<path d="M38,46 Q16,40 0,46" stroke="#cce2f5" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+<path d="M38,53 Q14,60 -2,68" stroke="#cce2f5" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+<path d="M40,42 Q20,28 8,24" stroke="#cce2f5" stroke-width="2" fill="none" stroke-linecap="round"/>
+<circle cx="0" cy="46" r="3.5" fill="white" stroke="#a6cce8" stroke-width="1.2"/>
+<circle cx="-2" cy="68" r="3.5" fill="white" stroke="#a6cce8" stroke-width="1.2"/>
+<circle cx="8" cy="24" r="3" fill="white" stroke="#a6cce8" stroke-width="1.2"/>
+<!-- 目（最大の特徴 — 鳥山明スタイルの大きな赤目） -->
+<ellipse cx="78" cy="36" rx="13.5" ry="12.5" fill="white" stroke="#1a1a1a" stroke-width="2.8"/>
+<ellipse cx="78" cy="37" rx="10.5" ry="10" fill="url(#wde)"/>
+<ellipse cx="78" cy="37" rx="4" ry="7.2" fill="#110000"/>
+<!-- 鳥山明の必殺技：左上の大ハイライト -->
+<ellipse cx="72" cy="31" rx="3.5" ry="2.6" fill="white"/>
+<circle cx="84" cy="42" r="1.6" fill="rgba(255,255,255,0.62)"/>
+<!-- まぶた -->
+<path d="M65,27 Q78,23 92,28" stroke="#1a1a1a" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+<!-- 眉（凛々しく） -->
+<path d="M64,22 Q78,17 93,23" stroke="#1a1a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+<!-- 角（象牙色の曲がった角） -->
+<path d="M100,18 Q110,4 118,0 L112,14 Q106,8 102,18 Z" fill="#f2ecd4" stroke="#1a1a1a" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="114" y1="4" x2="104" y2="16" stroke="#d0c090" stroke-width="0.9"/>
+<path d="M84,12 Q90,-3 97,-7 L94,10 Q88,4 84,12 Z" fill="#f2ecd4" stroke="#1a1a1a" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="95" y1="-3" x2="87" y2="10" stroke="#d0c090" stroke-width="0.9"/>
+<path d="M74,9 Q78,-4 84,-8 L82,9 Z" fill="#eee6cc" stroke="#1a1a1a" stroke-width="1.8"/>
+<!-- 背中のトゲ（天空の王の威厳） -->
+<path d="M62,78 L57,64 L65,76 Z" fill="#bcdaf2" stroke="#1a1a1a" stroke-width="1.5"/>
+<path d="M72,76 L68,60 L75,74 Z" fill="#bcdaf2" stroke="#1a1a1a" stroke-width="1.5"/>
+<path d="M82,76 L80,59 L88,74 Z" fill="#bcdaf2" stroke="#1a1a1a" stroke-width="1.5"/>
+<path d="M91,80 L92,64 L98,78 Z" fill="#c4e0f4" stroke="#1a1a1a" stroke-width="1.5"/>
 </svg>`;
     }
 
@@ -2999,22 +3520,93 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
         fr('#a87c20', 1, T / 2 + 1, T / 2 - 2, T / 2 - 2); fr('#c49034', T / 2 + 1, T / 2 + 1, T / 2 - 2, T / 2 - 2);
         ln('#906e18', 0.5, T / 2, 0, T / 2, T); ln('#906e18', 0.5, 0, T / 2, T, T / 2);
         if (rand < 0.11) fr('rgba(0,0,0,0.18)', fl(rand * 20) + 2, fl(rand * 20) + 2, 3, 2);
-    } else if (tile === 21) { // 下り階段
-        fr(demon ? '#200d28' : cave ? '#282030' : '#7a5e18', 0, 0, T, T);
-        for (let s = 0; s < 4; s++) {
-            fr(demon ? '#4a2660' : cave ? '#464050' : '#a88638', s * 6, s * 6, T - s * 6, 6);
-            ln(demon ? '#6a3880' : cave ? '#605a68' : '#c8a050', 0.5, s * 6, s * 6 + 6, T, s * 6 + 6);
+    } else if (tile === 21 || tile === 22) { // 下り階段(21) / 上り階段(22) — DQ風石段
+        // ── 場所による石の配色 ──────────────────────────────────────
+        const _sc = (() => {
+            if (demon) return { bg:'#130610', fl:'#1e0e28', top:'#6848b0', lit:'#9870d8', frt:'#38186a', shd:'#1e0c30', rim:'#502890' };
+            if (cave)  return { bg:'#101018', fl:'#181824', top:'#505060', lit:'#707280', frt:'#303040', shd:'#1c1c28', rim:'#484858' };
+            if (castle || tower) return { bg:'#1e2028', fl:'#282c38', top:'#6e7e92', lit:'#9aaaba', frt:'#424e5e', shd:'#22262e', rim:'#5a7080' };
+            return          { bg:'#1a1610', fl:'#242018', top:'#6a5e48', lit:'#8a7e6a', frt:'#3e3224', shd:'#221c12', rim:'#5a4e38' };
+        })();
+
+        const isDown = tile === 21; // 下り=暗い穴が下、上り=暗い入口が上
+
+        // 背景（石床）
+        fr(_sc.fl, 0, 0, T, T);
+
+        // 開口部 / 暗い穴（下り=下部、上り=上部）
+        const holeY = isDown ? T - 5 : 0;
+        const holeH = 5;
+        fr(_sc.bg, 0, holeY, T, holeH);
+        // 穴のグラデーション境界
+        for (let hi = 0; hi < 3; hi++) {
+            const hy = isDown ? holeY - hi - 1 : holeY + holeH + hi;
+            ctx.globalAlpha = 0.35 - hi * 0.1;
+            fr(_sc.bg, 0, hy, T, 1);
         }
-        ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('▼', px + T / 2 + 3, py + T - 7);
-    } else if (tile === 22) { // 上り階段
-        fr(demon ? '#0d1c10' : cave ? '#1e2c20' : '#7a5e18', 0, 0, T, T);
-        for (let s = 0; s < 4; s++) {
-            fr(demon ? '#2a4432' : cave ? '#384840' : '#a88638', s * 6, (3 - s) * 6, T - s * 6, 6);
-            ln(demon ? '#3a6448' : cave ? '#506858' : '#c8a050', 0.5, s * 6, (3 - s) * 6, T, (3 - s) * 6);
+        ctx.globalAlpha = 1;
+
+        // ── 4段の石段（DQ透視法：手前が広く、奥が狭い） ───────────
+        // 下り: 段は上から下へ（最上段が奥、最下段が手前）→ 穴に向かって降りる
+        // 上り: 段は下から上へ（最下段が手前、最上段が奥）→ 上の穴から出てくる
+        const stepsData = [
+            { indent: 0, w: T,      h: 5 },  // 段1（手前、最広）
+            { indent: 3, w: T - 6,  h: 5 },  // 段2
+            { indent: 6, w: T - 12, h: 4 },  // 段3
+            { indent: 9, w: T - 18, h: 4 },  // 段4（奥、最狭）
+        ];
+
+        for (let si = 0; si < stepsData.length; si++) {
+            const { indent, w, h } = stepsData[si];
+            if (w <= 2) continue;
+            // 下りは上から(穴の上)、上りは下から(穴の下)スタック
+            const sy = isDown
+                ? holeY - (si + 1) * 5       // 下り: 穴の上から積み上げ
+                : T - holeH - (si + 1) * 5;  // 上り: 穴の下から積み上げ
+            if (sy < 0 || sy + h > T) continue;
+
+            // 段の上面（歩く面）— 2色でタイル感
+            const midX = indent + Math.floor(w / 2);
+            fr(_sc.top, indent, sy, midX - indent, h - 1);
+            fr(_sc.lit,  midX, sy, indent + w - midX, h - 1);
+            // 上面のトップエッジ（明るいライン）
+            fr(_sc.lit, indent, sy, w, 1);
+            // 右エッジの陰
+            fr(_sc.shd, indent + w - 1, sy, 1, h - 1);
+            // 前面（段の立ち上がり面 — 暗いライン）
+            fr(_sc.frt, indent, sy + h - 1, w, 1);
+            // 前面の下シャドウ
+            ctx.globalAlpha = 0.45;
+            fr(_sc.shd, indent, sy + h, w, 1);
+            ctx.globalAlpha = 1;
+
+            // 石の亀裂（モルタル）— ランダムに短い縦線
+            ctx.globalAlpha = 0.3;
+            const crackX = indent + Math.floor(w * (0.3 + rand * 0.4));
+            fr(_sc.bg, crackX, sy + 1, 1, h - 2);
+            ctx.globalAlpha = 1;
         }
-        ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('▲', px + T / 2 + 3, py + 7);
+
+        // 段の左右の側面（3D感のための垂直壁）
+        for (let si = 0; si < stepsData.length - 1; si++) {
+            const cur = stepsData[si], nxt = stepsData[si + 1];
+            const sy = isDown
+                ? holeY - (si + 1) * 5
+                : T - holeH - (si + 1) * 5;
+            const ny = isDown
+                ? holeY - (si + 2) * 5
+                : T - holeH - (si + 2) * 5;
+            if (sy < 0 || ny < 0 || sy >= T || ny >= T) continue;
+            // 左側面
+            fr(_sc.shd, cur.indent, ny, nxt.indent - cur.indent, sy - ny);
+            // 右側面
+            fr(_sc.shd, cur.indent + cur.w, ny, nxt.indent - cur.indent, sy - ny);
+        }
+
+        // 石の縁取り（外枠に薄いリムカラー）
+        ctx.strokeStyle = _sc.rim; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.4;
+        ctx.strokeRect(px + 0.5, py + 0.5, T - 1, T - 1);
+        ctx.globalAlpha = 1;
     } else if (tile === 8) { // ワープ
         fr('#440066', 0, 0, T, T);
         let wr = 9 + Math.sin(now / 380) * 3;
@@ -3173,36 +3765,81 @@ function drawMap() {
             } else if(npc.id === 'boss_sky') {
                 if (externalImages['angel'] && externalImages['angel'].complete && externalImages['angel'].naturalHeight > 0) { drawSpriteLocal(ctx, externalImages['angel'], px, py, 52); }
                 else {
-                    const _bx=px+TILE_SIZE/2,_by=py+TILE_SIZE,_t=Date.now();
+                    // 鳥山明風・白竜のフィールドスプライト
+                    const _bx=px+TILE_SIZE/2, _by=py+TILE_SIZE, _t=Date.now();
+                    const _bob=Math.sin(_t/600)*1.5; // 浮遊アニメ
                     ctx.save();
-                    const _ag=ctx.createRadialGradient(_bx,_by-22,0,_bx,_by-22,28);
-                    _ag.addColorStop(0,`rgba(160,220,255,${0.38+Math.sin(_t/700)*0.14})`); _ag.addColorStop(1,'rgba(120,190,255,0)');
-                    ctx.fillStyle=_ag; ctx.beginPath(); ctx.arc(_bx,_by-22,28,0,Math.PI*2); ctx.fill();
-                    ctx.fillStyle='rgba(218,238,255,0.88)';
-                    ctx.beginPath(); ctx.moveTo(_bx-4,_by-22); ctx.quadraticCurveTo(_bx-24,_by-34,_bx-26,_by-12); ctx.quadraticCurveTo(_bx-16,_by-10,_bx-5,_by-16); ctx.closePath(); ctx.fill();
-                    ctx.strokeStyle='rgba(140,195,235,0.55)'; ctx.lineWidth=0.6;
-                    ctx.beginPath(); ctx.moveTo(_bx-4,_by-22); ctx.lineTo(_bx-24,_by-34); ctx.moveTo(_bx-4,_by-22); ctx.lineTo(_bx-18,_by-11); ctx.stroke();
-                    ctx.fillStyle='rgba(218,238,255,0.88)';
-                    ctx.beginPath(); ctx.moveTo(_bx+4,_by-22); ctx.quadraticCurveTo(_bx+24,_by-34,_bx+26,_by-12); ctx.quadraticCurveTo(_bx+16,_by-10,_bx+5,_by-16); ctx.closePath(); ctx.fill();
-                    ctx.strokeStyle='rgba(140,195,235,0.55)'; ctx.lineWidth=0.6;
-                    ctx.beginPath(); ctx.moveTo(_bx+4,_by-22); ctx.lineTo(_bx+24,_by-34); ctx.moveTo(_bx+4,_by-22); ctx.lineTo(_bx+18,_by-11); ctx.stroke();
-                    ctx.fillStyle='#eef7ff'; ctx.beginPath(); ctx.ellipse(_bx,_by-16,7,11,0,0,Math.PI*2); ctx.fill();
-                    ctx.fillStyle='rgba(200,230,255,0.5)'; ctx.beginPath(); ctx.ellipse(_bx-1,_by-19,4,6.5,0,0,Math.PI*2); ctx.fill();
-                    ctx.fillStyle='#eef7ff'; ctx.fillRect(_bx-3,_by-27,6,9);
-                    ctx.fillStyle='#f5fbff'; ctx.beginPath(); ctx.ellipse(_bx,_by-33,7,5.5,0,0,Math.PI*2); ctx.fill();
-                    ctx.fillStyle='#b0d0f0';
-                    ctx.beginPath(); ctx.moveTo(_bx-4,_by-37); ctx.lineTo(_bx-7,_by-44); ctx.lineTo(_bx-2,_by-38); ctx.closePath(); ctx.fill();
-                    ctx.beginPath(); ctx.moveTo(_bx+1,_by-38); ctx.lineTo(_bx+2,_by-45); ctx.lineTo(_bx+4,_by-39); ctx.closePath(); ctx.fill();
-                    ctx.beginPath(); ctx.moveTo(_bx+5,_by-37); ctx.lineTo(_bx+8,_by-43); ctx.lineTo(_bx+3,_by-38); ctx.closePath(); ctx.fill();
-                    ctx.fillStyle='rgba(255,215,60,0.92)';
-                    ctx.beginPath(); ctx.moveTo(_bx-6,_by-37); ctx.lineTo(_bx+6,_by-37); ctx.lineTo(_bx+7,_by-39); ctx.lineTo(_bx+4,_by-38); ctx.lineTo(_bx+2,_by-40); ctx.lineTo(_bx,_by-38); ctx.lineTo(_bx-2,_by-40); ctx.lineTo(_bx-4,_by-38); ctx.lineTo(_bx-7,_by-39); ctx.closePath(); ctx.fill();
-                    const _eg=0.85+Math.sin(_t/500)*0.15;
-                    ctx.fillStyle=`rgba(72,196,255,${_eg})`;
-                    ctx.beginPath(); ctx.arc(_bx-2.5,_by-33,2,0,Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(_bx+2.5,_by-33,2,0,Math.PI*2); ctx.fill();
-                    ctx.fillStyle='white';
-                    ctx.beginPath(); ctx.arc(_bx-3.2,_by-34,0.8,0,Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(_bx+1.8,_by-34,0.8,0,Math.PI*2); ctx.fill();
+                    const S=1.9; // スケール
+                    ctx.translate(_bx, _by-18+_bob);
+
+                    // 神秘オーラ
+                    const _ag=ctx.createRadialGradient(0,-4,0,0,-4,22);
+                    _ag.addColorStop(0,`rgba(180,225,255,${0.32+Math.sin(_t/700)*0.1})`);
+                    _ag.addColorStop(1,'rgba(140,200,255,0)');
+                    ctx.fillStyle=_ag; ctx.beginPath(); ctx.arc(0,-4,22,0,Math.PI*2); ctx.fill();
+
+                    // 左翼
+                    ctx.fillStyle='rgba(210,235,255,0.82)'; ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=0.7;
+                    ctx.beginPath(); ctx.moveTo(-3,-8); ctx.quadraticCurveTo(-18,-18,-20,-6); ctx.quadraticCurveTo(-12,-4,-4,-10); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(-3,-8); ctx.lineTo(-20,-6); ctx.moveTo(-3,-8); ctx.lineTo(-14,-16); ctx.strokeStyle='rgba(80,130,200,0.5)'; ctx.lineWidth=0.5; ctx.stroke();
+
+                    // 右翼
+                    ctx.fillStyle='rgba(210,235,255,0.82)'; ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=0.7;
+                    ctx.beginPath(); ctx.moveTo(3,-8); ctx.quadraticCurveTo(18,-18,20,-6); ctx.quadraticCurveTo(12,-4,4,-10); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                    // 胴体
+                    ctx.fillStyle='#f5fbff'; ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=0.9;
+                    ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+                    // 腹部
+                    ctx.fillStyle='white'; ctx.strokeStyle='#b8d4ec'; ctx.lineWidth=0.5;
+                    ctx.beginPath(); ctx.ellipse(-0.5,3,4,6,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+                    // 首
+                    ctx.fillStyle='#f2f9ff'; ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=0.9;
+                    ctx.beginPath(); ctx.moveTo(-3,-6); ctx.quadraticCurveTo(-2,-12,0,-14); ctx.quadraticCurveTo(2,-12,3,-6); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                    // 頭部
+                    ctx.fillStyle='#f5fbff'; ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=1;
+                    ctx.beginPath(); ctx.ellipse(0,-17,6,5,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+                    // 上顎（鼻先）
+                    ctx.beginPath(); ctx.moveTo(-4,-17); ctx.quadraticCurveTo(-8,-17,-9,-15); ctx.quadraticCurveTo(-7,-12,-4,-13); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                    // ひげ（鳥山明ドラゴンの象徴）
+                    ctx.strokeStyle='#cce0f0'; ctx.lineWidth=0.7; ctx.lineJoin='round';
+                    ctx.beginPath(); ctx.moveTo(-7,-16); ctx.quadraticCurveTo(-14,-18,-18,-16); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(-7,-14); ctx.quadraticCurveTo(-14,-12,-18,-10); ctx.stroke();
+                    ctx.fillStyle='white'; ctx.strokeStyle='#a0c8e4'; ctx.lineWidth=0.5;
+                    ctx.beginPath(); ctx.arc(-18,-16,1.4,0,Math.PI*2); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(-18,-10,1.4,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+                    // 目（鳥山明の大きな赤目）
+                    ctx.fillStyle='white'; ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=0.8;
+                    ctx.beginPath(); ctx.ellipse(2,-17,3.5,3,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle='#cc0000';
+                    ctx.beginPath(); ctx.ellipse(2,-17,2.5,2.2,0,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle='#110000';
+                    ctx.beginPath(); ctx.ellipse(2,-17,1,2,0,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle='white'; // ハイライト
+                    ctx.beginPath(); ctx.arc(0.5,-18.2,1.1,0,Math.PI*2); ctx.fill();
+
+                    // 角
+                    ctx.fillStyle='#f0eacc'; ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=0.7;
+                    ctx.beginPath(); ctx.moveTo(3,-21); ctx.lineTo(5,-27); ctx.lineTo(4,-21); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(1,-21); ctx.lineTo(0,-27); ctx.lineTo(2,-21); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                    // 尻尾
+                    ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=1.2; ctx.fillStyle='#eef6ff';
+                    ctx.beginPath(); ctx.moveTo(5,8); ctx.quadraticCurveTo(12,12,14,8); ctx.quadraticCurveTo(16,4,12,3); ctx.stroke();
+                    // 尻尾先端スパイク
+                    ctx.beginPath(); ctx.moveTo(14,4); ctx.lineTo(18,2); ctx.lineTo(14,7); ctx.closePath(); ctx.fillStyle='#d0e8f5'; ctx.fill(); ctx.stroke();
+
+                    // 前足・爪
+                    ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=0.8; ctx.lineCap='round';
+                    ctx.beginPath(); ctx.moveTo(-4,9); ctx.lineTo(-5,13); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(4,9); ctx.lineTo(5,13); ctx.stroke();
+                    [-8,-5,-2].forEach(ox=>{ctx.beginPath();ctx.moveTo(-5+ox*0.3,13);ctx.lineTo(-7+ox*0.3,16);ctx.stroke();});
+                    [8,5,2].forEach(ox=>{ctx.beginPath();ctx.moveTo(5-ox*0.3,13);ctx.lineTo(7-ox*0.3,16);ctx.stroke();});
+
                     ctx.restore();
                 }
             } else if(npc.id.includes('king') && externalImages['king']) { drawSpriteLocal(ctx, externalImages['king'], px, py, 48);
@@ -4494,16 +5131,16 @@ async function openMainMenu() {
                 if(spellData.id.includes('rula')) {
                     let _rMapId = partyData.pos.map || '';
                     if (_rMapId.includes('dungeon') || _rMapId.includes('tower') || _rMapId.includes('demon') || _rMapId.includes('castle') || _rMapId.includes('shrine')) { await typeMessage(`しかし ここでは つかえなかった。\nルーラは フィールドや まちで つかえます。`); }
-                    else { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); const _lsp1 = partyData.last_save_pos || { map: "map_town_01", x: 10, y: 18 }; partyData.pos.map = _lsp1.map; partyData.pos.x = _lsp1.x; partyData.pos.y = _lsp1.y; currentMap = await loadExternalData('map-' + _lsp1.map); await typeMessage(`セーブポイントへ もどってきた！`); moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; }
+                    else { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playFieldWarpEffect(spellData.id); const _lsp1 = partyData.last_save_pos || { map: "map_town_01", x: 10, y: 18 }; partyData.pos.map = _lsp1.map; partyData.pos.x = _lsp1.x; partyData.pos.y = _lsp1.y; currentMap = await loadExternalData('map-' + _lsp1.map); await typeMessage(`セーブポイントへ もどってきた！`); moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; }
                 }
-                else if(spellData.id.includes('remi')) { let _rMapId2 = partyData.pos.map || ''; if (_rMapId2.includes('dungeon') || _rMapId2.includes('cave') || _rMapId2.includes('tower') || _rMapId2.includes('demon') || _rMapId2.includes('shrine')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); const _lfp = partyData.last_field_pos; if (_lfp && externalMapData && externalMapData[_lfp.map]) { partyData.pos.map = _lfp.map; partyData.pos.x = _lfp.x; partyData.pos.y = _lfp.y; currentMap = await loadExternalData('map-' + _lfp.map); } else { partyData.pos.map = "map_field_2_2"; partyData.pos.x = 7; partyData.pos.y = 7; currentMap = await loadExternalData('map-map_field_2_2'); } await typeMessage(`ダンジョンから だしゅつした！`); moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; } else { await typeMessage(`しかし ここでは つかえなかった。\nレミトは ダンジョンや たいせつな しせつの 中で つかえます。`); } } 
+                else if(spellData.id.includes('remi')) { let _rMapId2 = partyData.pos.map || ''; if (_rMapId2.includes('dungeon') || _rMapId2.includes('cave') || _rMapId2.includes('tower') || _rMapId2.includes('demon') || _rMapId2.includes('shrine')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playFieldWarpEffect(spellData.id); const _lfp = partyData.last_field_pos; if (_lfp && externalMapData && externalMapData[_lfp.map]) { partyData.pos.map = _lfp.map; partyData.pos.x = _lfp.x; partyData.pos.y = _lfp.y; currentMap = await loadExternalData('map-' + _lfp.map); } else { partyData.pos.map = "map_field_2_2"; partyData.pos.x = 7; partyData.pos.y = 7; currentMap = await loadExternalData('map-map_field_2_2'); } await typeMessage(`ダンジョンから だしゅつした！`); moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; } else { await typeMessage(`しかし ここでは つかえなかった。\nレミトは ダンジョンや たいせつな しせつの 中で つかえます。`); } } 
                 else if(spellData.id.includes('tohe')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.tohero_steps = 100; await typeMessage(`まものが ちかづかなくなった！`); }
                 else if(spellData.id.includes('trama')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.tramana_steps = 100; await typeMessage(`ダメージゾーンから みをまもる じゅもんを はった！`); }
             } else { await typeMessage("ここでは つかえない！"); }
         } else if(cmd === 2) {
             await typeMessage("だれの どうぐ？"); let charIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true); if(charIdx === -1) continue; let char = partyData.members[charIdx];
             if(char.inventory.length === 0) { await typeMessage("なにも もっていない！"); continue; }
-            let itemIdx = await selectMenu(char.inventory.map(id => { if(!masterData.items[id]) { masterData.items[id] = { id: id, name: "なぞのアイテム", type: 'tool', price: 0 }; } return masterData.items[id].name; }), 'cmd-window', 1, true); if(itemIdx === -1) continue;
+            let itemIdx = await selectMenu(char.inventory.map(id => { if(!masterData.items[id]) { masterData.items[id] = { id: id, name: "なぞのアイテム", type: 'tool', price: 0 }; } const _it = masterData.items[id]; const _eq = ['weapon','armor','shield','helmet','accessory'].includes(_it.type); return (_eq && !canEquip(char, _it) ? '× ' : '') + _it.name; }), 'cmd-window', 1, true); if(itemIdx === -1) continue;
             let itemData = masterData.items[char.inventory[itemIdx]]; let actIdx = await selectMenu(['つかう', 'わたす', 'そうび', 'すてる'], 'cmd-window', 1, true);
             if(actIdx === 0) {
                 if(itemData.type === 'tool') {
@@ -4528,25 +5165,25 @@ async function openMainMenu() {
                                 await typeMessage(`${target.name}の MPが ${mv} かいふくした！`);
                             } else if(itemData.effect === 'at_plus') {
                                 target.atk = (target.atk||0) + 3;
-                                await typeMessage(`${target.name}の ちからが あがった！`);
+                                await typeMessage(`${target.name}の ちからが 3 あがった！\nちから: ${target.atk - 3} → ${target.atk}`);
                             } else if(itemData.effect === 'spd_plus') {
                                 target.spd = (target.spd||0) + 3;
-                                await typeMessage(`${target.name}の すばやさが あがった！`);
+                                await typeMessage(`${target.name}の すばやさが 3 あがった！\nすばやさ: ${target.spd - 3} → ${target.spd}`);
                             } else if(itemData.effect === 'def_plus') {
                                 target.def = (target.def||0) + 3;
-                                await typeMessage(`${target.name}の まもりが あがった！`);
+                                await typeMessage(`${target.name}の まもりが 3 あがった！\nまもり: ${target.def - 3} → ${target.def}`);
                             } else if(itemData.effect === 'hp_plus') {
                                 target.max_hp = (target.max_hp||0) + 10;
                                 target.hp = Math.min(target.max_hp, (target.hp||0) + 10);
-                                await typeMessage(`${target.name}の たいりょくが あがった！`);
+                                await typeMessage(`${target.name}の さいだいHPが 10 あがった！\nさいだいHP: ${target.max_hp - 10} → ${target.max_hp}`);
                             } else if(itemData.effect === 'mp_plus') {
                                 target.max_mp = (target.max_mp||0) + 5;
                                 target.mp = Math.min(target.max_mp, (target.mp||0) + 5);
-                                await typeMessage(`${target.name}の まりょくが あがった！`);
+                                await typeMessage(`${target.name}の さいだいMPが 5 あがった！\nさいだいMP: ${target.max_mp - 5} → ${target.max_mp}`);
                             } else if(itemData.effect === 'life_nut') {
                                 target.max_hp = (target.max_hp||0) + 30;
                                 target.hp = Math.min(target.max_hp, (target.hp||0) + 30);
-                                await typeMessage(`${target.name}の たいりょくが\nぐんと あがった！`);
+                                await typeMessage(`${target.name}の さいだいHPが 30 ぐんと あがった！\nさいだいHP: ${target.max_hp - 30} → ${target.max_hp}`);
                             } else {
                                 let val = itemData.value;
                                 if(val === 'max' || itemData.effect === 'full_heal' || isNaN(parseInt(val))) { target.hp = target.max_hp; }
@@ -4558,17 +5195,27 @@ async function openMainMenu() {
                     }
                 } else { await typeMessage("ここでは つかえない！"); }
             } else if(actIdx === 1) { await typeMessage("だれに わたす？"); let tIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true); if(tIdx !== -1) { let target = partyData.members[tIdx]; if(target.inventory.length >= 8) { await typeMessage("もちものが いっぱいだ！"); } else { target.inventory.push(itemData.id); char.inventory.splice(itemIdx, 1); await typeMessage(`${target.name}に わたした。`); } } } 
-            else if(actIdx === 2) { if(char.hp <= 0) { await typeMessage(`${char.name}は しんでいる！`); continue; } if (['weapon', 'armor', 'shield', 'helmet', 'accessory'].includes(itemData.type)) { let oldEqId = char.equipment[itemData.type]; char.equipment[itemData.type] = itemData.id; char.inventory.splice(itemIdx, 1); if (oldEqId) char.inventory.push(oldEqId); await typeMessage(`${char.name}は ${itemData.name}を そうびした！`); updatePartyStatus(); } else { await typeMessage("それは そうびできない！"); } } 
+            else if(actIdx === 2) { if(char.hp <= 0) { await typeMessage(`${char.name}は しんでいる！`); continue; } if (['weapon', 'armor', 'shield', 'helmet', 'accessory'].includes(itemData.type)) { if (!canEquip(char, itemData)) { await typeMessage(`${char.name}には そうびできない！\n${char.job}は この そうびひんを\nつかいこなせない。`); } else { let oldEqId = char.equipment[itemData.type]; char.equipment[itemData.type] = itemData.id; char.inventory.splice(itemIdx, 1); if (oldEqId) char.inventory.push(oldEqId); await typeMessage(`${char.name}は ${itemData.name}を そうびした！`); updatePartyStatus(); } } else { await typeMessage("それは そうびできない！"); } } 
             else if(actIdx === 3) { char.inventory.splice(itemIdx, 1); await typeMessage("すてました。"); }
         } else if(cmd === 3) {
             await typeMessage("だれの つよさ？"); let charIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true);
             if(charIdx !== -1) {
-                let m = partyData.members[charIdx]; let eqW = m.equipment.weapon ? (masterData.items[m.equipment.weapon]?.name || "なぞの武器") : "なし"; let eqA = m.equipment.armor ? (masterData.items[m.equipment.armor]?.name || "なぞの鎧") : "なし"; let eqS = m.equipment.shield ? (masterData.items[m.equipment.shield]?.name || "なぞの盾") : "なし"; let eqH = m.equipment.helmet ? (masterData.items[m.equipment.helmet]?.name || "なぞの兜") : "なし";
-                let hpCol = '#fff'; if(m.hp <= m.max_hp/3 || m.hp===0) hpCol = '#f55'; else if(m.hp <= m.max_hp/2) hpCol = '#fa0'; let mpCol = '#fff'; if(m.max_mp>0 && m.mp <= m.max_mp/3) mpCol = '#f55'; else if(m.max_mp>0 && m.mp <= m.max_mp/2) mpCol = '#fa0';
-                let html = `<div style="font-size:18px; border-bottom:1px solid #fff; margin-bottom:10px; padding-bottom:5px;">${m.name} LV.${m.lv} (${m.job})</div>`;
-                html += `<div style="display:flex; font-size:14px; line-height:1.6;"><div style="flex:1;">HP: <span style="color:${hpCol}">${Math.max(0, m.hp)}/${m.max_hp}</span><br>MP: <span style="color:${mpCol}">${m.mp}/${m.max_mp}</span><br>攻撃力: ${getAtk(m)}<br>防御力: ${getDef(m)}<br>素早さ: ${getSpd(m)}<br>経験値: ${m.exp}</div>`;
-                html += `<div style="flex:1.2;">【装備品】<br>武: ${eqW}<br>体: ${eqA}<br>盾: ${eqS}<br>頭: ${eqH}</div></div>`;
-                html += `<div style="margin-top:10px; font-size:14px; color:#ff0;">所持金: ${partyData.gold} G</div>`; html += `<div style="margin-top:10px; text-align:right; font-size:14px;" class="blink">▼とじる</div>`;
+                let m = partyData.members[charIdx];
+                const _sn = (n) => n === 'なし' ? '─' : n.replace(/[（(][^）)]*[）)]/g, '').trim();
+                let eqW = m.equipment.weapon    ? (masterData.items[m.equipment.weapon]?.name    || "なぞの武器") : "なし";
+                let eqA = m.equipment.armor     ? (masterData.items[m.equipment.armor]?.name     || "なぞの鎧")   : "なし";
+                let eqS = m.equipment.shield    ? (masterData.items[m.equipment.shield]?.name    || "なぞの盾")   : "なし";
+                let eqH = m.equipment.helmet    ? (masterData.items[m.equipment.helmet]?.name    || "なぞの兜")   : "なし";
+                let eqAc= m.equipment.accessory ? (masterData.items[m.equipment.accessory]?.name || "なぞの指輪") : "なし";
+                let hpCol = '#fff'; if(m.hp <= m.max_hp/3 || m.hp===0) hpCol = '#f55'; else if(m.hp <= m.max_hp/2) hpCol = '#fa0';
+                let mpCol = '#fff'; if(m.max_mp>0 && m.mp <= m.max_mp/3) mpCol = '#f55'; else if(m.max_mp>0 && m.mp <= m.max_mp/2) mpCol = '#fa0';
+                const _eqRow = (lbl, name) => `<div style="display:flex;gap:4px;white-space:nowrap;overflow:hidden;"><span style="color:#888;flex-shrink:0;">${lbl}</span><span style="overflow:hidden;text-overflow:ellipsis;">${_sn(name)}</span></div>`;
+                let html = `<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #888;padding-bottom:5px;margin-bottom:8px;"><span style="font-size:16px;font-weight:bold;">${m.name}</span><span style="font-size:12px;color:#aef;">LV.${m.lv}　${m.job}</span></div>`;
+                html += `<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:12px;font-size:13px;line-height:1.85;">`;
+                html += `<div><div>HP <span style="color:${hpCol};float:right;">${Math.max(0,m.hp)}&thinsp;/&thinsp;${m.max_hp}</span></div><div>MP <span style="color:${mpCol};float:right;">${m.mp}&thinsp;/&thinsp;${m.max_mp}</span></div><div>攻 <span style="float:right;">${getAtk(m)}</span></div><div>守 <span style="float:right;">${getDef(m)}</span></div><div>速 <span style="float:right;">${getSpd(m)}</span></div><div style="color:#999;font-size:11px;">EXP<span style="float:right;">${m.exp}</span></div></div>`;
+                html += `<div style="overflow:hidden;">${_eqRow('武', eqW)}${_eqRow('体', eqA)}${_eqRow('盾', eqS)}${_eqRow('頭', eqH)}${_eqRow('指', eqAc)}</div>`;
+                html += `</div>`;
+                html += `<div style="border-top:1px solid #555;margin-top:8px;padding-top:6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;"><span style="color:#ff0;">所持金&thinsp;${partyData.gold}&thinsp;G</span><span class="blink">▼とじる</span></div>`;
                 document.getElementById('status-window').innerHTML = html; showWindow('status-window'); await new Promise(resolve => { inputCallback = (key) => { if(key === 'Enter' || key === 'Escape' || key === ' ') { AudioManager.playSE('decision'); inputCallback = null; resolve(); } }; }); hideWindow('status-window');
             }
         } else if(cmd === 4) { await showWorldMap(); }
@@ -4705,7 +5352,9 @@ async function executeBattle(fixedEnemies = null) {
         }
         
         let actions = actionsArray.filter(a => a !== undefined);
-        for(let e of enemies) { let targets = partyData.members.filter(m=>m.hp>0); let t = targets[Math.floor(Math.random()*targets.length)]; actions.push({ actor: e, type: 'enemy_attack', target: t, spd: e.spd + Math.random()*5 }); }
+        // モンスター固有の特殊行動率テーブル
+        const _specialRates = { ghost:0.32, vampire_lord:0.38, ghost_mushroom:0.28, giant_bat:0.34, skeleton:0.22, dark_mage:0.45, red_dragon:0.40, ancient_dragon:0.44, troll:0.35, cockatrice:0.28, succubus:0.32, flame_elemental:0.44, behemoth:0.30, lich:0.45, archdemon:0.38, bahamut:0.40, death_knight:0.30, chimera:0.32, dullahan:0.26, cyclops:0.22 };
+        for(let e of enemies) { let targets = partyData.members.filter(m=>m.hp>0); let t = targets[Math.floor(Math.random()*targets.length)]; const _sr = _specialRates[e.id||'']||0; actions.push({ actor: e, type: 'enemy_attack', target: t, spd: e.spd + Math.random()*5, isSpecial: Math.random() < _sr }); }
         actions.sort((a,b) => b.spd - a.spd);
         
         for(let act of actions) {
@@ -4782,6 +5431,197 @@ ${act.actor.name}の ちからが すいとられた！`); }
                 await typeMessage(`${_zTgt.displayName}に ${_zDmg}の ダメージ！！`);
                 if (_zTgt.hp <= 0) { _zTgt.isPoisoned = false; await typeMessage(`${_zTgt.displayName}を たおした！`); addReward(_zTgt); enemies = enemies.filter(e => e !== _zTgt); updateEnemiesDisplay(); }
             } else if(act.type === 'enemy_attack') {
+                // ── モンスター固有の特殊行動 ──────────────────────────────
+                if (act.isSpecial && act.actor.hp > 0 && !act.actor.isGuraKing) {
+                    const _eId = act.actor.id || '';
+                    const _alive = partyData.members.filter(m=>m.hp>0);
+                    const _t = act.target;
+                    let _handled = true; // continueするかのフラグ
+
+                    if ((_eId==='ghost'||_eId==='vampire_lord') && _alive.length>0) {
+                        // ── 吸血 / 生命吸収
+                        const _msg = _eId==='vampire_lord' ? '吸血！' : '生命力を すいとった！';
+                        await typeMessage(`${act.actor.displayName}の ${_msg}`);
+                        AudioManager.playSE('damage_hero'); playEnemyAttackEffect(1.2);
+                        const _dd = Math.max(1, Math.floor(act.actor.atk*(0.75+Math.random()*0.3) - _t.def*0.35));
+                        _t.hp = Math.max(0,_t.hp-_dd);
+                        const _dh = Math.floor(_dd*0.6);
+                        act.actor.hp = Math.min(act.actor.max_hp, act.actor.hp+_dh);
+                        await typeMessage(`${_t.name}に ${_dd}の ダメージ！\n${act.actor.displayName}の HPが ${_dh} かいふくした！`);
+                        if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}
+                        updatePartyStatus();
+
+                    } else if (_eId==='ghost_mushroom' && _alive.length>0) {
+                        // ── 毒の胞子
+                        await typeMessage(`${act.actor.displayName}は どくの ほうしを はなった！`);
+                        AudioManager.playSE('magic_cast');
+                        const _pd = Math.max(1, Math.floor(act.actor.atk*0.5));
+                        _t.hp = Math.max(0,_t.hp-_pd);
+                        if(!_t.isPoisoned){_t.isPoisoned=true;await typeMessage(`${_t.name}に ${_pd}の ダメージ！\n${_t.name}は どくに おかされた！`);}
+                        else{await typeMessage(`${_t.name}に ${_pd}の ダメージ！`);}
+                        if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}
+                        updatePartyStatus();
+
+                    } else if (_eId==='giant_bat' && _alive.length>0) {
+                        // ── 超音波（幻惑）
+                        await typeMessage(`${act.actor.displayName}の ちょうおんぱ！\n${_t.name}は まぼろしに つつまれた！`);
+                        AudioManager.playSE('magic_cast');
+                        _t.tmpBlind = (_t.tmpBlind||0)+2;
+
+                    } else if (_eId==='skeleton' && _alive.length>0) {
+                        // ── ほねほね攻撃（全体）
+                        await typeMessage(`${act.actor.displayName}の ほねほねこうげき！`);
+                        playEnemyAttackEffect(1.3); AudioManager.playSE('damage_hero');
+                        for(const _m of _alive){const _bd=Math.max(1,Math.floor(act.actor.atk*0.55-_m.def*0.3));_m.hp=Math.max(0,_m.hp-_bd);await typeMessage(`${_m.name}に ${_bd}の ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        updatePartyStatus();
+
+                    } else if (_eId==='dark_mage' && _alive.length>0) {
+                        // ── 魔法詠唱（メラン or ヒャドン）
+                        const _sp=Math.random()<0.5?{name:'メラン',id:'meran',elem:'fire',mult:0.85}:{name:'ヒャドン',id:'hyadon',elem:'ice',mult:0.9};
+                        await typeMessage(`${act.actor.displayName}は ${_sp.name}を となえた！`);
+                        AudioManager.playSE('magic_cast');
+                        const _sd=Math.floor(act.actor.atk*_sp.mult+18);
+                        await playSpellEffect({id:_sp.id,type:'attack',element:_sp.elem,value:_sd,mp:4},_t);
+                        const _sdd=Math.max(1,Math.floor(_sd*(0.85+Math.random()*0.3)));
+                        _t.hp=Math.max(0,_t.hp-_sdd);
+                        await typeMessage(`${_t.name}に ${_sdd}の ダメージ！`);
+                        if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}
+                        updatePartyStatus();
+
+                    } else if ((_eId==='red_dragon'||_eId==='ancient_dragon') && _alive.length>0) {
+                        // ── 炎のブレス（全体）
+                        const _bn=_eId==='ancient_dragon'?'古龍の しゃくねつブレス':'炎のブレス';
+                        const _bm=_eId==='ancient_dragon'?1.35:0.85;
+                        await typeMessage(`${act.actor.displayName}の ${_bn}！！`);
+                        AudioManager.playSE('magic_cast');
+                        await playSpellEffect({id:'meran',type:'attack',element:'fire',value:act.actor.atk*_bm,mp:10},null);
+                        for(const _m of _alive){const _fd=Math.max(1,Math.floor(act.actor.atk*_bm*(0.8+Math.random()*0.4)-_m.def*0.12));_m.hp=Math.max(0,_m.hp-_fd);await typeMessage(`${_m.name}に ${_fd}の ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        updatePartyStatus();
+
+                    } else if (_eId==='troll') {
+                        // ── 再生（HP回復後に通常攻撃）
+                        const _rh=Math.floor(act.actor.max_hp*0.12);
+                        act.actor.hp=Math.min(act.actor.max_hp,act.actor.hp+_rh);
+                        await typeMessage(`${act.actor.displayName}の さいせい！\nきずが ふさがっていく…HPが ${_rh} かいふくした！`);
+                        AudioManager.playSE('heal');
+                        _handled=false; // 通常攻撃もする
+
+                    } else if (_eId==='cockatrice' && _alive.length>0) {
+                        // ── 石化の視線（行動不能）
+                        if(!_t.tmpSleep||_t.tmpSleep<=0){
+                            await typeMessage(`${act.actor.displayName}の せきかの しせん！\n${_t.name}は うごけなくなった！`);
+                            AudioManager.playSE('magic_cast'); _t.tmpSleep=2;
+                        } else { _handled=false; } // 既に麻痺中→通常
+
+                    } else if (_eId==='succubus' && _alive.length>0) {
+                        // ── 魅惑の踊り（全体幻惑）
+                        await typeMessage(`${act.actor.displayName}の みわくの おどり！\nパーティが まどわされた！`);
+                        AudioManager.playSE('magic_cast');
+                        for(const _m of _alive){_m.tmpBlind=(_m.tmpBlind||0)+2;}
+
+                    } else if (_eId==='flame_elemental' && _alive.length>0) {
+                        // ── 炎の渦（全体）
+                        await typeMessage(`${act.actor.displayName}の ほのおの うず！`);
+                        AudioManager.playSE('magic_cast');
+                        await playSpellEffect({id:'meran',type:'attack',element:'fire',value:act.actor.atk*0.9,mp:8},null);
+                        for(const _m of _alive){const _fed=Math.max(1,Math.floor(act.actor.atk*0.9*(0.8+Math.random()*0.4)-_m.def*0.1));_m.hp=Math.max(0,_m.hp-_fed);await typeMessage(`${_m.name}に ${_fed}の ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        updatePartyStatus();
+
+                    } else if (_eId==='behemoth' && _alive.length>0) {
+                        // ── 大地震（全体・防御無視）
+                        await typeMessage(`${act.actor.displayName}の だいじしん！！`);
+                        playCriticalEffect('#884400'); playEnemyAttackEffect(2.2); AudioManager.playSE('damage_hero');
+                        await playSpellEffect({id:'io',type:'attack',element:'explosion',value:act.actor.atk*1.1,mp:15},null);
+                        for(const _m of _alive){const _qd=Math.max(1,Math.floor(act.actor.atk*1.1*(0.75+Math.random()*0.5)-_m.def*0.08));_m.hp=Math.max(0,_m.hp-_qd);await typeMessage(`${_m.name}に ${_qd}の ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        updatePartyStatus();
+
+                    } else if (_eId==='lich' && _alive.length>0) {
+                        // ── 死の呪文 or 暗黒魔法
+                        if(Math.random()<0.38){
+                            await typeMessage(`${act.actor.displayName}の しのじゅもん！`);
+                            AudioManager.playSE('magic_cast');
+                            await playSpellEffect({id:'doru',type:'attack',element:'dark',value:999,mp:20},_t);
+                            if(Math.random()<0.32){_t.hp=0;_t.isPoisoned=false;await typeMessage(`${_t.name}は いのちを うばわれた！！`);}
+                            else{await typeMessage(`しかし ${_t.name}は たえた！`);}
+                        } else {
+                            const _ld=Math.floor(act.actor.atk*1.25+30);
+                            await typeMessage(`${act.actor.displayName}の あんこくまほう！`);
+                            AudioManager.playSE('magic_cast');
+                            await playSpellEffect({id:'doru',type:'attack',element:'dark',value:_ld,mp:12},_t);
+                            const _ldd=Math.max(1,Math.floor(_ld*(0.85+Math.random()*0.3)));
+                            _t.hp=Math.max(0,_t.hp-_ldd);
+                            await typeMessage(`${_t.name}に ${_ldd}の ダメージ！`);
+                            if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}
+                        }
+                        updatePartyStatus();
+
+                    } else if (_eId==='archdemon' && _alive.length>0) {
+                        // ── 魔眼（全体幻惑）or 暗黒ブレス
+                        if(Math.random()<0.5){
+                            await typeMessage(`${act.actor.displayName}の まがんの こうせん！\nパーティ全員が まどわされた！`);
+                            AudioManager.playSE('magic_cast');
+                            for(const _m of _alive){_m.tmpBlind=(_m.tmpBlind||0)+2;}
+                        } else {
+                            await typeMessage(`${act.actor.displayName}の あんこくの ブレス！`);
+                            AudioManager.playSE('magic_cast');
+                            await playSpellEffect({id:'doru',type:'attack',element:'dark',value:act.actor.atk*1.1,mp:15},null);
+                            for(const _m of _alive){const _ad=Math.max(1,Math.floor(act.actor.atk*1.1*(0.8+Math.random()*0.4)-_m.def*0.08));_m.hp=Math.max(0,_m.hp-_ad);await typeMessage(`${_m.name}に ${_ad}の ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                            updatePartyStatus();
+                        }
+
+                    } else if (_eId==='bahamut' && _alive.length>0) {
+                        // ── メガフレア（全体・最強ブレス）
+                        await typeMessage(`${act.actor.displayName}の メガフレア！！！`);
+                        playCriticalEffect('#ff8800'); AudioManager.playSE('magic_cast');
+                        await playSpellEffect({id:'meran',type:'attack',element:'fire',value:act.actor.atk*1.6,mp:30},null);
+                        for(const _m of _alive){const _mfd=Math.max(1,Math.floor(act.actor.atk*1.6*(0.85+Math.random()*0.3)-_m.def*0.05));_m.hp=Math.max(0,_m.hp-_mfd);await typeMessage(`${_m.name}に ${_mfd}の ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        updatePartyStatus();
+
+                    } else if (_eId==='death_knight' && _alive.length>0) {
+                        // ── 暗黒の剣（毒付与）
+                        await typeMessage(`${act.actor.displayName}の あんこくの けん！`);
+                        playEnemyAttackEffect(1.5); AudioManager.playSE('damage_hero');
+                        const _dkd=Math.max(1,Math.floor(act.actor.atk*1.2*(0.85+Math.random()*0.3)-_t.def*0.5));
+                        _t.hp=Math.max(0,_t.hp-_dkd);
+                        if(Math.random()<0.45&&!_t.isPoisoned){_t.isPoisoned=true;await typeMessage(`${_t.name}に ${_dkd}の ダメージ！\n${_t.name}は どくに おかされた！`);}
+                        else{await typeMessage(`${_t.name}に ${_dkd}の ダメージ！`);}
+                        if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}
+                        updatePartyStatus();
+
+                    } else if (_eId==='dullahan' && _alive.length>0) {
+                        // ── 首斬り（低確率即死 or 大ダメージ）
+                        await typeMessage(`${act.actor.displayName}の くびきり！！`);
+                        playCriticalEffect('#880000'); playEnemyAttackEffect(1.8); AudioManager.playSE('attack_crit');
+                        if(Math.random()<0.18){_t.hp=0;_t.isPoisoned=false;await typeMessage(`${_t.name}は いちげきで たおされた！！`);}
+                        else{const _duld=Math.max(1,Math.floor(act.actor.atk*1.4*(0.85+Math.random()*0.3)-_t.def*0.45));_t.hp=Math.max(0,_t.hp-_duld);await typeMessage(`${_t.name}に ${_duld}の ダメージ！`);if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}}
+                        updatePartyStatus();
+
+                    } else if (_eId==='chimera' && _alive.length>0) {
+                        // ── 毒の爪 or 炎のブレス（キメラは複合）
+                        if(Math.random()<0.5){
+                            await typeMessage(`${act.actor.displayName}の どくの つめ！`);
+                            playEnemyAttackEffect(1.1); AudioManager.playSE('damage_hero');
+                            const _chd=Math.max(1,Math.floor(act.actor.atk*0.9-_t.def*0.5));
+                            _t.hp=Math.max(0,_t.hp-_chd);
+                            if(Math.random()<0.5&&!_t.isPoisoned){_t.isPoisoned=true;await typeMessage(`${_t.name}に ${_chd}の ダメージ！\n${_t.name}は どくに なった！`);}
+                            else{await typeMessage(`${_t.name}に ${_chd}の ダメージ！`);}
+                            if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}
+                        } else {
+                            await typeMessage(`${act.actor.displayName}の ほのおのいき！`);
+                            AudioManager.playSE('magic_cast');
+                            await playSpellEffect({id:'meran',type:'attack',element:'fire',value:act.actor.atk*0.75,mp:6},_t);
+                            const _chfd=Math.max(1,Math.floor(act.actor.atk*0.75*(0.85+Math.random()*0.3)-_t.def*0.2));
+                            _t.hp=Math.max(0,_t.hp-_chfd);
+                            await typeMessage(`${_t.name}に ${_chfd}の ダメージ！`);
+                            if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}
+                        }
+                        updatePartyStatus();
+
+                    } else { _handled=false; }
+
+                    if(_handled) { updatePartyStatus(); continue; }
+                }
+                // ── グラ王の専用特殊行動（既存）────────────────────────
                 if (act.actor.isGuraKing && act.actor.hp <= act.actor.max_hp * 0.2 && Math.random() < 0.4) {
                     await typeMessage(`【${act.actor.displayName}】\nすべてを 虚無に 返してやろう……！`);
                     await typeMessage(`${act.actor.displayName}の 滅びのグラビティ！！`);
