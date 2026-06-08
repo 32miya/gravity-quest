@@ -2099,8 +2099,8 @@ function generateFieldMapsForGravityQuest() {
     let shrp = findLand("map_field_2_3", 7, 7);
     if (shrp) { externalMapData["map_field_2_3"].tiles[shrp.y*15+shrp.x]=22; externalMapData["map_field_2_3"].exits[shrp.k]={map:"map_shrine_warp",x:6,y:9}; }
     // Town2: 南西の村 (field_0_3)
-    let tp2 = findLand("map_field_0_3", 7, 7);
-    if (tp2) { externalMapData["map_field_0_3"].tiles[tp2.y*15+tp2.x]=21; externalMapData["map_field_0_3"].exits[tp2.k]={map:"map_town_02",x:10,y:18}; }
+    let tp2 = findLand("map_field_1_3", 7, 7);
+    if (tp2) { externalMapData["map_field_1_3"].tiles[tp2.y*15+tp2.x]=21; externalMapData["map_field_1_3"].exits[tp2.k]={map:"map_town_02",x:10,y:18}; }
     // Town3: 東の市場 (field_4_1)
     let tp3 = findLand("map_field_4_1", 7, 7);
     if (tp3) { externalMapData["map_field_4_1"].tiles[tp3.y*15+tp3.x]=21; externalMapData["map_field_4_1"].exits[tp3.k]={map:"map_town_03",x:11,y:18}; }
@@ -2197,7 +2197,7 @@ function fixExternalMapConnections() {
     if(externalMapData['map_town_02']){
         for(const k of Object.keys(externalMapData['map_town_02'].exits||{})){
             const ex=externalMapData['map_town_02'].exits[k];
-            if(ex&&ex.map&&/^map_field_/.test(ex.map)){ex.map='map_field_0_3';ex.x=7;ex.y=7;}
+            if(ex&&ex.map&&/^map_field_/.test(ex.map)){ex.map='map_field_1_3';ex.x=7;ex.y=7;}
         }
     }
     // town_03 出口修正: フィールド出口を field_4_1 に統一
@@ -2634,7 +2634,7 @@ function generateDQStyleMaps() {
             [[1,1,6,7],[13,1,6,7],[1,12,6,7],[13,12,6,7],[7,4,6,4],[7,13,6,4],[0,9,20,3]],
             [[10,0,10,8],[10,13,10,19]],
             [[10,19]],[],
-            {'10,19':{map:'map_field_0_3',x:7,y:8},'9,19':{map:'map_field_0_3',x:7,y:8},'11,19':{map:'map_field_0_3',x:7,y:8}},
+            {'10,19':{map:'map_field_1_3',x:7,y:8},'9,19':{map:'map_field_1_3',x:7,y:8},'11,19':{map:'map_field_1_3',x:7,y:8}},
             {'15,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_02',name:'道具屋'},'2,15':{id:'npc_weapon_shop_02',name:'武器屋'},'15,15':{id:'npc_inn_02',name:'宿屋'},'9,6':{id:'npc_guide_02',name:'村長'},'5,10':{id:'npc_villager_03',name:'農夫'},'14,10':{id:'npc_villager_04',name:'旅人'},'9,15':{id:'npc_sub_smith',name:'伝説の鍛冶屋'}},
             [],'南西の村 ガルド');
     }
@@ -4676,6 +4676,39 @@ async function checkAction() {
             if (npc.id === "npc_guide_demon") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王が 倒れた！\nこれで やっと 平和が 戻ります……！"); }
                 else { await typeMessage("【案内人】\n近くに 感じる あの 暗黒の 気配……\n東の 海の 果てに 魔王の 城が あるのです。\n船で 渡り 最後の 戦いに 挑んでください！"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ★新規町NPCの会話
+            if (npc.id === "npc_guide_02") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【村長】\n魔王が 倒れたと 聞きました！\nこの村にも やっと 平和が 訪れますね……！"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【村長】\n船を 手に 入れたのですか！\n北の 海の むこうに グラマニア城が あります。\n気を つけて いってらっしゃい！"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【村長】\n天空の 塔を 登ったとは 見事！\n南に 港町が ございます。\n船を 手に 入れれば 海を 渡れますよ。"); }
+                else { await typeMessage("【村長】\nここは 南西の 村 ガルド。\n旅人よ、よくぞ 来てくれた。\n東へ 進めば 大きな 町や\n天空の 塔が あるらしい。\n腕を 磨いて 旅を 続けるがよい！"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_villager_03") {
+                if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【農夫】\n試練の 洞窟を 制覇したとは！\nあなたは 普通の 旅人じゃ ありませんね。"); }
+                else { await typeMessage("【農夫】\n西の 海岸を 北に 行くと\n試練の 洞窟が あるそうです。\nわしには 関係ない 話ですが……。"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_villager_04") {
+                await typeMessage("【旅人】\n遠い 北の 海には\nグラマニア城が 浮かぶ 孤島が あると 聞いた。\n船なし では たどり着けぬ 場所らしい……。");
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_guide_03") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n世界に 平和が 戻りました！\nバルカの 市場も これから にぎわいそうです。"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【案内人】\n船を お持ちですか！\n南東の 海を 渡ると 魔王の 城が あります。\nご武運を！"); }
+                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n北に そびえる 天空の 塔、\nもう のぼりましたか？\n頂には 何かが 待っているとの うわさです。"); }
+                else { await typeMessage("【案内人】\nここは 東の 市場 バルカ！\n北へ 進めば 天空の 塔が あります。\nまずは 力を 蓄えて 挑戦してみては？"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_merchant_01") {
+                await typeMessage("【商人】\nこの 市場には 遠方からの\n珍しい 品が 集まりますよ。\n道具屋や 武器屋も ぜひ 覗いてみてください！");
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_merchant_02") {
+                if (partyData.flags.has_ship) { await typeMessage("【行商人】\n船で 各地を 旅してます。\n南東の 海には 魔王の 島が あるそうです。\nくれぐれも 気をつけて！"); }
+                else { await typeMessage("【行商人】\n南の 港に 行けば\n大きな 船が あるそうですよ。\nレベルが 十分なら 旅立つ 準備を！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (extDef) {
