@@ -18,7 +18,7 @@
     .dead { color: #f55; }
     #gold-window { top: 55px; right: 5px; min-width: 80px; text-align: right; z-index: 15; }
     #map-name-window { top: 55px; left: 5px; min-width: 80px; text-align: center; z-index: 15; }
-    #msg-window { bottom: 0; left: 0; width: 100%; height: 100px; border-bottom: none; border-left: none; border-right: none; border-radius: 0; }
+    #msg-window { bottom: 0; left: 0; width: 100%; min-height: 100px; border-bottom: none; border-left: none; border-right: none; border-radius: 0; }
     #cmd-window { bottom: 105px; right: 5px; min-width: 100px; }
     #status-window { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 94%; max-width: 440px; background: rgba(0, 0, 0, 0.95); z-index: 20; padding: 10px 12px; border: 2px solid #fff; border-radius: 8px; }
     #title-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; background-image: url('https://cdn.gravity.place/aiugc/game/material/2026-04-11/2aecbdb7-a98b-4ba8-9a3e-5d8970aa99a0.jpeg'); background-size: cover; background-position: center; background-repeat: no-repeat; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 30px; }
@@ -4492,7 +4492,7 @@ async function moveParty(dx, dy) {
             if (!externalMapData[_normMap] && externalMapData['map_' + _normMap]) _normMap = 'map_' + _normMap;
             else if (!externalMapData[_normMap] && _normMap.startsWith('map_') && externalMapData[_normMap.substring(4)]) _normMap = _normMap.substring(4);
             let _lx = exit.x, _ly = exit.y;
-            const _solid = _toField ? [1, 2, 4, 5, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
+            const _solid = _toField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
             const _isBlocked = (x, y) => {
                 if (x<0||y<0||x>=nextMap.width||y>=nextMap.height) return true;
                 const _t = nextMap.tiles[y*nextMap.width+x];
@@ -4575,7 +4575,7 @@ async function moveParty(dx, dy) {
             if (_toField) {
                 let _canExit = !!(nextMap.exits && nextMap.exits[`${_lx},${_ly}`]);
                 if (!_canExit) {
-                    const _isoS=[1,2,4,5,15,16,17,18,19,20];
+                    const _isoS=_hasShip?[1,2,4,15,16,17,18,19,20]:[1,2,4,5,15,16,17,18,19,20];
                     const _isoV=new Set([`${_lx},${_ly}`]); const _isoQ=[[_lx,_ly]];
                     isoLoop: while(_isoQ.length>0&&_isoV.size<400){
                         const[icx,icy]=_isoQ.shift();
