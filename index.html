@@ -932,6 +932,10 @@ const unlockAudio = () => { AudioManager.init(); if (!AudioManager.isMuted && Au
 document.addEventListener('click', unlockAudio, { once: true }); document.addEventListener('touchstart', unlockAudio, { once: true });
 
 let state = 'INIT'; let masterData = {}; let partyData = {}; let currentMap = {}; let moveHistory = []; let inputCallback = null; const TILE_SIZE = 24; let externalMapData = null; let externalImages = {}; let externalEntitiesData = {};
+// NPC 徘徊システム
+let npcWanderState = {};        // { "x,y": { homeX, homeY, id, name } }
+let npcWanderTick = 0;          // drawMap 呼び出し回数カウンター
+let _lastWanderMapId = null;    // マップ変更検出用
 let _walkPhase = 0; let _lastMoveTime = 0;
 const tilesetImg = new Image(); tilesetImg.crossOrigin = "Anonymous"; tilesetImg.src = "https://cdn.gravity.place/aiugc/game/material/2026-04-09/88e120ab-ee16-4c1a-bdfb-4ffad407b6ad.jpeg";
 const bunnyGirlImg = new Image(); bunnyGirlImg.crossOrigin = "Anonymous"; bunnyGirlImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/c1add1db1f1ce5ccad9e1b76fee60b9c_1776406373895474042.png"; externalImages['bunnyGirl'] = bunnyGirlImg;
@@ -3104,6 +3108,92 @@ function updateTurnStatus(char) {
     if (char.tmpReflect && char.tmpReflect > 0) char.tmpReflect--;
 }
 
+// ===== NPC 徘徊システム =====
+function _isWanderingNpc(id) {
+    // 固定 NPC（店・教会・宿・ボス・ゲート・サブクエスト等）は動かさない
+    if (!id) return false;
+    const fixed = ['shop','priest','church','inn','boss','gate','casino','bunny',
+                   'sub_smith','sub_richman','sub_mage','sub_rumor','class_change',
+                   'npc_port','dharma_monk','shrine_priestess','dragon_spirit',
+                   'story_advisor','pirate_sailor','guard_01','sky_guard',
+                   'obj_chest','npc_tower','npc_maou','npc_sky'];
+    return !fixed.some(f => id.includes(f));
+}
+
+function _isSafeMapForWander(mapId) {
+    if (!mapId) return false;
+    return mapId.includes('town') || mapId.includes('village') || mapId.includes('market') ||
+           (mapId.includes('castle') && !mapId.includes('demon') && !mapId.includes('death'));
+}
+
+function initNpcWander() {
+    npcWanderState = {};
+    if (!currentMap || !currentMap.npcs) return;
+    const mapId = partyData && partyData.pos ? partyData.pos.map : '';
+    if (!_isSafeMapForWander(mapId)) return;
+    for (const key of Object.keys(currentMap.npcs)) {
+        const npc = currentMap.npcs[key];
+        if (!_isWanderingNpc(npc.id)) continue;
+        const [x, y] = key.split(',').map(Number);
+        npcWanderState[key] = { homeX: x, homeY: y, id: npc.id, name: npc.name };
+    }
+}
+
+function tickNpcWander() {
+    if (state !== 'FIELD' && state !== 'MSG') return;
+    const mapId = partyData && partyData.pos ? partyData.pos.map : '';
+    if (!_isSafeMapForWander(mapId) || !currentMap || !currentMap.npcs) return;
+
+    const SOLID = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
+    const RADIUS = 2;   // ホームから最大2タイルの範囲で徘徊
+    const DIRS = [[0,1],[0,-1],[1,0],[-1,0]];
+    const W = currentMap.width, H = currentMap.height;
+    const px = partyData.pos.x, py = partyData.pos.y;
+
+    // wander state のキーを現在の NPC 位置から再構築（キーが変わっている場合に対応）
+    const curKeys = Object.keys(npcWanderState);
+    for (const homeKey of curKeys) {
+        const wdata = npcWanderState[homeKey];
+        // 現在の NPC のキーを探す（最初はhomeKey、移動後は別のキー）
+        let curKey = null;
+        for (const k of Object.keys(currentMap.npcs)) {
+            if (currentMap.npcs[k].id === wdata.id &&
+                currentMap.npcs[k].name === wdata.name) {
+                const [kx, ky] = k.split(',').map(Number);
+                if (Math.abs(kx - wdata.homeX) <= RADIUS + 1 &&
+                    Math.abs(ky - wdata.homeY) <= RADIUS + 1) { curKey = k; break; }
+            }
+        }
+        if (!curKey) continue;
+
+        // 50% でそのターンはスキップ（自然なランダム感）
+        if (Math.random() < 0.5) continue;
+
+        const [curX, curY] = curKey.split(',').map(Number);
+        // ランダムな方向をシャッフル
+        const dirs = [...DIRS].sort(() => Math.random() - 0.5);
+
+        for (const [dx, dy] of dirs) {
+            const nx = curX + dx, ny = curY + dy;
+            if (nx < 1 || ny < 1 || nx >= W-1 || ny >= H-1) continue;
+            // 半径チェック
+            if (Math.abs(nx - wdata.homeX) > RADIUS || Math.abs(ny - wdata.homeY) > RADIUS) continue;
+            const tile = currentMap.tiles[ny * W + nx];
+            if (SOLID.includes(tile)) continue;
+            const newKey = `${nx},${ny}`;
+            if (currentMap.exits[newKey]) continue;
+            if (currentMap.npcs[newKey]) continue;
+            if (px === nx && py === ny) continue;  // プレイヤーと重ならない
+
+            // 移動実行
+            const npc = currentMap.npcs[curKey];
+            delete currentMap.npcs[curKey];
+            currentMap.npcs[newKey] = npc;
+            break;
+        }
+    }
+}
+
 function resetBattleState(char) {
     char.tmpAtk = 0; char.tmpAtkDuration = 0; char.tmpDef = 0; char.tmpDefDuration = 0; char.tmpSpd = 0; char.tmpSpdDuration = 0;
     char.tmpSleep = 0; char.tmpSilence = 0; char.tmpBlind = 0; char.tmpResist = 0; char.tmpReflect = 0;
@@ -3857,6 +3947,12 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
 }
 
 function drawMap() {
+    // NPC 徘徊: マップ変更を検出して初期化、15フレームに1回移動
+    const _curWanderMapId = partyData && partyData.pos ? partyData.pos.map : null;
+    if (_curWanderMapId !== _lastWanderMapId) { _lastWanderMapId = _curWanderMapId; initNpcWander(); }
+    npcWanderTick++;
+    if (npcWanderTick % 15 === 0) tickNpcWander();
+
     const canvas = document.getElementById('screen'); const ctx = canvas.getContext('2d'); const cWidth = canvas.width; const cHeight = canvas.height; ctx.clearRect(0, 0, cWidth, cHeight);
     const camX = partyData.pos.x * TILE_SIZE - cWidth/2 + TILE_SIZE/2; const camY = partyData.pos.y * TILE_SIZE - Math.floor(cHeight * 0.3) + TILE_SIZE/2;
     const _mapId = partyData.pos.map;
