@@ -260,7 +260,6 @@
         };
 
         // 確認用
-        console.log("RPG ITEM DATABASE loaded successfully.", window.ITEM_DATABASE);
 </script>
 <script>
 // 魔法（スキル）データベースの定義
@@ -296,8 +295,6 @@
           { id: "tohero", name: "トヘロ", type: "field", target: "self", mp_cost: 5, power: 0, element: "none", description: "弱い魔物を寄せ付けない" }
         ];
 
-        console.log("魔法データベースがロードされました。");
-        console.log(window.MAGIC_DATABASE);
 </script>
 <script>
 window.MONSTER_DATABASE = [
@@ -860,6 +857,7 @@ function injectSubStoryData() {
     masterData.spells["spl_ultima"] = { id: "spl_ultima", name: "アルテマ", type: "attack", target: "enemies", mp: 30, value: 250, desc: "敵全体に究極の大ダメージ", element: "light" };
     masterData.monsters["boss_secret_traveler"] = { name: "異世界の旅人", max_hp: 5500, atk: 250, def: 150, spd: 200, exp: 50000, gold: 10000 };
     masterData.monsters["boss_pirate_king"] = { name: "海賊王バルゴ", max_hp: 2800, atk: 150, def: 90, spd: 110, exp: 12000, gold: 8000, traits: ["boss", "water_element", "two_actions"] };
+    masterData.items["meteorite_fragment"] = { id: "meteorite_fragment", name: "いんせきのかけら", type: "tool", price: 5000, desc: "はぐれグラちゃんから手に入る超レアなかけら。ガルドの鍛冶屋に持参すると最強の鎧を作れるという。" };
     masterData.monsters["boss_dragon_spirit"] = { name: "竜霊グラドス", max_hp: 3500, atk: 180, def: 110, spd: 140, exp: 25000, gold: 5000, traits: ["boss", "fire_element", "status_immunity"] };
     masterData.items["w_trident"] = { id: "w_trident", name: "海神の三叉槍（槍）", type: "weapon", price: 18000, power: 78, element: "water", desc: "深海の神が手放した古代の槍。水の力を宿し、炎の敵に絶大な効果を発揮する。" };
     masterData.items["a_sea_armor"] = { id: "a_sea_armor", name: "海竜の鎧（鎧）", type: "armor", price: 15000, power: 70, effect: "water_resist", desc: "海竜の鱗で作られた鎧。水・氷の攻撃をほぼ無効化し、深海の圧力にも耐える。" };
@@ -2089,8 +2087,8 @@ function generateFieldMapsForGravityQuest() {
             let isLate = (gx===4&&gy>=3)||(gx===3&&gy===4);
             let isMid = (gx===4&&gy<=2)||(gx>=3&&gy>=2)||(gx===0&&gy<=1);
             let enc;
-            if (isLate) enc=["ancient_dragon","cyclops","vampire_lord","death_knight","behemoth","lich","archdemon"].filter(_ef);
-            else if (isMid) enc=["killer_mantis","dark_mage","minotaur","troll","chimera","dullahan","cockatrice","flame_elemental","gargoyle"].filter(_ef);
+            if (isLate) enc=["ancient_dragon","cyclops","vampire_lord","death_knight","behemoth","lich","archdemon","hagure_gura"].filter(_ef);
+            else if (isMid) enc=["killer_mantis","dark_mage","minotaur","troll","chimera","dullahan","cockatrice","flame_elemental","gargoyle","hagure_gura"].filter(_ef);
             else enc=["slime","goblin","wild_wolf","orc","red_dragon","m01","m02"].filter(_ef);
             if (!enc.length) enc=["m01"];
             externalMapData[mapId]={width:15,height:15,tiles:tiles1D,encounters:enc,exits:exits,npcs:{},name:"フィールド"};
@@ -2997,6 +2995,10 @@ function canEquip(char, item) {
 }
 
 function calculateDamage(attacker, defender) {
+    // metal_body: ダメージ上限1（はぐれグラちゃん等）
+    if (defender.traits && defender.traits.includes('metal_body')) {
+        return { isCritical: false, value: 1, isMetalBody: true };
+    }
     let atkMod = attacker.tmpAtk > 0 ? 1.5 : attacker.tmpAtk < 0 ? 0.5 : 1.0;
     let defMod = defender.tmpDef > 0 ? 1.5 : defender.tmpDef < 0 ? 0.5 : 1.0;
     
@@ -5720,6 +5722,14 @@ async function executeBattle(fixedEnemies = null) {
                 if(!act.target) continue;
             }
 
+            // mp_regen: プレイヤーターン開始時にMPを少量回復
+            if (act.actor.job) {
+                const _accId = act.actor.equipment && act.actor.equipment.accessory;
+                if (_accId && masterData.items[_accId] && masterData.items[_accId].effect === 'mp_regen') {
+                    const _rAmt = Math.max(1, Math.floor(act.actor.max_mp * 0.05));
+                    act.actor.mp = Math.min(act.actor.max_mp, act.actor.mp + _rAmt);
+                }
+            }
             if(act.type === 'attack') {
                 let _wId = act.actor.equipment && act.actor.equipment.weapon;
                 let _w   = _wId ? masterData.items[_wId] : null;
@@ -5739,9 +5749,17 @@ async function executeBattle(fixedEnemies = null) {
                             let dmgResult = calculateDamage(act.actor, _t);
                             let dmg = dmgResult.value;
                             if (_t.voidBarrierTurns > 0) dmg = Math.max(1, Math.floor(dmg * 0.7));
-                            if (dmgResult.isCritical) { playCriticalEffect('brightness(3)'); AudioManager.playSE('attack_crit'); await typeMessage(`ぜんりょくの いちげき！！`); } else { AudioManager.playSE('attack_hit'); }
+                            if (dmgResult.isMetalBody) {
+                                AudioManager.playSE('attack_hit');
+                                await typeMessage(`キン！\n${_t.displayName}に ${dmg}の ダメージ！\n（こうてつの からだに はじかれた！）`);
+                            } else if (dmgResult.isCritical) {
+                                playCriticalEffect('brightness(3)'); AudioManager.playSE('attack_crit');
+                                await typeMessage(`ぜんりょくの いちげき！！`);
+                            } else {
+                                AudioManager.playSE('attack_hit');
+                            }
                             _t.hp = Math.max(0, _t.hp - dmg);
-                            await typeMessage(`${_t.displayName}に ${dmg}の ダメージ！`);
+                            if (!dmgResult.isMetalBody) await typeMessage(`${_t.displayName}に ${dmg}の ダメージ！`);
                             _lastDmg = dmg;
                             if (_t.isGuraKing && !_t.voidBarrierUsed && _t.hp > 0 && _t.hp <= _t.max_hp / 2) {
                                 _t.voidBarrierUsed = true; _t.voidBarrierTurns = 3;
@@ -5784,6 +5802,15 @@ ${act.actor.name}の ちからが すいとられた！`); }
                 await typeMessage(`${_zTgt.displayName}に ${_zDmg}の ダメージ！！`);
                 if (_zTgt.hp <= 0) { _zTgt.isPoisoned = false; await typeMessage(`${_zTgt.displayName}を たおした！`); addReward(_zTgt); enemies = enemies.filter(e => e !== _zTgt); updateEnemiesDisplay(); }
             } else if(act.type === 'enemy_attack') {
+                // high_escape_rate: 高確率で戦闘から逃走（はぐれグラちゃん等）
+                if (act.actor.traits && act.actor.traits.includes('high_escape_rate') && Math.random() < 0.75) {
+                    await typeMessage(`${act.actor.displayName}は にげてしまった！`);
+                    AudioManager.playSE('cancel');
+                    enemies = enemies.filter(e => e !== act.actor);
+                    updateEnemiesDisplay();
+                    if (enemies.length === 0) { escaped = true; break; }
+                    continue;
+                }
                 // ── モンスター固有の特殊行動 ──────────────────────────────
                 if (act.isSpecial && act.actor.hp > 0 && !act.actor.isGuraKing) {
                     const _eId = act.actor.id || '';
@@ -6048,7 +6075,12 @@ ${act.actor.name}の ちからが すいとられた！`); }
                     else if (tType && tType.hp > 0) targets = [tType];
                     
                     for(let t of targets) {
-                        let dmg = Math.max(1, (act.spell.value * magicDmgMultiplier) + Math.floor(Math.random()*10 - 5)); 
+                        // magic_immunity: 魔法ダメージ無効
+                        if (t.traits && t.traits.includes('magic_immunity')) {
+                            await typeMessage(`${t.displayName || t.name}には まほうが ぜんぜん きかない！`);
+                            continue;
+                        }
+                        let dmg = Math.max(1, (act.spell.value * magicDmgMultiplier) + Math.floor(Math.random()*10 - 5));
                         if (t.tmpResist > 0) dmg = Math.floor(dmg / 2);
                         
                         if (t.voidBarrierTurns > 0) dmg = Math.max(1, Math.floor(dmg * 0.7));
