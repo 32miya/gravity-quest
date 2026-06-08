@@ -2663,7 +2663,7 @@ function generateDQStyleMaps() {
             [[10,0,10,8],[10,13,10,19]],
             [[10,19]],[],
             {'10,19':{map:'map_field_1_3',x:7,y:8},'9,19':{map:'map_field_1_3',x:7,y:8},'11,19':{map:'map_field_1_3',x:7,y:8}},
-            {'15,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_02',name:'道具屋'},'2,15':{id:'npc_weapon_shop_02',name:'武器屋'},'15,15':{id:'npc_inn_02',name:'宿屋'},'9,6':{id:'npc_guide_02',name:'村長'},'5,10':{id:'npc_villager_03',name:'農夫'},'14,10':{id:'npc_villager_04',name:'旅人'},'9,15':{id:'npc_sub_smith',name:'伝説の鍛冶屋'}},
+            {'15,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_02',name:'道具屋'},'2,15':{id:'npc_weapon_shop_02',name:'武器屋'},'15,15':{id:'npc_inn_02',name:'宿屋'},'9,6':{id:'npc_guide_02',name:'村長'},'5,10':{id:'npc_villager_03',name:'農夫'},'14,10':{id:'npc_villager_04',name:'旅人'},'9,15':{id:'npc_sub_smith',name:'伝説の鍛冶屋'},'3,7':{id:'npc_gar_woman_01',name:'村の女性'},'12,6':{id:'npc_gar_child_01',name:'子供'},'17,10':{id:'npc_gar_fisherman_01',name:'元漁師'},'6,15':{id:'npc_gar_young_01',name:'若者'},'17,6':{id:'npc_gar_elder_w_01',name:'老婆'}},
             [],'南西の村 ガルド');
     }
 
@@ -2674,7 +2674,7 @@ function generateDQStyleMaps() {
             [[11,0,11,7],[11,13,11,19]],
             [[11,19]],[],
             {'11,19':{map:'map_field_4_1',x:7,y:8},'10,19':{map:'map_field_4_1',x:7,y:8},'12,19':{map:'map_field_4_1',x:7,y:8}},
-            {'16,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_03',name:'道具屋'},'2,15':{id:'npc_weapon_shop_03',name:'武器屋'},'16,15':{id:'npc_inn_03',name:'宿屋'},'9,3':{id:'npc_merchant_01',name:'商人'},'13,3':{id:'npc_merchant_02',name:'行商人'},'6,10':{id:'npc_guide_03',name:'案内人'},'15,10':{id:'npc_sub_richman',name:'大富豪'},'11,16':{id:'npc_sub_mage',name:'大魔導士'}},
+            {'16,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_03',name:'道具屋'},'2,15':{id:'npc_weapon_shop_03',name:'武器屋'},'16,15':{id:'npc_inn_03',name:'宿屋'},'9,3':{id:'npc_merchant_01',name:'商人'},'13,3':{id:'npc_merchant_02',name:'行商人'},'6,10':{id:'npc_guide_03',name:'案内人'},'15,10':{id:'npc_sub_richman',name:'大富豪'},'11,16':{id:'npc_sub_mage',name:'大魔導士'},'4,10':{id:'npc_bar_woman_01',name:'市場の女性'},'11,3':{id:'npc_bar_child_01',name:'子供'},'17,7':{id:'npc_bar_soldier_01',name:'衛兵'},'4,15':{id:'npc_bar_young_01',name:'若い商人'},'17,12':{id:'npc_bar_fisherman_01',name:'海の男'}},
             [],'東の市場 バルカ');
     }
 }
@@ -4118,6 +4118,51 @@ function drawMap() {
                 const _pSprite = externalImages['guard'] || externalImages['oldMan'];
                 if (_pSprite) { ctx.save(); ctx.filter = 'hue-rotate(200deg) saturate(1.8) brightness(0.85)'; drawSpriteLocal(ctx, _pSprite, px, py, 48); ctx.restore(); }
                 else { ctx.font = '28px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🏴‍☠️', px+12, py+12); }
+            // ===== 追加キャラクター種別 =====
+            } else if (npc.id.includes('_woman') || npc.id.includes('_lady') || npc.id.includes('_wife') || npc.id.includes('_girl')) {
+                // 女性キャラ: innGirl をアクセントカラーで差別化
+                const _wSprite = externalImages['innGirl'] || externalImages['oldMan'];
+                if (_wSprite) {
+                    ctx.save();
+                    if (npc.id.includes('_02') || npc.id.includes('bar_')) ctx.filter = 'hue-rotate(45deg) saturate(1.5) brightness(1.1)';
+                    else if (npc.id.includes('_03')) ctx.filter = 'hue-rotate(160deg) saturate(1.4) brightness(1.0)';
+                    else if (npc.id.includes('elder_w') || npc.id.includes('granny')) ctx.filter = 'saturate(0.4) brightness(1.3)';
+                    else ctx.filter = 'hue-rotate(310deg) saturate(1.6) brightness(1.1)';
+                    drawSpriteLocal(ctx, _wSprite, px, py, 48); ctx.restore();
+                } else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👩', px+12, py+10); }
+            } else if (npc.id.includes('_child') || npc.id.includes('_kid') || npc.id.includes('_boy')) {
+                // 子供キャラ: 縮小 oldMan + 明るいカラー
+                const _cSprite = externalImages['oldMan'] || externalImages['guard'];
+                if (_cSprite) {
+                    ctx.save();
+                    if (npc.id.includes('bar_') || npc.id.includes('_02')) ctx.filter = 'hue-rotate(120deg) saturate(2.0) brightness(1.3)';
+                    else ctx.filter = 'hue-rotate(30deg) saturate(2.0) brightness(1.4)';
+                    // 子供は少し小さく
+                    ctx.translate(px + 6, py + 8);
+                    ctx.scale(0.85, 0.85);
+                    drawSpriteLocal(ctx, _cSprite, -6, -8, 40); ctx.restore();
+                } else { ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👦', px+12, py+10); }
+            } else if (npc.id.includes('_young') || npc.id.includes('_man_') || npc.id.includes('_lad')) {
+                // 若い男性: guard を色替え
+                const _ySprite = externalImages['guard'] || externalImages['oldMan'];
+                if (_ySprite) {
+                    ctx.save();
+                    if (npc.id.includes('bar_')) ctx.filter = 'hue-rotate(80deg) saturate(1.4) brightness(1.1)';
+                    else ctx.filter = 'hue-rotate(0deg) saturate(1.6) brightness(1.2)';
+                    drawSpriteLocal(ctx, _ySprite, px, py, 48); ctx.restore();
+                } else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🧑', px+12, py+10); }
+            } else if (npc.id.includes('_fisherman') || npc.id.includes('_sailor')) {
+                const _fSprite = externalImages['guard'] || externalImages['oldMan'];
+                if (_fSprite) { ctx.save(); ctx.filter = 'hue-rotate(185deg) saturate(1.5) brightness(0.9)'; drawSpriteLocal(ctx, _fSprite, px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('⛵', px+12, py+10); }
+            } else if (npc.id.includes('_soldier') || npc.id.includes('_knight') || npc.id.includes('_guard')) {
+                const _sSprite = externalImages['guard'];
+                if (_sSprite) {
+                    ctx.save();
+                    if (npc.id.includes('bar_')) ctx.filter = 'hue-rotate(140deg) saturate(1.3) brightness(1.0)';
+                    else ctx.filter = 'hue-rotate(210deg) saturate(1.4) brightness(0.95)';
+                    drawSpriteLocal(ctx, _sSprite, px, py, 48); ctx.restore();
+                }
             } else { if(externalImages['oldMan']) { drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); } }
             const _scx = _basePx + TILE_SIZE / 2;
             if (npc.id.includes('weapon_shop') || npc.id.includes('bazaar') || npc.id.includes('market') || npc.id === 'npc_strong_weapon_shop')
@@ -4987,6 +5032,70 @@ async function checkAction() {
             if (npc.id === "npc_merchant_01") {
                 await typeMessage("【商人】\nこの 市場には 遠方からの\n珍しい 品が 集まりますよ。\n道具屋や 武器屋も ぜひ 覗いてみてください！");
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ===== ガルド（南西の村）の住民 =====
+            if (npc.id === "npc_gar_woman_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【村の女性】\n魔王が 倒れたって 聞いたとき\n思わず 泣いてしまいました。\nほんとうに ありがとうございます！"); }
+                else if (partyData.flags.flag_weapon_forged) { await typeMessage("【村の女性】\n鍛冶屋の おじさんが\nすごく 嬉しそうにしていましたよ。\nきっと とびきりの 剣を 作ったのでしょうね。"); }
+                else { await typeMessage("【村の女性】\nガルドは 小さな 村ですが\nとても 心の あたたかい 人たちが\n暮らしています。\n鍛冶屋の おじさんに 用があるなら\n南の 建物を のぞいて みてくださいな。"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_child_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【子供】\nすごい すごい！\n魔王を やっつけた 本物の 勇者だ！！\nボクも 大きくなったら 勇者になるぞ！！"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【子供】\nすごいなあ……\n船で 海を 旅するなんて！\nボクも いつか 大冒険したい！！"); }
+                else { await typeMessage("【子供】\nねえねえ！\n旅人さんって どこから 来たの？\n北の 洞窟って こわいの？\nボクも 冒険家に なりたいんだあ！"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_fisherman_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【元漁師】\n魔王が 倒れたのか……\n海が また 安全に なるな。\nまた 漁に でようかの。"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【元漁師】\nほう、船を 手に 入れたのか。\n北の 海は 荒れやすい……\n嵐には 気をつけろよ。\nグラマニア城の 島には\nその 西の 海流を 使うといい。"); }
+                else { await typeMessage("【元漁師】\n魔物が 海に 出るように なってから\n漁に 出られなくなってしもうた……\n昔は 南の 港町 ポートピアにも\n毎週 寄っていたんじゃがのう。"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_young_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【若者】\nやった！ 魔王が 倒れた！！\nこれで 旅が できる！\nボクも 世界を 旅するぞ！"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【若者】\n天空の 塔まで 登ったとは すごい！\nボクには とても 無理だ……\nでも あなたなら 魔王も 倒せるよ！"); }
+                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【若者】\n試練の 洞窟を 突破したんだって？！\nじゃあ 次は 東の 天空の 塔に\n挑戦するんですか！？\nすごい なあ……！"); }
+                else { await typeMessage("【若者】\n試練の 洞窟……\nボクは 入口で 逃げ帰りました。\n本当に 怖くて。\nでも あなたなら 大丈夫そうですね！"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_elder_w_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【老婆】\nわしは もう 長い事ないが……\nこの 平和な 空の下で\n逝けそうじゃ。\nありがとうよ……。"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【老婆】\n昔々、グラマニア城には\n光の 紋章を 持つ 王様が いたそうじゃ。\nその王は 海に 浮かぶ 孤島に 城を 構え\n国を 守り続けたとか……。"); }
+                else { await typeMessage("【老婆】\nわしは ここに 何十年も 住んでいるが\n最近は 魔物の 気配が 強くなってきた。\n昔の こんな 穏やかな 日々が\n戻ってくると いいのじゃが……。"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ===== バルカ（東の市場）の住民 =====
+            if (npc.id === "npc_bar_woman_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【市場の女性】\n魔王が 倒されて\n遠くからの 商人さんも\nまた 来てくれるように なりましたよ！\nバルカの 市場は また にぎわいそうです！"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【市場の女性】\n船で 来られる 方も いらっしゃるんですね。\n海の 向こうには\n珍しい 品物が あると 聞きます。\n商人さんたちは みんな 羨ましがりますよ。"); }
+                else { await typeMessage("【市場の女性】\nバルカは 旅の 商人が 多く 集まる 町。\n品物を 売るだけでなく\n情報も たくさん 集まりますよ。\n何か 聞きたい事があれば\n商人さんたちに 聞いてみては？"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_child_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【子供】\nやった！ 魔王が やられた！！\nお父さんも 安心して 旅に 出られるね！\nバルカ万歳！！"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【子供】\nあの 塔に のぼったの？！\nてっぺんから 見たら どんな 景色 だろう……\nいいなあ！ ボクも 見たい！！"); }
+                else { await typeMessage("【子供】\n北の 天空の 塔、\nあそこって 本当に 天まで 届くの？\nお父さんが 魔物が いるから\n近づいちゃ ダメ って 言うんだ。\nでも すごく 気になる！"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_soldier_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【衛兵】\n魔王が 倒されたとは！\n我々 衛兵も これで\n剣を 置ける 日が 来るかもしれぬ。\nご苦労だった！"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【衛兵】\n天空の 塔の 頂上を 制覇したとは……\nその 実力 なら 魔王にも\n立ち向かえる かもしれぬな。\n港の 船乗りに 会いに 行くとよい。"); }
+                else { await typeMessage("【衛兵】\n北の 天空の 塔への 道は\n我々が 警備しておる。\n魔物が 多く 危険だが……\nあの 頂上には 何か 大切なものが\n眠っているという 話だ。"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_young_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【若い商人】\n魔王が 倒れたら\nボクも 遠くの 国まで\n商売に 行ってみようかな！\nいつか 世界一の 商人に なるぞ！"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【若い商人】\n船を お持ちなんですか！\n羨ましい……\n海の 向こうの 珍しい 品物を\n仕入れられたら 大儲けなのに！"); }
+                else { await typeMessage("【若い商人】\n商売の 基本は\n情報と 人脈です！\n市場の 大富豪 カリバン様や\n北の 大魔導士様と 知り合えれば\n一気に 商売が 広がりますよ！"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_fisherman_01") {
+                if (partyData.flags.last_boss_defeated) { await typeMessage("【海の男】\n魔王の 島にも 近づけるように なったな。\nあの 辺りは 海流が 複雑だが……\n探索しがいは あるぞ。"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【海の男】\nおう、船乗りか！\n南東の 海を 渡ると\n巨大な 黒い 城が 浮かぶ 島があるぞ。\nあの 辺りの 海は 荒れてる……\nくれぐれも 気をつけろよ。"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【海の男】\n塔を 登ったのか。\nじゃあ 次は 船だな。\nポートピアの 港は\nここから 南へ まっすぐ 下ればある。\nレベルを 上げていけよ。"); }
+                else { await typeMessage("【海の男】\n俺は 昔 船乗りだった。\n南の ポートピアに行って 船を 借りれば\n海の 向こうまで 行けるぞ。\nまあ 今は 魔物が 多くて\n無理だろうがな……。"); }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_merchant_02") {
                 if (partyData.flags.has_ship) { await typeMessage("【行商人】\n船で 各地を 旅してます。\n南東の 海には 魔王の 島が あるそうです。\nくれぐれも 気をつけて！"); }
