@@ -859,6 +859,11 @@ function injectSubStoryData() {
     masterData.monsters["boss_trial_phantom"] = { name: "試練の幻影", max_hp: 450, atk: 55, def: 20, spd: 40, exp: 1500, gold: 1000 };
     masterData.spells["spl_ultima"] = { id: "spl_ultima", name: "アルテマ", type: "attack", target: "enemies", mp: 30, value: 250, desc: "敵全体に究極の大ダメージ", element: "light" };
     masterData.monsters["boss_secret_traveler"] = { name: "異世界の旅人", max_hp: 5500, atk: 250, def: 150, spd: 200, exp: 50000, gold: 10000 };
+    masterData.monsters["boss_pirate_king"] = { name: "海賊王バルゴ", max_hp: 2800, atk: 150, def: 90, spd: 110, exp: 12000, gold: 8000, traits: ["boss", "water_element", "two_actions"] };
+    masterData.monsters["boss_dragon_spirit"] = { name: "竜霊グラドス", max_hp: 3500, atk: 180, def: 110, spd: 140, exp: 25000, gold: 5000, traits: ["boss", "fire_element", "status_immunity"] };
+    masterData.items["w_trident"] = { id: "w_trident", name: "海神の三叉槍（槍）", type: "weapon", price: 18000, power: 78, element: "water", desc: "深海の神が手放した古代の槍。水の力を宿し、炎の敵に絶大な効果を発揮する。" };
+    masterData.items["a_sea_armor"] = { id: "a_sea_armor", name: "海竜の鎧（鎧）", type: "armor", price: 15000, power: 70, effect: "water_resist", desc: "海竜の鱗で作られた鎧。水・氷の攻撃をほぼ無効化し、深海の圧力にも耐える。" };
+    masterData.items["acc_sea_ring"] = { id: "acc_sea_ring", name: "波濤の指輪（指輪）", type: "accessory", price: 8000, power: 0, effect: "mp_regen", desc: "海の精霊が宿った指輪。戦闘中に毎ターン少量のMPが回復する不思議な力を持つ。" };
 }
 
 const battleBgImages = [
@@ -2626,6 +2631,31 @@ function generateDQStyleMaps() {
             externalEntitiesData['npc_shrine_priestess'] = { id: 'npc_shrine_priestess', name: '祠の巫女', type: 'npc',
                 msg: 'ここは 聖なる ほこら。\nけがれを はらい\nたびびとに ちからを あたえましょう。' };
         }
+    }
+
+    // ===== 竜霊の島 (map_dragon_shrine / field_1_0) =====
+    if (!externalMapData['map_dragon_shrine']) {
+        externalMapData['map_dragon_shrine'] = mkMap(12,12,
+            [[1,1,10,9],[4,4,4,3]],
+            [[6,0,6,11]],
+            [[6,11]],[],
+            {'6,11':{map:'map_field_1_0',x:7,y:8},'5,11':{map:'map_field_1_0',x:7,y:8}},
+            {'6,2':{id:'npc_dragon_spirit',name:'竜霊グラドス'},'3,6':{id:'obj_chest_sea_armor',name:'宝箱'},'9,6':{id:'obj_chest_sea_ring',name:'光る祭壇'}},
+            [],'竜霊の島');
+        let dragonP = findLand('map_field_1_0', 11, 9);
+        if (dragonP) { externalMapData['map_field_1_0'].tiles[dragonP.y*15+dragonP.x]=22; externalMapData['map_field_1_0'].exits[dragonP.k]={map:'map_dragon_shrine',x:6,y:10}; }
+    }
+    // ===== 海賊の洞窟 (map_pirate_cave / field_0_1) =====
+    if (!externalMapData['map_pirate_cave']) {
+        externalMapData['map_pirate_cave'] = mkMap(16,13,
+            [[1,1,14,4],[3,5,10,3],[1,8,14,4]],
+            [[8,4,8,8],[3,8,3,12],[12,8,12,12]],
+            [[8,12]],[],
+            {'8,12':{map:'map_field_0_1',x:7,y:8},'7,12':{map:'map_field_0_1',x:7,y:8}},
+            {'8,2':{id:'boss_pirate_king',name:'海賊王バルゴ'},'3,10':{id:'obj_chest_pirate_a',name:'宝箱'},'12,10':{id:'obj_chest_pirate_b',name:'宝箱'},'3,3':{id:'npc_pirate_sailor',name:'海賊の部下'},'12,3':{id:'npc_pirate_sailor',name:'海賊の部下'}},
+            [],'海賊の洞窟');
+        let pirateP = findLand('map_field_0_1', 7, 5);
+        if (pirateP) { externalMapData['map_field_0_1'].tiles[pirateP.y*15+pirateP.x]=22; externalMapData['map_field_0_1'].exits[pirateP.k]={map:'map_pirate_cave',x:8,y:11}; }
     }
 
     // ===== 南西の村 ガルド (map_town_02 / 20x20) =====
@@ -4679,6 +4709,83 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             // ★新規町NPCの会話
+            // ===== 船入手後の海洋冒険イベント =====
+            if (npc.id === "npc_dragon_spirit") {
+                if (!partyData.flags.has_ship) {
+                    await typeMessage("……（何かが この場所を 護っている……\n船なしで ここへ 来られるはずがない……）"); state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if (partyData.flags.flag_dragon_spirit_cleared) {
+                    await typeMessage("【竜霊グラドス】\n……よく 戻ってきたな 末裔よ。\n世界の 行方を 見守っておる……。"); state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                await typeMessage("【竜霊グラドス】\n……来たか。\n我は グラマニア初代王家の\n守護竜 グラドスじゃ。");
+                await typeMessage("【竜霊グラドス】\n百年の 時を こえて\nやっと 本物の 血筋が 現れた……。\nお前が 真に 継承者たるか\n試させてもらおう！");
+                hideGoldWindow(); let _dw = await executeBattle(["boss_dragon_spirit"]); showGoldWindow(); updateGoldWindow();
+                if (_dw) {
+                    partyData.flags.flag_dragon_spirit_cleared = true;
+                    AudioManager.playBGM('victory');
+                    await typeMessage("【竜霊グラドス】\n……見事じゃ。\n正真正銘 の 王家の 末裔。\nこの 力を 受け取るがよい！");
+                    let tgt = partyData.members[0]; if (tgt.inventory.length < 8) tgt.inventory.push("acc_sea_ring"); else tgt.inventory[0] = "acc_sea_ring";
+                    AudioManager.playSE('item_get'); await typeMessage("波濤の指輪 を てにいれた！\n（戦闘中 毎ターン MP が 回復する！）");
+                    await typeMessage("【竜霊グラドス】\nグラマニア城 の 地下に\n更なる 力が 眠っておる……。\n城を 制した のち に 探してみよ。");
+                } else { return; }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "obj_chest_sea_armor") {
+                let _cf = `chest_dragon_island_armor`;
+                if (partyData.flags[_cf]) { await typeMessage("たからばこは からっぽだ。"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                if (!partyData.flags.flag_dragon_spirit_cleared) { await typeMessage("宝箱に 強力な 封印が かかっている……\n竜霊を 鎮めなければ 開かないようだ。"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                partyData.flags[_cf] = true; AudioManager.playSE('item_get');
+                let tgt = partyData.members[0]; if (tgt.inventory.length < 8) tgt.inventory.push("a_sea_armor"); else tgt.inventory[0] = "a_sea_armor";
+                await typeMessage("宝箱から 海竜の鎧 を てにいれた！\n（水・氷 攻撃を ほぼ 無効化！）");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "obj_chest_sea_ring") {
+                let _cf2 = `chest_dragon_island_ring`;
+                if (partyData.flags[_cf2]) { await typeMessage("祭壇には もう 何もない……。"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                partyData.flags[_cf2] = true; AudioManager.playSE('item_get');
+                await typeMessage("古い 祭壇に 地図が 刻まれていた！\n『北西の 島鎖 に 海賊の 洞窟あり……\n海賊王が 守る 宝を 奪え者は\n真に 海の 覇者と なる 者のみ……』");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "boss_pirate_king") {
+                if (!partyData.flags.has_ship) { await typeMessage("【海賊王バルゴ】\nて……テメエ！ 船もなしに ここまで 来やがった？！"); }
+                if (partyData.flags.flag_pirate_king_cleared) {
+                    await typeMessage("【海賊王バルゴ】\nくそっ……また 来やがったか。\nもう 宝は ねェ！ さっさと 失せろ！！"); state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                await typeMessage("【海賊王バルゴ】\nここは 俺の 縄張りだ！\n許可なく 踏み込んだ 奴には\nただでは 帰さねェ！！");
+                await typeMessage("【海賊王バルゴ】\n一つ だけ 聞いてやる……\n命を 惜しいと 思うなら\n今すぐ 出て行け！！");
+                const _pyn = await selectMenu(["戦う！", "逃げる"], 'cmd-window', 0, true);
+                if (_pyn === 1) { await typeMessage("（海賊王の 目を 見て……\n今は まだ 無理だと 判断した）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _pw = await executeBattle(["boss_pirate_king"]); showGoldWindow(); updateGoldWindow();
+                if (_pw) {
+                    partyData.flags.flag_pirate_king_cleared = true;
+                    AudioManager.playBGM('victory');
+                    await typeMessage("【海賊王バルゴ】\nぐはっ……！ やりやがった……！\nお前……本物の 強さを 持ってやがる……！");
+                    await typeMessage("【海賊王バルゴ】\n……約束は 守る 主義だ。\nその 宝 ……持ってけ。\nただし……あの 魔王だけは\nブッ倒してから 死にやがれ……！！");
+                    let tgt2 = partyData.members[0]; if (tgt2.inventory.length < 8) tgt2.inventory.push("w_trident"); else tgt2.inventory[0] = "w_trident";
+                    AudioManager.playSE('item_get'); await typeMessage("海神の三叉槍 を てにいれた！\n（水 属性の 超強力 武器！）");
+                    delete currentMap.npcs[key];
+                } else { return; }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "obj_chest_pirate_a" || npc.id === "obj_chest_pirate_b") {
+                let _cf3 = `chest_pirate_${npc.id}`;
+                if (partyData.flags[_cf3]) { await typeMessage("たからばこは からっぽだ。"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                if (!partyData.flags.flag_pirate_king_cleared) { await typeMessage("（……まずは あの 海賊王を なんとか しないと\n手が 届かない……！）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                partyData.flags[_cf3] = true; AudioManager.playSE('item_get');
+                let _g = npc.id === "obj_chest_pirate_a" ? 9999 : 0;
+                let _rItem = npc.id === "obj_chest_pirate_b" ? "i_star_frag" : null;
+                if (_g > 0) { partyData.gold += _g; updateGoldWindow(); await typeMessage(`海賊の 財宝から ${_g}G を てにいれた！`); }
+                if (_rItem) {
+                    let tgt3 = partyData.members[0]; if (tgt3.inventory.length < 8) tgt3.inventory.push(_rItem); else tgt3.inventory[0] = _rItem;
+                    await typeMessage("宝箱から ほしのカケラ を てにいれた！\nガルドの 鍛冶屋に 持っていくと\n何か 作ってくれるかも……。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_pirate_sailor") {
+                if (partyData.flags.flag_pirate_king_cleared) { await typeMessage("【海賊の部下】\nボス……本当に 負けちまった……。\nアンタは 本物の 強さを 持ってる。\n敬意を 表するぜ……。"); }
+                else { await typeMessage("【海賊の部下】\nここから 先は ボスの 部屋だ！\n通りたければ ボスを 倒してから にしろ！！"); }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
             if (npc.id === "npc_guide_02") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【村長】\n魔王が 倒れたと 聞きました！\nこの村にも やっと 平和が 訪れますね……！"); }
                 else if (partyData.flags.has_ship) { await typeMessage("【村長】\n船を 手に 入れたのですか！\n北の 海の むこうに グラマニア城が あります。\n気を つけて いってらっしゃい！"); }
@@ -4818,6 +4925,7 @@ async function checkAction() {
                         if (_yn2 === 0) {
                             partyData.flags.has_ship = true; AudioManager.playSE('item_get');
                             await typeMessage("【船乗り】\nこの船は あなたに さしあげます！\n海の タイルを 自由に うごけますよ！");
+                            await typeMessage("【船乗り】\nせっかくだから 教えてあげましょう。\n北の 海を 渡ると グラマニア城の 孤島があります。\n更に 探検すれば 竜霊の 祠や\n海賊が 潜む 洞窟も あるとか……\n死にたくなければ 万全の 準備を！");
                         } else if (_yn2 === 1 && _ptk) {
                             const _pm = externalMapData[_ptk];
                             partyData.pos.map = _ptk; partyData.pos.x = Math.floor(_pm.width / 2); partyData.pos.y = Math.max(1, _pm.height - 3);
