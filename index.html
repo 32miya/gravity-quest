@@ -2052,6 +2052,19 @@ function generateFieldMapsForGravityQuest() {
     fillEllCond(29, 40, 3, 2, 12);   fillEllCond(36, 44, 3, 2, 12);    fillEllCond(24, 13, 3, 2, 12);
     fillEllCond(62, 17, 3, 2, 12);
     fillEllCond(37, 67, 7, 5, 0);    fillEllCond(43, 63, 4, 3, 0);     // 砂漠エリア
+
+    // === 船必須エリアの陸路切断 ===
+    // 南橋（shrine↔south desert）: 砂漠島・大富豪エリアを船専用に
+    for(let _y=56;_y<=63;_y++) for(let _x=27;_x<=45;_x++) world[_y*GW+_x]=5;
+    // 魔王城への陸路切断（SEアイランドチェーン経由を水チャネルで遮断）
+    // field_4_3 南半分（y=50..60, x=55..74）を水に → 東大陸と魔王島の間に海峡を形成
+    for(let _y=49;_y<=61;_y++) for(let _x=54;_x<=74;_x++) world[_y*GW+_x]=5;
+    // フィールド外周2タイルを強制水（船がマップ端を周回できる）
+    for(let _j=0;_j<2;_j++) for(let _i=0;_i<GW;_i++){
+        world[_j*GW+_i]=5; world[(GH-1-_j)*GW+_i]=5;
+        world[_i*GW+_j]=5; world[_i*GW+(GW-1-_j)]=5;
+    }
+
     // === 各15×15マップ内の陸地連結保証 ===
     // 孤立した陸地パッチを最大連結成分にBFS最短経路の地峡で繋ぐ
     for(let gy=0;gy<5;gy++) for(let gx=0;gx<5;gx++){
@@ -2739,14 +2752,15 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
             // ===== 新マップ: 旅人の里 (12×12) — 旅の案内人・釣り人・神父 =====
             {
                 const _vw=12,_vh=12,_vt=[];
+                // 入口は南壁中央1タイル(6,11)のみ。他の境界は全て壁
                 for(let y=0;y<_vh;y++) for(let x=0;x<_vw;x++){
-                    _vt.push((y===0||y===_vh-1||x===0||x===_vw-1)&&!(y===_vh-1&&(x===5||x===6))?1:0);
+                    _vt.push((y===0||y===_vh-1||x===0||x===_vw-1)&&!(y===_vh-1&&x===6)?1:0);
                 }
                 const _vfp=findLand("map_field_2_1",7,7);
                 const _vret=_vfp?{map:'map_field_2_1',x:_vfp.x,y:_vfp.y+1}:{map:'map_field_2_1',x:7,y:8};
                 externalMapData['map_waypoint_village']={
                     width:_vw,height:_vh,tiles:_vt,encounters:[],
-                    exits:{'5,11':_vret,'6,11':_vret},
+                    exits:{'6,11':_vret},
                     npcs:{
                         '2,2':{id:'npc_guide_north',name:'旅の案内人'},
                         '9,2':{id:'npc_field_fisherman',name:'釣り人'},
@@ -2765,14 +2779,15 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
             // ===== 新マップ: 賢者の祠 (10×10) — 旅の僧侶・案内人・野の賢者 =====
             {
                 const _sw=10,_sh=10,_st=[];
+                // 入口は南壁中央1タイル(5,9)のみ。他の境界は全て壁
                 for(let y=0;y<_sh;y++) for(let x=0;x<_sw;x++){
-                    _st.push((y===0||y===_sh-1||x===0||x===_sw-1)&&!(y===_sh-1&&(x===4||x===5))?1:0);
+                    _st.push((y===0||y===_sh-1||x===0||x===_sw-1)&&!(y===_sh-1&&x===5)?1:0);
                 }
                 const _sfp=findLand("map_field_3_0",5,7);
                 const _sret=_sfp?{map:'map_field_3_0',x:_sfp.x,y:_sfp.y+1}:{map:'map_field_3_0',x:5,y:8};
                 externalMapData['map_sage_shrine']={
                     width:_sw,height:_sh,tiles:_st,encounters:[],
-                    exits:{'4,9':_sret,'5,9':_sret},
+                    exits:{'5,9':_sret},
                     npcs:{
                         '2,2':{id:'npc_field_monk',name:'旅の僧侶'},
                         '7,2':{id:'npc_guide_east_tower',name:'旅の案内人'},
