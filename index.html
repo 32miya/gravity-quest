@@ -4041,60 +4041,47 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
         if (rand < 0.11) fr('rgba(0,0,0,0.18)', fl(rand * 20) + 2, fl(rand * 20) + 2, 3, 2);
     } else if (tile === 21 || tile === 22) { // 下り階段(21) / 上り階段(22) — DQ風石段
         const isDown = tile === 21;
-        // マップ種別カラースキーム
-        const C = demon  ? { bg:'#060210', fl:'#1a0c28', edg:'#c0a0f0', top:'#7050c0', frt:'#301464', mt:'#120624' }
-                : cave   ? { bg:'#08080e', fl:'#14141e', edg:'#848496', top:'#585868', frt:'#2e2e40', mt:'#0e0e18' }
+        // 暖色系の石目カラー（どの画面でも"石"に見えるよう統一）
+        const C = demon  ? { bg:'#0a0010', fl:'#160a22', edg:'#d090e8', top:'#905898', frt:'#44126c', mt:'#0e061a' }
+                : cave   ? { bg:'#060606', fl:'#101010', edg:'#b0a898', top:'#787068', frt:'#3a3430', mt:'#0a0a08' }
                 : (castle || tower)
-                         ? { bg:'#0c1018', fl:'#1e2434', edg:'#98a8ba', top:'#687888', frt:'#364454', mt:'#121e2a' }
-                :          { bg:'#0a0806', fl:'#1e1c12', edg:'#968470', top:'#685a48', frt:'#342a1a', mt:'#100e06' };
+                         ? { bg:'#080808', fl:'#161614', edg:'#c8c0b0', top:'#989080', frt:'#484038', mt:'#0e0e0c' }
+                :          { bg:'#080604', fl:'#161208', edg:'#d0bc98', top:'#988068', frt:'#463c22', mt:'#100e06' };
 
         // 石床（背景）
         fr(C.fl, 0, 0, T, T);
-        ctx.globalAlpha = 0.18;
-        for (let yy = 5; yy < T; yy += 6) fr(C.bg, 0, yy, T, 1);
-        ctx.globalAlpha = 1;
 
-        // 暗い穴（下り=底辺6px、上り=上辺6px）
-        const hH = 6, hY = isDown ? T - hH : 0;
+        // 暗い穴（下り=底7px、上り=上7px）
+        const hH=7, hY = isDown ? T-hH : 0;
         fr(C.bg, 0, hY, T, hH);
-        ctx.globalAlpha = 0.55; fr(C.bg, 0, isDown ? hY - 1 : hY + hH, T, 1); ctx.globalAlpha = 1;
-        ctx.globalAlpha = 0.28; fr(C.bg, 0, isDown ? hY - 2 : hY + hH + 1, T, 1); ctx.globalAlpha = 1;
+        ctx.globalAlpha=0.6; fr(C.bg,0,isDown?hY-1:hY+hH,T,1); ctx.globalAlpha=1;
+        ctx.globalAlpha=0.3; fr(C.bg,0,isDown?hY-2:hY+hH+1,T,1); ctx.globalAlpha=1;
 
-        // 4段の石段（各4px: 1edg + 2top + 1riser）
-        // 下り: si=0(上,幅広=手前) → si=3(下,幅狭=穴前)
-        // 上り: si=0(上,幅狭=穴前) → si=3(下,幅広=手前)
-        // indent は si ごとに 2px ずつ変化、手前の段が最も広い
-        const STEPS = 4, SH = 4, startY = isDown ? 2 : hH;
-        for (let si = 0; si < STEPS; si++) {
-            const sy     = startY + si * SH;
-            const indent = isDown ? si * 2 : (STEPS - 1 - si) * 2;
-            const w      = T - indent * 2;
-            if (w < 4 || sy < 0 || sy + SH > T) continue;
+        // 3段の石段（各5px: 1edg+3top+1frt、側壁なし・幅差8pxで明快に）
+        // 下り: si=0(w=24, y=2) → si=2(w=8, y=12)、暗穴=y=17..23
+        // 上り: si=0(w=8, y=7) → si=2(w=24, y=17)、暗穴=y=0..6
+        const STEPS=3, SH=5, startY = isDown ? 2 : hH;
+        for(let si=0; si<STEPS; si++){
+            const sy     = startY + si*SH;
+            const indent = isDown ? si*4 : (STEPS-1-si)*4;
+            const w      = T - indent*2;
+            if(w<4 || sy<0 || sy+SH>T) continue;
 
-            fr(C.edg, indent, sy,     w, 1);  // トップエッジ（明）
-            fr(C.top, indent, sy + 1, w, 2);  // 上面（中間色）
-            fr(C.frt, indent, sy + 3, w, 1);  // 立ち上がり面（暗）
+            fr(C.edg, indent, sy,   w, 1);  // エッジ（明）
+            fr(C.top, indent, sy+1, w, 3);  // 上面（中）
+            fr(C.frt, indent, sy+4, w, 1);  // 前面（暗）
 
-            // モルタル目地（上面に縦線2本）
-            ctx.globalAlpha = 0.32;
-            fr(C.mt, indent + fl(w * 0.33), sy + 1, 1, 2);
-            fr(C.mt, indent + fl(w * 0.67), sy + 1, 1, 2);
-            ctx.globalAlpha = 1;
-
-            // 段差側壁（前の段との差分に垂直面を描く）
-            if (si > 0) {
-                const prevIndent = isDown ? (si - 1) * 2 : (STEPS - si) * 2;
-                const wallW = Math.abs(indent - prevIndent);
-                const leftX = Math.min(indent, prevIndent);
-                fr(C.frt, leftX,             sy, wallW, SH);
-                fr(C.frt, T - leftX - wallW, sy, wallW, SH);
-            }
+            // 石目（縦モルタル2本）
+            ctx.globalAlpha=0.28;
+            fr(C.mt, indent+fl(w*0.33), sy+1, 1, 3);
+            fr(C.mt, indent+fl(w*0.66), sy+1, 1, 3);
+            ctx.globalAlpha=1;
         }
 
         // タイル縁取り
-        ctx.strokeStyle = C.mt; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.3;
-        ctx.strokeRect(px + 0.5, py + 0.5, T - 1, T - 1);
-        ctx.globalAlpha = 1;
+        ctx.strokeStyle=C.mt; ctx.lineWidth=0.5; ctx.globalAlpha=0.25;
+        ctx.strokeRect(px+0.5,py+0.5,T-1,T-1);
+        ctx.globalAlpha=1;
     } else if (tile === 8) { // ワープ
         fr('#440066', 0, 0, T, T);
         let wr = 9 + Math.sin(now / 380) * 3;
