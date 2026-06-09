@@ -2503,8 +2503,7 @@ function generateDQStyleMaps() {
         if (_twrP) {
             externalMapData['map_field_4_0'].tiles[_twrP.y*15+_twrP.x] = 22;
             externalMapData['map_field_4_0'].exits[_twrP.k] = { map: 'map_tower_1f', x: 7, y: 12 };
-            const _ng = `${_twrP.x},${_twrP.y-1}`;
-            if (_twrP.y > 1 && !externalMapData['map_field_4_0'].npcs[_ng]) externalMapData['map_field_4_0'].npcs[_ng] = { id: 'npc_tower_gate', name: '天空の塔' };
+            // npc_tower_gate は削除: 塔のグラフィックタイルに直接入れるように変更
         }
     }
 
@@ -2722,8 +2721,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 _placeNpc(_tM,"npc_story_citizen","心配性の市民",Math.floor(_tM.height*0.65),Math.floor(_tM.width*0.3));
             }
             // veteran は城に配置（後で castle NPC セクションで処理）
-            if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["4,8"] = { id: "npc_story_wounded", name: "傷ついた旅人" };
-            if (externalMapData["map_field_4_0"]) externalMapData["map_field_4_0"].npcs["10,5"] = { id: "npc_story_hermit", name: "野の賢者" };
+            // npc_story_wounded / npc_story_hermit → 新マップへ移動（フィールド露出を排除）
             // 種アイテムを各フィールドマップに配置
             if (externalMapData["map_field_0_0"]) externalMapData["map_field_0_0"].npcs["8,8"] = { id: "obj_seed_speed", name: "光る地面" };
             if (externalMapData["map_field_1_2"]) externalMapData["map_field_1_2"].npcs["9,5"] = { id: "obj_seed_def", name: "光る地面" };
@@ -2738,14 +2736,55 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 _placeNpc(_tM2,"npc_town_bard",   "旅の吟遊詩人", Math.floor(_tM2.height*0.7), Math.floor(_tM2.width*0.7));
             }
             { const _cK2=Object.keys(externalMapData).find(k=>k.includes('castle_01')&&!k.includes('demon')); const _cM2=_cK2&&externalMapData[_cK2]; if(_cM2){ _placeNpc(_cM2,"npc_story_veteran","歴戦の兵士",Math.floor(_cM2.height*0.6),Math.floor(_cM2.width*0.4)); _placeNpc(_cM2,"npc_town_elder","お婆さん",Math.floor(_cM2.height*0.7),Math.floor(_cM2.width*0.6)); _placeNpc(_cM2,"npc_town_merchant","旅の商人",Math.floor(_cM2.height*0.65),Math.floor(_cM2.width*0.3)); } }
-            // フィールドNPC追加
-            { let _p=findLand("map_field_1_1",5,10); if(_p&&externalMapData["map_field_1_1"]) externalMapData["map_field_1_1"].npcs[_p.k]={ id:"npc_field_fisherman", name:"釣り人" }; }
-            { let _p=findLand("map_field_3_2",8,8);  if(_p&&externalMapData["map_field_3_2"]) externalMapData["map_field_3_2"].npcs[_p.k]={ id:"npc_field_monk",      name:"旅の僧侶" }; }
-            // ストーリー導線ガイドNPC（の字ルート）
-            { let _p=findLand("map_field_2_1",7,7);  if(_p&&externalMapData["map_field_2_1"]) externalMapData["map_field_2_1"].npcs[_p.k]={ id:"npc_guide_north",       name:"旅の案内人" }; }
-            { let _p=findLand("map_field_3_0",5,7);  if(_p&&externalMapData["map_field_3_0"]) externalMapData["map_field_3_0"].npcs[_p.k]={ id:"npc_guide_east_tower",  name:"旅の案内人" }; }
-            { let _p=findLand("map_field_4_1",7,10); if(_p&&externalMapData["map_field_4_1"]) externalMapData["map_field_4_1"].npcs[_p.k]={ id:"npc_guide_south",       name:"旅の案内人" }; }
-            { let _p=findLand("map_field_3_3",5,5);  if(_p&&externalMapData["map_field_3_3"]) externalMapData["map_field_3_3"].npcs[_p.k]={ id:"npc_guide_demon",       name:"旅の案内人" }; }
+            // ===== 新マップ: 旅人の里 (12×12) — 旅の案内人・釣り人・神父 =====
+            {
+                const _vw=12,_vh=12,_vt=[];
+                for(let y=0;y<_vh;y++) for(let x=0;x<_vw;x++){
+                    _vt.push((y===0||y===_vh-1||x===0||x===_vw-1)&&!(y===_vh-1&&(x===5||x===6))?1:0);
+                }
+                const _vfp=findLand("map_field_2_1",7,7);
+                const _vret=_vfp?{map:'map_field_2_1',x:_vfp.x,y:_vfp.y+1}:{map:'map_field_2_1',x:7,y:8};
+                externalMapData['map_waypoint_village']={
+                    width:_vw,height:_vh,tiles:_vt,encounters:[],
+                    exits:{'5,11':_vret,'6,11':_vret},
+                    npcs:{
+                        '2,2':{id:'npc_guide_north',name:'旅の案内人'},
+                        '9,2':{id:'npc_field_fisherman',name:'釣り人'},
+                        '2,5':{id:'npc_guide_south',name:'旅の案内人'},
+                        '9,5':{id:'npc_guide_demon',name:'旅の案内人'},
+                        '5,8':{id:'npc_story_wounded',name:'傷ついた旅人'},
+                        '6,3':{id:'npc_priest',name:'神父'},
+                    },
+                    name:'旅人の里'
+                };
+                if(_vfp&&externalMapData["map_field_2_1"]){
+                    externalMapData["map_field_2_1"].tiles[_vfp.y*15+_vfp.x]=21;
+                    externalMapData["map_field_2_1"].exits[_vfp.k]={map:'map_waypoint_village',x:6,y:10};
+                }
+            }
+            // ===== 新マップ: 賢者の祠 (10×10) — 旅の僧侶・案内人・野の賢者 =====
+            {
+                const _sw=10,_sh=10,_st=[];
+                for(let y=0;y<_sh;y++) for(let x=0;x<_sw;x++){
+                    _st.push((y===0||y===_sh-1||x===0||x===_sw-1)&&!(y===_sh-1&&(x===4||x===5))?1:0);
+                }
+                const _sfp=findLand("map_field_3_0",5,7);
+                const _sret=_sfp?{map:'map_field_3_0',x:_sfp.x,y:_sfp.y+1}:{map:'map_field_3_0',x:5,y:8};
+                externalMapData['map_sage_shrine']={
+                    width:_sw,height:_sh,tiles:_st,encounters:[],
+                    exits:{'4,9':_sret,'5,9':_sret},
+                    npcs:{
+                        '2,2':{id:'npc_field_monk',name:'旅の僧侶'},
+                        '7,2':{id:'npc_guide_east_tower',name:'旅の案内人'},
+                        '4,5':{id:'npc_story_hermit',name:'野の賢者'},
+                    },
+                    name:'賢者の祠'
+                };
+                if(_sfp&&externalMapData["map_field_3_0"]){
+                    externalMapData["map_field_3_0"].tiles[_sfp.y*15+_sfp.x]=21;
+                    externalMapData["map_field_3_0"].exits[_sfp.k]={map:'map_sage_shrine',x:5,y:8};
+                }
+            }
 
         // ダーマ神殿入口（フィールドに建物出口を設置）
         {
@@ -4135,7 +4174,9 @@ function drawMap() {
             } else if (tile === 21) { // フィールドの町出口: 草地として描画（建物グラフィックを上に重ねる）
                 const _ftk = externalImages['fieldGrass'] ? 'fieldGrass' : (externalImages['grass'] ? 'grass' : null);
                 if (_ftk) bgImg = externalImages[_ftk]; else { bgImg = null; color = '#3a823f'; }
-            } else if (tile === 22) { bgImg = null; color = '#aaa'; if(externalImages['fieldShrineIcon']) fgImg = externalImages['fieldShrineIcon']; else if(externalImages['caveIcon']) fgImg = externalImages['caveIcon']; else if(externalImages['shrineIcon']) fgImg = externalImages['shrineIcon'];
+            } else if (tile === 22) { // フィールドの洞窟/塔/祠出口: 草地として描画（建物グラフィックを上に重ねる）
+                const _ftk2 = externalImages['fieldGrass'] ? 'fieldGrass' : (externalImages['grass'] ? 'grass' : null);
+                if (_ftk2) bgImg = externalImages[_ftk2]; else { bgImg = null; color = '#3a823f'; }
             } else if (tile === 23) { bgImg = null; color = '#cff'; }
 
             const _rand = getMapRandom(x, y, _rMapId);
