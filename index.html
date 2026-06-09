@@ -2847,6 +2847,24 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
         fixExternalMapConnections();
         fixMapExits();
         fixAllExitLandings();
+        // === 港町入口を東大陸南部(field_4_2)に確実配置 ===
+        // 天空の塔クリア後に南へ歩けば必ず到達できる位置（陸路保証）
+        {
+            const _portKey = Object.keys(externalMapData).find(k => k.includes('port') && !k.startsWith('map_field'));
+            const _f42 = externalMapData['map_field_4_2'];
+            if (_portKey && _f42) {
+                const _hasPortEntry = Object.values(_f42.exits||{}).some(e=>(e.map||'').includes('port'));
+                if (!_hasPortEntry) {
+                    // field_4_2 南側（y=10..13）の陸地を探す
+                    const _pp42 = findLand('map_field_4_2', 7, 12);
+                    if (_pp42) {
+                        _f42.tiles[_pp42.y*_f42.width+_pp42.x] = 21;
+                        const _pm = externalMapData[_portKey];
+                        _f42.exits[_pp42.k] = {map:_portKey, x:Math.floor((_pm||{width:10}).width/2), y:Math.max(1,((_pm||{height:10}).height)-3)};
+                    }
+                }
+            }
+        }
         // 東の果てマップのバザー入口を3コマ下に移動
         { const _em = externalMapData && externalMapData["map_field_east_2"]; if (_em) {
             const _bNk = Object.keys(_em.npcs).find(k => { const id = _em.npcs[k].id||''; return id.includes('bazaar')||id.includes('market'); });
@@ -5460,24 +5478,32 @@ async function checkAction() {
                 if (npc.id === 'npc_port_town') {
                     const _ptk = Object.keys(externalMapData).find(k => k.includes('port'));
                     const _hasShip2 = partyData.flags && partyData.flags.has_ship;
+                    // 船入手ゲート: 天空の塔クリア or LV15以上（迂回防止の二重条件）
                     const _avgLv = Math.floor(partyData.members.reduce((s,m) => s+(m.lv||1), 0) / partyData.members.length);
-                    const _canGetShip = !_hasShip2 && _avgLv >= 12;
+                    const _towerCleared = partyData.flags && (partyData.flags.flag_tower_cleared || partyData.flags.flag_dungeon_cleared && _avgLv >= 15);
+                    const _canGetShip = !_hasShip2 && _towerCleared;
                     if (_hasShip2) {
                         await typeMessage("【船乗り】\nいってらっしゃい！\n船は もう あなたのものです。\nたくみに つかいこなしてください！");
                     } else if (_canGetShip) {
-                        await typeMessage("【船乗り】\nおお！ このチカラなら\n大海原を わたれるでしょう！\n船を お使いになりますか？");
+                        await typeMessage("【船乗り】\nおお！ 天空の 守護者を 倒した\n実力者が 来たか……！\n大海原を わたれる 力が あるとお見受けします。\n船を お使いになりますか？");
                         const _yn2 = await selectMenu(["船を手に入れる", "港町に入る", "やめる"], 'cmd-window', 0, true);
                         if (_yn2 === 0) {
                             partyData.flags.has_ship = true; AudioManager.playSE('item_get');
                             await typeMessage("【船乗り】\nこの船は あなたに さしあげます！\n海の タイルを 自由に うごけますよ！");
-                            await typeMessage("【船乗り】\nせっかくだから 教えてあげましょう。\n北の 海を 渡ると グラマニア城の 孤島があります。\n更に 探検すれば 竜霊の 祠や\n海賊が 潜む 洞窟も あるとか……\n死にたくなければ 万全の 準備を！");
+                            await typeMessage("【船乗り】\nせっかくだから 教えてあげましょう。\n各地の 孤島には 竜霊の 祠や\n海賊が 潜む 洞窟も あるとか……\n南の 海の 果てには 魔王の 城が。\n死にたくなければ 万全の 準備を！");
                         } else if (_yn2 === 1 && _ptk) {
                             const _pm = externalMapData[_ptk];
                             partyData.pos.map = _ptk; partyData.pos.x = Math.floor(_pm.width / 2); partyData.pos.y = Math.max(1, _pm.height - 3);
                             currentMap = await loadExternalData('map-' + _ptk); moveHistory = []; drawMap(); updateBGM();
                         } else { await typeMessage("またの おこしを おまちしております！"); }
                     } else {
-                        await typeMessage("【船乗り】\nここから先は 港町ポートピアです。\nはいりますか？");
+                        // 塔未クリアの場合: 条件と道筋を教える
+                        if (!partyData.flags.flag_dungeon_cleared) {
+                            await typeMessage("【船乗り】\nおや？ まだ 旅の 初めの 方ですね。\n北の 試練の 洞窟で\n実力を 試してから また 来てください。");
+                        } else {
+                            await typeMessage("【船乗り】\nあなたの 実力では まだ 船を\nあつかえないかもしれません……\n東の 天空の 塔の 守護者を\n倒してきたら 船を お貸しできますよ。");
+                        }
+                        await typeMessage("【船乗り】\nただ 港町への ご案内は できますが……\nはいりますか？");
                         const _yn = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
                         if (_yn === 0 && _ptk) {
                             const _pm = externalMapData[_ptk];
