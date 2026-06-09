@@ -4738,7 +4738,7 @@ async function checkAction() {
             if (partyData.flags.last_boss_defeated) {
                 if (npc.id.includes('maou_castle_gate')) { partyData.flags.gate_removed = true; delete currentMap.npcs[key]; state = 'FIELD'; hideAllWindows(); drawMap(); return; }
                 let _is2nd_end = partyData.flags.is_second_loop;
-                if (npc.id.includes('king')) {
+                if (npc.id.includes('king') && npc.id !== 'boss_pirate_king') {
                     if (_is2nd_end) {
                         // 2周目真エンディング後の城王NPC = 聖王グラードの魂が宿る像
                         AudioManager.playBGM('ending');
@@ -4947,7 +4947,7 @@ async function checkAction() {
             }
 
             // ★王様（魔王討伐前の初回・進行状況別）
-            if (npc.id && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && !partyData.flags.last_boss_defeated) {
+            if (npc.id && npc.id !== 'boss_pirate_king' && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && !partyData.flags.last_boss_defeated) {
                 if (!partyData.flags.flag_king_met) {
                     await typeMessage("【国王グラード】\nおお……きたか。\nよくぞ グラマニア城に 参った……\nずっと 待っておったぞ。");
                     await typeMessage("【国王グラード】\n今から 一年前……\n世界の東に 大魔王が 目覚め\n各地を 闇に 染めはじめた。\nお前の ような 力が……必要なのじゃ。");
@@ -4966,7 +4966,7 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             // ★国王グラード（魔王討伐後）
-            if (npc.id && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && partyData.flags.last_boss_defeated) {
+            if (npc.id && npc.id !== 'boss_pirate_king' && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && partyData.flags.last_boss_defeated) {
                 if (!partyData.flags.flag_king_ending_told) {
                     await typeMessage("【国王グラード】\nおお……勇者よ！\nよくぞ 帰ってきた！！\nそなたたちが 魔王を 倒してくれたのか！！");
                     await typeMessage("【国王グラード】\n世界中から 歓声が 届いておる。\n魔物の 群れが 消え、\n民の 顔に 笑顔が 戻ったと！");
