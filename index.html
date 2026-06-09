@@ -3403,7 +3403,7 @@ function getEnemyImageHtml(enemyId) {
     let mData = masterData.monsters[enemyId];
     let isLarge = enemyId.includes('master_dragon') || enemyId.includes('hidden_boss') || enemyId.includes('dragon_god') ||
                   enemyId.includes('_final') || enemyId.includes('demon') || enemyId.includes('maou') ||
-                  enemyId === 'npc_boss_maou' || enemyId === 'boss_desert_killer' || enemyId === 'boss_trial_phantom' || enemyId === 'boss_secret_traveler' || enemyId === 'boss_sky';
+                  enemyId === 'npc_boss_maou' || enemyId === 'boss_desert_killer' || enemyId === 'boss_trial_phantom' || enemyId === 'boss_secret_traveler' || enemyId === 'boss_sky' || enemyId === 'boss_dungeon';
     if (mData && (mData.name.includes('グラ王') || mData.name.includes('最終形態'))) isLarge = true;
     if (isLarge) cls = "enemy-img enemy-img-large";
 
@@ -3515,6 +3515,99 @@ function getEnemyImageHtml(enemyId) {
     else if(enemyId === 'boss_trial_phantom') imgKey = 'boss_trial_phantom';
     else if(enemyId === 'boss_secret_traveler') imgKey = 'boss_trial_phantom';
 
+    // ===== 元・王宮騎士の英霊 — フルアーマー霊体騎士 =====
+    if (enemyId === 'boss_dungeon') {
+        return `<svg class="${cls}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 165" style="overflow:visible;">
+<defs>
+<linearGradient id="knb" x1="20%" y1="0%" x2="80%" y2="100%"><stop offset="0%" stop-color="#b0c8e8"/><stop offset="45%" stop-color="#6080b0"/><stop offset="100%" stop-color="#2c4070"/></linearGradient>
+<linearGradient id="knh" x1="0%" y1="0%" x2="55%" y2="100%"><stop offset="0%" stop-color="#d4e6f8"/><stop offset="100%" stop-color="#8aaac8"/></linearGradient>
+<radialGradient id="kna" cx="50%" cy="35%" r="65%"><stop offset="0%" stop-color="#90c0ff" stop-opacity="0.48"/><stop offset="100%" stop-color="#1838a0" stop-opacity="0"/></radialGradient>
+<radialGradient id="kne" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#b0e8ff"/><stop offset="55%" stop-color="#3080e0"/><stop offset="100%" stop-color="#0020a0"/></radialGradient>
+<linearGradient id="kns" x1="0%" y1="0%" x2="35%" y2="100%"><stop offset="0%" stop-color="#eaf2ff"/><stop offset="50%" stop-color="#aac0e0"/><stop offset="100%" stop-color="#607098"/></linearGradient>
+<filter id="kngl"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<!-- 霊体オーラ -->
+<ellipse cx="70" cy="88" rx="68" ry="78" fill="url(#kna)"/>
+<!-- 浮遊する光粒 -->
+<circle cx="12" cy="38" r="3.5" fill="#88c0ff" opacity="0.55"/><circle cx="8" cy="62" r="2.5" fill="#aad4ff" opacity="0.45"/><circle cx="20" cy="16" r="2" fill="#99bbff" opacity="0.6"/>
+<circle cx="128" cy="30" r="3" fill="#88b0ff" opacity="0.5"/><circle cx="132" cy="56" r="2" fill="#aaccff" opacity="0.45"/><circle cx="122" cy="12" r="2.5" fill="#bbddff" opacity="0.55"/>
+<circle cx="30" cy="150" r="2.5" fill="#88b8ff" opacity="0.4"/><circle cx="112" cy="154" r="2" fill="#99ccff" opacity="0.4"/>
+<!-- ==大剣（左側・斜め上構え）== -->
+<g transform="rotate(10,30,75)">
+<polygon points="22,6 28,6 32,92 18,92" fill="url(#kns)" stroke="#4060a0" stroke-width="1.8" stroke-linejoin="round"/>
+<line x1="25" y1="10" x2="25" y2="89" stroke="#d8ecff" stroke-width="1.4" opacity="0.9"/>
+<polygon points="18,92 32,92 25,110" fill="url(#kns)" stroke="#4060a0" stroke-width="1.8"/>
+<rect x="9" y="89" width="32" height="8" rx="3" fill="#7090b8" stroke="#3050a0" stroke-width="2.2"/>
+<rect x="11" y="90" width="28" height="5" rx="2" fill="#90a8cc"/>
+<rect x="21" y="97" width="10" height="26" rx="3" fill="#4c3018" stroke="#302010" stroke-width="1.5"/>
+<rect x="23" y="99" width="6" height="22" rx="2" fill="#624020"/>
+<ellipse cx="26" cy="125" rx="9" ry="6" fill="#7090b8" stroke="#3050a0" stroke-width="2"/>
+<line x1="25" y1="8" x2="25" y2="90" stroke="rgba(220,240,255,0.65)" stroke-width="4" filter="url(#kngl)"/>
+</g>
+<!-- ==脚部(グリーブ)== -->
+<path d="M50,118 Q44,124 42,140 Q42,152 52,156 Q62,158 66,146 Q68,134 60,120 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2.2"/>
+<path d="M52,120 Q47,126 45,140 Q46,150 53,154 Q61,155 64,144 Q66,133 58,122 Z" fill="url(#knh)"/>
+<path d="M40,148 Q40,157 52,159 Q65,160 67,152 Q65,146 53,145 Q43,146 40,148 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="1.8"/>
+<path d="M82,118 Q88,124 90,140 Q90,152 80,156 Q70,158 66,146 Q64,134 72,120 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2.2"/>
+<path d="M80,120 Q85,126 87,140 Q86,150 79,154 Q71,155 68,144 Q66,133 74,122 Z" fill="url(#knh)"/>
+<path d="M92,148 Q92,157 80,159 Q67,160 65,152 Q67,146 79,145 Q89,146 92,148 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="1.8"/>
+<!-- ==腰・タサード== -->
+<path d="M46,106 Q42,114 42,120 Q56,126 66,126 Q76,126 90,120 Q90,114 86,106 Q76,112 66,112 Q56,112 46,106 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2.2"/>
+<path d="M48,108 Q44,116 44,118 Q58,124 66,124 Q74,124 88,118 Q88,116 84,108 Q74,112 66,112 Q58,112 48,108 Z" fill="url(#knh)"/>
+<rect x="45" y="110" width="42" height="4" rx="2" fill="#6080a8" stroke="#3050a0" stroke-width="1.2"/>
+<!-- ==胸甲（ブレストプレート）== -->
+<path d="M42,70 Q38,80 38,93 Q38,106 42,112 Q56,116 66,116 Q76,116 90,112 Q94,106 94,93 Q94,80 90,70 Q76,63 66,63 Q56,63 42,70 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2.8" stroke-linejoin="round"/>
+<path d="M44,72 Q41,82 41,93 Q41,104 45,110 Q58,114 66,114 Q74,114 87,110 Q91,104 91,93 Q91,82 88,72 Q76,65 66,65 Q56,65 44,72 Z" fill="url(#knh)"/>
+<!-- 胸の聖十字 -->
+<line x1="66" y1="70" x2="66" y2="108" stroke="#c8e0f8" stroke-width="3.2" opacity="0.92"/>
+<line x1="49" y1="90" x2="83" y2="90" stroke="#c8e0f8" stroke-width="3.2" opacity="0.92"/>
+<circle cx="66" cy="90" r="5.5" fill="rgba(180,230,255,0.72)" filter="url(#kngl)" stroke="#8ab0e0" stroke-width="1.5"/>
+<circle cx="66" cy="90" r="3" fill="rgba(220,244,255,0.95)"/>
+<line x1="54" y1="72" x2="52" y2="108" stroke="rgba(60,100,180,0.3)" stroke-width="1.2"/>
+<line x1="78" y1="72" x2="80" y2="108" stroke="rgba(60,100,180,0.3)" stroke-width="1.2"/>
+<!-- ==肩（ポールドロン）== -->
+<path d="M40,70 Q28,62 22,70 Q18,79 22,87 Q30,94 42,87 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M40,72 Q30,65 25,72 Q21,80 25,86 Q32,92 42,85 Z" fill="url(#knh)"/>
+<path d="M22,74 Q26,62 40,70" fill="none" stroke="#8aacce" stroke-width="1.8"/>
+<path d="M92,70 Q104,62 110,70 Q114,79 110,87 Q102,94 90,87 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M92,72 Q102,65 107,72 Q111,80 107,86 Q100,92 90,85 Z" fill="url(#knh)"/>
+<path d="M110,74 Q106,62 92,70" fill="none" stroke="#8aacce" stroke-width="1.8"/>
+<!-- ==腕（ヴァンブレース）== -->
+<path d="M42,85 Q32,89 26,98 Q24,108 28,114 Q36,118 46,112 Q50,104 46,85 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2"/>
+<path d="M44,87 Q35,91 29,99 Q27,108 31,113 Q38,116 46,110 Q49,103 47,87 Z" fill="url(#knh)"/>
+<path d="M24,112 Q20,118 22,124 Q27,128 36,126 Q45,124 47,118 Q45,112 36,112 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2"/>
+<path d="M90,85 Q100,89 106,98 Q108,108 104,114 Q96,118 86,112 Q82,104 86,85 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2"/>
+<path d="M88,87 Q97,91 103,99 Q105,108 101,113 Q94,116 86,110 Q83,103 85,87 Z" fill="url(#knh)"/>
+<path d="M108,112 Q112,118 110,124 Q105,128 96,126 Q87,124 85,118 Q87,112 96,112 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2"/>
+<!-- ==首== -->
+<path d="M54,60 Q52,68 52,70 Q60,74 66,74 Q72,74 80,70 Q80,68 78,60 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2"/>
+<!-- ==頭部（兜）== -->
+<path d="M47,46 Q44,22 66,12 Q88,4 100,22 Q108,38 104,52 Q94,64 66,66 Q40,64 47,46 Z" fill="url(#knb)" stroke="#2c4878" stroke-width="2.8" stroke-linejoin="round"/>
+<path d="M49,48 Q47,26 66,16 Q86,8 96,24 Q104,38 100,51 Q91,62 66,64 Q43,62 49,48 Z" fill="url(#knh)"/>
+<!-- バイザー（暗い面窓） -->
+<path d="M50,41 Q48,32 56,27 Q66,22 76,27 Q84,32 82,41 Q78,48 66,48 Q54,48 50,41 Z" fill="#0c1828" stroke="#2c4878" stroke-width="2.2"/>
+<path d="M52,40 Q50,33 57,28 Q66,25 75,28 Q82,33 80,40 Q77,47 66,47 Q55,47 52,40 Z" fill="#101e30"/>
+<line x1="52" y1="39" x2="80" y2="39" stroke="#1a2838" stroke-width="1.2" opacity="0.7"/>
+<!-- 眼光（青白く輝く両目） -->
+<ellipse cx="60" cy="38" rx="6.5" ry="5.5" fill="url(#kne)" filter="url(#kngl)"/>
+<ellipse cx="72" cy="38" rx="6.5" ry="5.5" fill="url(#kne)" filter="url(#kngl)"/>
+<ellipse cx="59" cy="37" rx="3" ry="2.5" fill="rgba(220,244,255,0.95)"/>
+<ellipse cx="71" cy="37" rx="3" ry="2.5" fill="rgba(220,244,255,0.95)"/>
+<!-- 鼻当て -->
+<rect x="64" y="35" width="4" height="14" rx="2" fill="#5070a0" stroke="#2c4878" stroke-width="1.2"/>
+<!-- 頬当て -->
+<path d="M47,44 Q43,52 43,60 Q49,64 55,64" fill="none" stroke="#5878a8" stroke-width="3" stroke-linecap="round"/>
+<path d="M85,44 Q89,52 89,60 Q83,64 77,64" fill="none" stroke="#5878a8" stroke-width="3" stroke-linecap="round"/>
+<!-- 兜クレスト（上部飾り） -->
+<path d="M62,12 Q58,2 51,6 Q47,10 54,15" fill="#4868a8" stroke="#2c4878" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M70,12 Q74,0 81,4 Q85,8 78,14" fill="#5878b8" stroke="#2c4878" stroke-width="1.5" stroke-linejoin="round"/>
+<line x1="66" y1="12" x2="66" y2="1" stroke="#6888c8" stroke-width="2.5" stroke-linecap="round"/>
+<!-- 霊体縁光 -->
+<path d="M42,70 Q38,80 38,93 Q38,106 42,112" fill="none" stroke="rgba(140,200,255,0.28)" stroke-width="4.5" filter="url(#kngl)"/>
+<path d="M90,70 Q94,80 94,93 Q94,106 90,112" fill="none" stroke="rgba(140,200,255,0.28)" stroke-width="4.5" filter="url(#kngl)"/>
+<ellipse cx="66" cy="85" rx="50" ry="68" fill="rgba(80,130,255,0.05)"/>
+</svg>`;
+    }
     // ===== 竜霊グラドス — 霊体の守護竜（鳥山明風） =====
     if (enemyId === 'boss_dragon_spirit') {
         return `<svg class="${cls}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 165" style="overflow:visible;">
@@ -4075,56 +4168,53 @@ function drawMap() {
                 else if(chestImg && chestImg.complete && chestImg.naturalHeight > 0) { ctx.drawImage(chestImg, px, py, TILE_SIZE, TILE_SIZE); } else { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(isOpened ? "🧳" : "🎁", px + TILE_SIZE/2, py + TILE_SIZE/2); } ctx.globalAlpha = 1.0;
             } else if(npc.id === 'boss_dungeon') {
                 let _bcx = px+TILE_SIZE/2, _bcy = py+TILE_SIZE/2;
-                if (externalImages['skeleton'] && externalImages['skeleton'].complete && externalImages['skeleton'].naturalHeight > 0) { drawSpriteLocal(ctx, externalImages['skeleton'], px, py, 52); }
-                else {
-                    const _bs = TILE_SIZE, _now2 = Date.now();
-                    // Pulsing aura
-                    const _ap = 0.45 + Math.sin(_now2/400)*0.15;
-                    const _bg2 = ctx.createRadialGradient(_bcx,_bcy,0,_bcx,_bcy,_bs*0.9);
-                    _bg2.addColorStop(0,`rgba(160,0,220,${_ap})`); _bg2.addColorStop(1,'rgba(60,0,100,0)');
-                    ctx.fillStyle=_bg2; ctx.beginPath(); ctx.arc(_bcx,_bcy,_bs*0.9,0,Math.PI*2); ctx.fill();
-                    // Armored torso
-                    ctx.fillStyle='#2a1230'; ctx.fillRect(_bcx-9,_bcy-2,18,15);
-                    ctx.fillStyle='#3c1a44'; ctx.fillRect(_bcx-8,_bcy-1,16,13);
-                    // Plate details
-                    ctx.strokeStyle='#6a3888'; ctx.lineWidth=0.7; ctx.strokeRect(_bcx-7,_bcy,14,10);
-                    ctx.beginPath(); ctx.moveTo(_bcx,_bcy); ctx.lineTo(_bcx,_bcy+10); ctx.stroke();
-                    // Shoulder pauldrons
-                    ctx.fillStyle='#5c2868'; ctx.fillRect(_bcx-14,_bcy-2,6,9); ctx.fillRect(_bcx+8,_bcy-2,6,9);
-                    ctx.fillStyle='#7a3888'; ctx.fillRect(_bcx-13,_bcy-2,4,3); ctx.fillRect(_bcx+9,_bcy-2,4,3);
-                    // Skull head
-                    ctx.fillStyle='#d0c0a0'; ctx.beginPath(); ctx.arc(_bcx,_bcy-14,10,0,Math.PI*2); ctx.fill();
-                    ctx.fillStyle='#b8a888'; ctx.beginPath(); ctx.arc(_bcx,_bcy-13,8,0,Math.PI*2); ctx.fill();
-                    // Eye sockets
-                    ctx.fillStyle='#100018';
-                    ctx.beginPath(); ctx.ellipse(_bcx-3.5,_bcy-15,3.2,3.8,0,0,Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.ellipse(_bcx+3.5,_bcy-15,3.2,3.8,0,0,Math.PI*2); ctx.fill();
-                    // Glowing red eyes
-                    const _eg = 0.8 + Math.sin(_now2/300)*0.2;
-                    ctx.fillStyle=`rgba(255,30,30,${_eg})`;
-                    ctx.beginPath(); ctx.ellipse(_bcx-3.5,_bcy-15,1.8,2.2,0,0,Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.ellipse(_bcx+3.5,_bcy-15,1.8,2.2,0,0,Math.PI*2); ctx.fill();
-                    // Eye glow halos
-                    ctx.fillStyle=`rgba(255,0,0,${_eg*0.3})`;
-                    ctx.beginPath(); ctx.arc(_bcx-3.5,_bcy-15,4,0,Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(_bcx+3.5,_bcy-15,4,0,Math.PI*2); ctx.fill();
-                    // Teeth
-                    ctx.fillStyle='#c8b898'; ctx.fillRect(_bcx-6,_bcy-7,12,4);
-                    ctx.fillStyle='#180020'; for(let _ti=0;_ti<4;_ti++) ctx.fillRect(_bcx-5+_ti*3,_bcy-4,2,4);
-                    // Horns
-                    ctx.fillStyle='#c03020';
-                    ctx.beginPath(); ctx.moveTo(_bcx-10,_bcy-20); ctx.lineTo(_bcx-7,_bcy-30); ctx.lineTo(_bcx-4,_bcy-20); ctx.closePath(); ctx.fill();
-                    ctx.beginPath(); ctx.moveTo(_bcx-2,_bcy-21); ctx.lineTo(_bcx,_bcy-32); ctx.lineTo(_bcx+2,_bcy-21); ctx.closePath(); ctx.fill();
-                    ctx.beginPath(); ctx.moveTo(_bcx+4,_bcy-20); ctx.lineTo(_bcx+7,_bcy-30); ctx.lineTo(_bcx+10,_bcy-20); ctx.closePath(); ctx.fill();
-                    ctx.fillStyle='#e04040';
-                    ctx.beginPath(); ctx.moveTo(_bcx-9,_bcy-21); ctx.lineTo(_bcx-7,_bcy-28); ctx.lineTo(_bcx-5,_bcy-21); ctx.closePath(); ctx.fill();
-                    ctx.beginPath(); ctx.moveTo(_bcx+5,_bcy-21); ctx.lineTo(_bcx+7,_bcy-28); ctx.lineTo(_bcx+9,_bcy-21); ctx.closePath(); ctx.fill();
-                    // Scythe weapon
-                    ctx.strokeStyle='#8888cc'; ctx.lineWidth=1.5;
-                    ctx.beginPath(); ctx.moveTo(_bcx+10,_bcy-10); ctx.lineTo(_bcx+16,_bcy+10); ctx.stroke();
-                    ctx.fillStyle='#9898d8';
-                    ctx.beginPath(); ctx.moveTo(_bcx+16,_bcy+10); ctx.quadraticCurveTo(_bcx+24,_bcy-10,_bcx+11,_bcy-12); ctx.lineTo(_bcx+10,_bcy-10); ctx.closePath(); ctx.fill();
-                    ctx.strokeStyle='rgba(160,160,255,0.5)'; ctx.lineWidth=0.5; ctx.stroke();
+                {
+                    // 元・王宮騎士の英霊 — フィールドスプライト（青銀甲冑の霊体騎士）
+                    const _bs=TILE_SIZE,_now2=Date.now();
+                    // 霊体オーラ（青白、脈動）
+                    const _ap=0.36+Math.sin(_now2/500)*0.14;
+                    const _rg=ctx.createRadialGradient(_bcx,_bcy-4,0,_bcx,_bcy-4,_bs);
+                    _rg.addColorStop(0,`rgba(100,180,255,${_ap})`);_rg.addColorStop(1,'rgba(10,30,110,0)');
+                    ctx.fillStyle=_rg;ctx.beginPath();ctx.arc(_bcx,_bcy-4,_bs,0,Math.PI*2);ctx.fill();
+                    // 浮遊する光の粒
+                    ctx.fillStyle=`rgba(160,220,255,${0.62+Math.sin(_now2/320)*0.3})`;
+                    for(let _i=0;_i<4;_i++){const _a=(_now2/750+_i*1.57)%(Math.PI*2);ctx.beginPath();ctx.arc(_bcx+Math.cos(_a)*10,_bcy-4+Math.sin(_a)*7,1.2,0,Math.PI*2);ctx.fill();}
+                    // 兜の上部ドーム
+                    ctx.fillStyle='#6888b8';ctx.beginPath();ctx.arc(_bcx,_bcy-14,8,Math.PI,0);ctx.fill();
+                    ctx.fillStyle='#8aaad4';ctx.beginPath();ctx.arc(_bcx-2,_bcy-16,5,Math.PI*1.1,0);ctx.fill();
+                    // 兜の縁金
+                    ctx.fillStyle='#8098c0';ctx.fillRect(_bcx-9,_bcy-14,18,3);
+                    // バイザー（暗い面窓）
+                    ctx.fillStyle='#0e1622';ctx.fillRect(_bcx-7,_bcy-11,14,6);
+                    ctx.fillStyle='#1a2030';ctx.fillRect(_bcx-6,_bcy-10,12,4);
+                    // 青い眼光
+                    const _ey=0.88+Math.sin(_now2/280)*0.12;
+                    ctx.fillStyle=`rgba(60,160,255,${_ey})`;
+                    ctx.beginPath();ctx.arc(_bcx-3,_bcy-8,2.2,0,Math.PI*2);ctx.fill();
+                    ctx.beginPath();ctx.arc(_bcx+3,_bcy-8,2.2,0,Math.PI*2);ctx.fill();
+                    ctx.fillStyle=`rgba(100,200,255,${_ey*0.32})`;
+                    ctx.beginPath();ctx.arc(_bcx-3,_bcy-8,4.5,0,Math.PI*2);ctx.fill();
+                    ctx.beginPath();ctx.arc(_bcx+3,_bcy-8,4.5,0,Math.PI*2);ctx.fill();
+                    // 顎当て
+                    ctx.fillStyle='#5878a0';ctx.fillRect(_bcx-7,_bcy-5,14,3);
+                    // 胸甲（ブレストプレート）
+                    ctx.fillStyle='#5c78a8';ctx.fillRect(_bcx-8,_bcy-2,16,9);
+                    ctx.fillStyle='#7090c0';ctx.fillRect(_bcx-7,_bcy-1,14,7);
+                    // 胸の聖十字紋章
+                    ctx.fillStyle='rgba(190,225,255,0.85)';
+                    ctx.fillRect(_bcx-1,_bcy,2,6);ctx.fillRect(_bcx-5,_bcy+2,10,2);
+                    // 肩当て（パウルドロン）
+                    ctx.fillStyle='#4868a0';ctx.fillRect(_bcx-13,_bcy-2,5,5);ctx.fillRect(_bcx+8,_bcy-2,5,5);
+                    ctx.fillStyle='#6888b8';ctx.fillRect(_bcx-13,_bcy-2,5,2);ctx.fillRect(_bcx+8,_bcy-2,5,2);
+                    // 聖剣（右側・斜め上構え）
+                    ctx.save();ctx.translate(_bcx+10,_bcy-5);ctx.rotate(-0.38);
+                    ctx.strokeStyle='rgba(200,232,255,0.95)';ctx.lineWidth=2;
+                    ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(0,-22);ctx.stroke();
+                    ctx.strokeStyle='rgba(140,190,255,0.45)';ctx.lineWidth=4;ctx.stroke();
+                    ctx.fillStyle='#90a8c8';ctx.fillRect(-5,8,10,4);
+                    ctx.strokeStyle='rgba(220,242,255,0.7)';ctx.lineWidth=0.9;
+                    ctx.beginPath();ctx.moveTo(0,8);ctx.lineTo(0,-22);ctx.stroke();
+                    ctx.restore();
                 }
             } else if(npc.id === 'boss_sky') {
                 if (externalImages['angel'] && externalImages['angel'].complete && externalImages['angel'].naturalHeight > 0) { drawSpriteLocal(ctx, externalImages['angel'], px, py, 52); }
