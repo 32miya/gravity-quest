@@ -6027,19 +6027,27 @@ async function checkAction() {
                             await typeMessage("【聖王グラード（魂）】\nお前たちの 勇気と 愛が\nこの 世界を 救ったのじゃ……。\n誇り高く……生きよ……。");
                             await typeMessage(`＊　＊　真のゲームクリア！　＊　＊\n${_heroName}たちの 名は えいえんに\nグラマニアの 歴史に 刻まれた！`);
                             partyData.flags.last_boss_defeated = true;
-                            let clearCode2 = btoa(partyData.members.map(m=>m.name[0]).join('') + Date.now().toString(36).slice(-3)).slice(0,8).toUpperCase();
+                            let clearCode2 = Date.now().toString(36).toUpperCase().slice(-8);
                             await typeMessage("とくべつな じゅもんを おおしえしましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん（真エンディング記念）\nこれを メモして 次の冒険へ お役立てください。", "TRUE_" + clearCode2); await typeMessage("タイトル画面に もどります。"); location.reload(); return;
                         } else if (_isFinal) {
                             // 1周目・衝撃の大どんでん返し
                             await typeMessage("【グラ王】\nよく……ぞ…… 我が……末裔よ……");
                             await typeMessage("【グラ王】\nわしは……グラード。\n百年前の……本物の 初代国王じゃ。\n長い……長い 時を かけて\nやっと……お前に 会えた……！");
                             await typeMessage("【グラ王】\n城に いる グラードは……偽物じゃ。\n百年前に わしの 肉体を 奪い\n人間を 操り続けた 初代魔王……！\n急いで……城へ……戻れ……！");
+                            await typeMessage("【グラ王】\nし……しかし……このままでは……！\n百年の 怨念が……暴走して しまう……！！\n末裔よ……わしを……解き放って くれ……！！");
+                            await typeMessage("グラ王の 残った 怨念が 燃え上がり……\n理性を 失った 悲しき 竜の 最終形態へと 変じた……！！");
+                            await typeMessage(`【グラ王（最終形態）】\nGAAAA……！！\n（百年の 怨念が 凝縮され\n竜の 本能だけが 目覚めた……！！）`);
+                            if (!masterData.monsters['boss_gura_final']) masterData.monsters['boss_gura_final'] = { name: 'グラ王（最終形態）', max_hp: 900 + _lv * 30, atk: 30 + _lv * 7, def: 20 + _lv * 4, spd: 20 + _lv * 3, exp: _lv * 300, gold: _lv * 150 };
+                            hideGoldWindow(); let _bwFinal = await executeBattle(['boss_gura_final']); showGoldWindow(); updateGoldWindow();
+                            if (!_bwFinal) return;
+                            await typeMessage("（……グラ王の 咆哮が 静まり……）\n百年の 怨念が……ようやく 解き放たれた……！");
+                            await typeMessage("【グラ王（光となりながら）】\n……ありがとう……末裔よ……\nこれで……わしは……安らかに……眠れる……。");
                             AudioManager.playBGM('battle_final');
                             await typeMessage("その瞬間……！\nグラマニア城の 方角から\n漆黒の 闇が 世界を 包み込んだ……！！");
                             await typeMessage("玉座の後ろから\n実体を 現した 何かが 降臨した……！");
                             await typeMessage("【偽の国王グラード】\nくははは！！\n骨肉の 相食む 呪われた 血の 一族よ！\nよくぞ 祖先を その手で 殺してくれた！\n今こそ わしが 世界を 手に 入れる！！");
-                            await typeMessage("【グラ王】\n……まだ……力が 残っておる……！\n行け……末裔よ……逃げろ……！！");
-                            await typeMessage("グラ王の 残った 怨念が 燃え上がり……\n理性を 失った 悲しき 竜の 姿へと 変じた……！！");
+                            await typeMessage("【グラ王（かすかな 声で）】\n……まだ……力が……残って おる……！\n行け……末裔よ……偽物を……頼む……！！");
+                            await typeMessage(`グラ王の 解き放たれた 魂が 集まり……\n最後の 力を 振り絞って 偽の王に 特攻した……！！`);
                             await typeMessage(`グラ王（悲しき竜）は 偽の王に 特攻し\n${_heroName}たちを 城の 外へと\n必死に 逃がした……！！`);
                             await typeMessage("…………。\n……光が 消えた。\nグラ王の 気配が……もう 感じられない。");
                             AudioManager.playBGM('game_over');
@@ -6048,7 +6056,7 @@ async function checkAction() {
                             await typeMessage("────── この 絶望の 歴史を\n覆す 呪文（ちから）を 手に入れた！ ──────");
                             partyData.flags.last_boss_defeated = true;
                             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
-                            let clearCode = btoa(partyData.members.map(m=>m.name[0]).join('') + Date.now().toString(36).slice(-3)).slice(0,8).toUpperCase();
+                            let clearCode = Date.now().toString(36).toUpperCase().slice(-8);
                             await typeMessage("とくべつな じゅもんを おおしえしましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん（1周目クリア記念）\nこれを メモして 次の冒険へ お役立てください。", "CLEAR_" + clearCode); await typeMessage("タイトル画面に もどります。"); location.reload(); return;
                         } else { await typeMessage(`${_bn}を たおした！\nみちが ひらけた！`); }
                     } else { return; }
