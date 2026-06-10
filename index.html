@@ -3632,6 +3632,53 @@ function _drawFieldBuilding(ctx, bType, px, py) {
     ctx.restore();
 }
 
+// DQ4風 扉グラフィック（ダンジョン・城の部屋間遷移ポイントに重ねて描画）
+function _drawRoomDoor(ctx, px, py, mc) {
+    const T = TILE_SIZE, fl = Math.floor;
+    const { demon, cave, castle, tower, shrine } = mc;
+    ctx.save();
+    // 文脈別カラー
+    const C = demon  ? { frm:'#1a0608', pnl:'#380c10', rib:'#580818', hng:'#800020', knb:'#c01830', hi:'#ff2040' }
+            : cave   ? { frm:'#2a2018', pnl:'#4a3420', rib:'#5a4028', hng:'#484030', knb:'#a09060', hi:'#c8b880' }
+            :          { frm:'#3c2c18', pnl:'#6a4828', rib:'#7a5838', hng:'#505050', knb:'#c0a040', hi:'#e8c860' };
+    // 扉の寸法（タイルから少し上にはみ出す）
+    const dW = fl(T*0.82), dH = fl(T*1.05);
+    const dX = px + fl((T-dW)/2), dY = py - dH + fl(T*0.98);
+    // 影
+    ctx.fillStyle='rgba(0,0,0,0.30)'; ctx.fillRect(dX+3,dY+3,dW,dH);
+    // 石枠（外）
+    ctx.fillStyle=C.frm; ctx.fillRect(dX-2,dY-2,dW+4,dH+2);
+    // 扉パネル
+    ctx.fillStyle=C.pnl; ctx.fillRect(dX,dY,dW,dH);
+    // 扉の光沢（左側面が少し明るい）
+    ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fillRect(dX,dY,fl(dW*0.28),dH);
+    // 横リブ（2本）— 木目 or 金属補強
+    const ribH=fl(T*0.07);
+    [fl(dH*0.28), fl(dH*0.65)].forEach(ry=>{
+        ctx.fillStyle=C.rib; ctx.fillRect(dX+2,dY+ry,dW-4,ribH);
+        ctx.fillStyle='rgba(255,255,255,0.10)'; ctx.fillRect(dX+2,dY+ry,dW-4,1);
+    });
+    // 縦中央リブ
+    ctx.fillStyle=C.rib; ctx.fillRect(dX+fl(dW/2)-1,dY+2,2,dH-4);
+    // ヒンジ（左側、上下2か所）
+    [fl(dH*0.18), fl(dH*0.72)].forEach(hy=>{
+        ctx.fillStyle=C.hng; ctx.fillRect(dX-1,dY+hy,6,fl(T*0.12));
+        ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(dX-1,dY+hy,6,1);
+    });
+    // ドアノブ（右寄り中央）
+    const kX=dX+fl(dW*0.72), kY=dY+fl(dH*0.50);
+    ctx.fillStyle=C.knb; ctx.beginPath(); ctx.arc(kX,kY,3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=C.hi; ctx.beginPath(); ctx.arc(kX-1,kY-1,1.2,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle=C.hng; ctx.lineWidth=1; ctx.strokeRect(dX-1,dY-1,dW+2,dH+1);
+    // 魔王城：赤い装飾ライン
+    if(demon){
+        ctx.strokeStyle='rgba(180,20,20,0.6)'; ctx.lineWidth=0.8;
+        ctx.strokeRect(dX+3,dY+3,dW-6,dH-6);
+        ctx.fillStyle='rgba(200,30,30,0.4)'; ctx.beginPath(); ctx.arc(dX+fl(dW/2),dY+fl(dH*0.08),3,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+}
+
 function drawNpcSign(ctx, cx, ty, emoji, label, bgColor) {
     ctx.font = 'bold 7px sans-serif';
     let lw = ctx.measureText(label).width, ew = 11, pad = 3, h = 12, w = ew + lw + pad * 2;
@@ -4644,6 +4691,28 @@ function drawMap() {
                 drawNpcSign(ctx, _scx, _basePy, '🔥', '魔王城', '#622');
         });
     }
+    }
+
+    // DQ4風 扉グラフィック（城・ダンジョン・塔の部屋間遷移ポイント）
+    if (!_isFieldMap && currentMap && currentMap.exits) {
+        const _doorSolid = [1,2,4,5,15,16,17,18,19,20];
+        for (const [_dek, _dev] of Object.entries(currentMap.exits)) {
+            if (!_dev || !_dev.map) continue;
+            const [_dex, _dey] = _dek.split(',').map(Number);
+            const _depx = _dex*TILE_SIZE - camX, _depy = _dey*TILE_SIZE - camY;
+            if (_depx < -TILE_SIZE*2||_depx > cWidth+TILE_SIZE||_depy < -TILE_SIZE*2||_depy > cHeight+TILE_SIZE) continue;
+            const _det = currentMap.tiles[_dey*currentMap.width+_dex];
+            // 階段タイル(21/22)は既に描画済み。床タイルにある出口（扉）のみ描画
+            if (_det === 21 || _det === 22 || _det === 8 || _det === 23) continue;
+            if (_doorSolid.includes(_det)) continue;
+            // 隣接タイルの少なくとも1辺が壁（ソリッド）の場合のみ扉を描く（壁の開口部）
+            const _adjSolid = [[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy])=>{
+                const _ax=_dex+dx,_ay=_dey+dy;
+                if(_ax<0||_ay<0||_ax>=currentMap.width||_ay>=currentMap.height) return true;
+                return _doorSolid.includes(currentMap.tiles[_ay*currentMap.width+_ax]);
+            });
+            if(_adjSolid) _drawRoomDoor(ctx, _depx, _depy, _mc);
+        }
     }
 
     // DQ-style building icons at field map exit positions
@@ -6958,8 +7027,8 @@ async function showTitleScreen() {
                 pwd = pwd.trim();
                 if(pwd === "GRAVITY最高！") {
                     partyData = await loadExternalData('party'); partyData.flags = { none: true }; if(externalMapData) { partyData.pos.map = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos.x = 10; partyData.pos.y = 18; } applyGrowthDataToParty(true);
-                    let weps = Object.values(masterData.items).filter(i=>i.type==='weapon').sort((a,b)=>b.power-a.power); let arms = Object.values(masterData.items).filter(i=>i.type==='armor').sort((a,b)=>b.power-a.power); let shds = Object.values(masterData.items).filter(i=>i.type==='shield').sort((a,b)=>b.power-a.power); let hlms = Object.values(masterData.items).filter(i=>i.type==='helmet').sort((a,b)=>b.power-a.power);
-                    partyData.members.forEach(m => { m.equipment.weapon=weps[0]?.id; m.equipment.armor=arms[0]?.id; m.equipment.shield=shds[0]?.id; m.equipment.helmet=hlms[0]?.id; });
+                    let weps = Object.values(masterData.items).filter(i=>i.type==='weapon').sort((a,b)=>(b.power||b.attack||0)-(a.power||a.attack||0)); let arms = Object.values(masterData.items).filter(i=>i.type==='armor').sort((a,b)=>(b.power||b.defense||0)-(a.power||a.defense||0)); let shds = Object.values(masterData.items).filter(i=>i.type==='shield').sort((a,b)=>(b.power||b.defense||0)-(a.power||a.defense||0)); let hlms = Object.values(masterData.items).filter(i=>i.type==='helmet').sort((a,b)=>(b.power||b.defense||0)-(a.power||a.defense||0));
+                    partyData.members.forEach(m => { const bw=weps.find(i=>canEquip(m,i)); const ba=arms.find(i=>canEquip(m,i)); const bs=shds.find(i=>canEquip(m,i)); const bh=hlms.find(i=>canEquip(m,i)); if(bw)m.equipment.weapon=bw.id; if(ba)m.equipment.armor=ba.id; if(bs)m.equipment.shield=bs.id; if(bh)m.equipment.helmet=bh.id; });
                     for(let i=0; i<partyData.members.length; i++) { let m = partyData.members[i]; let input = await showCustomDialog('prompt', `${m.job} の名前を決めてください\n空白で「${m.name}」`, m.name); if(input !== null && input.trim() !== "") m.name = input.trim().substring(0, 4); }
                     await showCustomDialog('alert', "【裏技成功】\n全員が 最強の装備 を手に入れた\n状態で始まります！"); break;
                 }
