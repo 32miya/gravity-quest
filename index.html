@@ -4640,7 +4640,28 @@ async function _tgFade(isOut) {
 }
 
 async function moveParty(dx, dy) {
-    const nx = partyData.pos.x + dx, ny = partyData.pos.y + dy; if(nx<0 || ny<0 || nx>=currentMap.width || ny>=currentMap.height) return;
+    const nx = partyData.pos.x + dx, ny = partyData.pos.y + dy;
+    if(nx<0 || ny<0 || nx>=currentMap.width || ny>=currentMap.height) {
+        // 非フィールドマップで境界外への移動 → 現在地が開放タイルならフィールド出口へ自動遷移
+        const _mapIdB = partyData.pos.map || '';
+        const _onFieldB = /^map_field_/.test(_mapIdB);
+        const _isTownLike = _mapIdB.includes('town') || _mapIdB.includes('village') || _mapIdB.includes('market');
+        if (!_onFieldB && _isTownLike) {
+            const _solidB = [1,2,4,5,15,16,17,18,19,20];
+            const _curTile = currentMap.tiles[partyData.pos.y * currentMap.width + partyData.pos.x];
+            if (!_solidB.includes(_curTile)) {
+                let _autoExit = null;
+                for (const ev of Object.values(currentMap.exits || {})) {
+                    if (ev && /^(map_)?field_/.test(ev.map)) { _autoExit = ev; break; }
+                }
+                if (_autoExit) {
+                    const _nMap = await loadExternalData('map-' + _autoExit.map);
+                    if (_nMap) { AudioManager.playSE('stair'); partyData.pos = { map: _autoExit.map, x: _autoExit.x, y: _autoExit.y }; currentMap = _nMap; moveHistory = []; drawMap(); updateBGM(); }
+                }
+            }
+        }
+        return;
+    }
     const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
     const key = `${nx},${ny}`; if (currentMap.npcs && currentMap.npcs[key]) return;
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
