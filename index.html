@@ -4191,12 +4191,10 @@ function drawMap() {
             } else if (tile === 18) { if(externalImages['flowerBed']) fgImg = externalImages['flowerBed']; 
             } else if (tile === 19) { let k = externalImages['fieldForest'] ? 'fieldForest' : 'forest'; if(externalImages[k]) bgImg = externalImages[k]; else { bgImg = null; color = '#040'; } 
             } else if (tile === 20) { let k = externalImages['fieldMountain'] ? 'fieldMountain' : 'mountain'; if(externalImages[k]) bgImg = externalImages[k]; else { bgImg = null; color = '#432'; } 
-            } else if (tile === 21) { // フィールドの町出口: 草地として描画（建物グラフィックを上に重ねる）
-                const _ftk = externalImages['fieldGrass'] ? 'fieldGrass' : (externalImages['grass'] ? 'grass' : null);
-                if (_ftk) bgImg = externalImages[_ftk]; else { bgImg = null; color = '#3a823f'; }
-            } else if (tile === 22) { // フィールドの洞窟/塔/祠出口: 草地として描画（建物グラフィックを上に重ねる）
-                const _ftk2 = externalImages['fieldGrass'] ? 'fieldGrass' : (externalImages['grass'] ? 'grass' : null);
-                if (_ftk2) bgImg = externalImages[_ftk2]; else { bgImg = null; color = '#3a823f'; }
+            } else if (tile === 21) { // フィールド: 草地として描画 / ダンジョン等: drawProceduralTile に任せる
+                if (_isFieldMap) { const _ftk = externalImages['fieldGrass'] ? 'fieldGrass' : (externalImages['grass'] ? 'grass' : null); if (_ftk) bgImg = externalImages[_ftk]; else { bgImg = null; color = '#3a823f'; } }
+            } else if (tile === 22) { // フィールド: 草地として描画 / ダンジョン等: drawProceduralTile に任せる
+                if (_isFieldMap) { const _ftk2 = externalImages['fieldGrass'] ? 'fieldGrass' : (externalImages['grass'] ? 'grass' : null); if (_ftk2) bgImg = externalImages[_ftk2]; else { bgImg = null; color = '#3a823f'; } }
             } else if (tile === 23) { bgImg = null; color = '#cff'; }
 
             const _rand = getMapRandom(x, y, _rMapId);
