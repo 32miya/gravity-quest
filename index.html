@@ -2239,6 +2239,18 @@ function fixExternalMapConnections() {
             const ex=externalMapData['map_town_03'].exits[k];
             if(ex&&ex.map&&/^map_field_/.test(ex.map)){ex.map='map_field_4_1';ex.x=7;ex.y=7;}
         }
+        // === town_03 連結保証: 回廊の隙間を埋め角部屋へ横接続を追加 ===
+        const _t3=externalMapData['map_town_03'], _t3w=_t3.width||22;
+        // 縦回廊ギャップ補完: x=11, y=7..13 を floor に
+        for(let _y=7;_y<=13;_y++) if(_t3.tiles[_y*_t3w+11]===1) _t3.tiles[_y*_t3w+11]=0;
+        // 左の角部屋→中央 横連結: y=5, x=6..11
+        for(let _x=6;_x<=11;_x++) if(_t3.tiles[5*_t3w+_x]===1) _t3.tiles[5*_t3w+_x]=0;
+        // 右の角部屋→中央 横連結: y=5, x=11..15
+        for(let _x=11;_x<=15;_x++) if(_t3.tiles[5*_t3w+_x]===1) _t3.tiles[5*_t3w+_x]=0;
+        // 下左の角部屋→中央 横連結: y=16, x=6..11
+        for(let _x=6;_x<=11;_x++) if(_t3.tiles[16*_t3w+_x]===1) _t3.tiles[16*_t3w+_x]=0;
+        // 下右の角部屋→中央 横連結: y=16, x=11..15
+        for(let _x=11;_x<=15;_x++) if(_t3.tiles[16*_t3w+_x]===1) _t3.tiles[16*_t3w+_x]=0;
     }
 
     // 3. 外部JSONのダンジョン深層（dungeon_b*）のフィールド直通出口を除去
@@ -2700,7 +2712,7 @@ function generateDQStyleMaps() {
     if (!externalMapData['map_town_03']) {
         externalMapData['map_town_03'] = mkMap(22,20,
             [[1,1,6,7],[15,1,6,7],[1,12,6,7],[15,12,6,7],[8,1,6,4],[8,15,6,4],[0,8,22,4]],
-            [[11,0,11,7],[11,13,11,19]],
+            [[11,0,11,13],[11,13,11,19],[6,5,11,5],[11,5,15,5],[6,16,11,16],[11,16,15,16]],
             [[11,19]],[],
             {'11,19':{map:'map_field_4_1',x:7,y:8},'10,19':{map:'map_field_4_1',x:7,y:8},'12,19':{map:'map_field_4_1',x:7,y:8}},
             {'16,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_03',name:'道具屋'},'2,15':{id:'npc_weapon_shop_03',name:'武器屋'},'16,15':{id:'npc_inn_03',name:'宿屋'},'9,3':{id:'npc_merchant_01',name:'商人'},'13,3':{id:'npc_merchant_02',name:'行商人'},'6,10':{id:'npc_guide_03',name:'案内人'},'15,10':{id:'npc_sub_richman',name:'大富豪'},'11,16':{id:'npc_sub_mage',name:'大魔導士'},'4,10':{id:'npc_bar_woman_01',name:'市場の女性'},'11,3':{id:'npc_bar_child_01',name:'子供'},'17,7':{id:'npc_bar_soldier_01',name:'衛兵'},'4,15':{id:'npc_bar_young_01',name:'若い商人'},'17,12':{id:'npc_bar_fisherman_01',name:'海の男'}},
