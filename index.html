@@ -2748,7 +2748,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 _placeNpc(_tM2,"npc_town_child",  "元気な子供",   Math.floor(_tM2.height*0.55),Math.floor(_tM2.width*0.3));
                 _placeNpc(_tM2,"npc_town_bard",   "旅の吟遊詩人", Math.floor(_tM2.height*0.7), Math.floor(_tM2.width*0.7));
             }
-            { const _cK2=Object.keys(externalMapData).find(k=>k.includes('castle_01')&&!k.includes('demon')); const _cM2=_cK2&&externalMapData[_cK2]; if(_cM2){ _placeNpc(_cM2,"npc_story_veteran","歴戦の兵士",Math.floor(_cM2.height*0.6),Math.floor(_cM2.width*0.4)); _placeNpc(_cM2,"npc_town_elder","お婆さん",Math.floor(_cM2.height*0.7),Math.floor(_cM2.width*0.6)); _placeNpc(_cM2,"npc_town_merchant","旅の商人",Math.floor(_cM2.height*0.65),Math.floor(_cM2.width*0.3)); } }
+            { const _cK2=Object.keys(externalMapData).find(k=>k.includes('castle_01')&&!k.includes('demon')); const _cM2=_cK2&&externalMapData[_cK2]; if(_cM2){ _placeNpc(_cM2,"npc_story_veteran","歴戦の兵士",Math.floor(_cM2.height*0.6),Math.floor(_cM2.width*0.4)); _placeNpc(_cM2,"npc_town_elder","お婆さん",Math.floor(_cM2.height*0.7),Math.floor(_cM2.width*0.6)); _placeNpc(_cM2,"npc_town_merchant","旅の商人",Math.floor(_cM2.height*0.65),Math.floor(_cM2.width*0.3)); _placeNpc(_cM2,"obj_parents_relic","古い肖像画",Math.floor(_cM2.height*0.2),Math.floor(_cM2.width*0.5)); } }
             // ===== 新マップ: 旅人の里 (12×12) — 旅の案内人・釣り人・神父 =====
             {
                 const _vw=12,_vh=12,_vt=[];
@@ -4226,6 +4226,7 @@ function drawMap() {
                 let chestFlag = `chest_${_rMapId}_${nx}_${ny}`; let isOpened = partyData.flags[chestFlag]; ctx.globalAlpha = isOpened ? 0.5 : 1.0;
                 let chestImg = externalImages['chest'] || externalImages['treasure'] || externalImages['treasureBox'];
                 if (npc.id === "obj_chest_star_frag") { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("✨", px + TILE_SIZE/2, py + TILE_SIZE/2); }
+                else if (npc.id === "obj_parents_relic") { ctx.font = "22px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🖼️", px + TILE_SIZE/2, py + TILE_SIZE/2); ctx.globalAlpha = 1.0; }
                 else if(chestImg && chestImg.complete && chestImg.naturalHeight > 0) { ctx.drawImage(chestImg, px, py, TILE_SIZE, TILE_SIZE); } else { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(isOpened ? "🧳" : "🎁", px + TILE_SIZE/2, py + TILE_SIZE/2); } ctx.globalAlpha = 1.0;
             } else if(npc.id === 'boss_dungeon') {
                 let _bcx = px+TILE_SIZE/2, _bcy = py+TILE_SIZE/2;
@@ -4923,6 +4924,20 @@ async function checkAction() {
             }
             if (npc.id === "obj_chest_star_frag") {
                 if (!partyData.flags.flag_has_star_fragment) { await typeMessage("地面が キラキラと 光っている……！"); AudioManager.playSE('item_get'); await typeMessage("『ほしのカケラ』を てにいれた！"); let target = partyData.members.find(m => m.inventory.length < 8 && m.hp > 0) || partyData.members[0]; if(target.inventory.length < 8) target.inventory.push("i_star_frag"); else target.inventory[0] = "i_star_frag"; partyData.flags.flag_has_star_fragment = true; delete currentMap.npcs[key]; }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "obj_parents_relic") {
+                if (partyData.flags.is_second_loop) {
+                    await typeMessage("壁に 古びた 肖像画が 飾られている……\n慈悲深い 笑顔の 王と 王妃……");
+                    await typeMessage("（……真実を 知った 今、この 笑顔が\n全く 別物に 見えてくる……）");
+                    await typeMessage("（偽の王は 百年もの間\nこの 肖像画を 「自らの 両親」と 偽り\n人々を 騙し 続けたのだ……！）");
+                    await typeMessage("（本物の 聖王グラードも\nきっと この 肖像画の 前で\n多くの 時を 過ごしたはずだ……\n奪われた 肉体の まま……）");
+                } else if (partyData.flags.flag_sky_truth_known) {
+                    await typeMessage("壁に 古びた 肖像画が 飾られている……\n慈悲深い 笑顔の 王と 王妃……");
+                    await typeMessage("（……天空の 王から 聞いた 真実を 思えば\nこの 肖像画が 悲しく 映る……\nまるで あの方たちが\n泣いて いるように 見えた）");
+                } else {
+                    await typeMessage("壁に 古びた 肖像画が 飾られている……\n慈悲深い 笑顔の 王と 王妃……\n（これが 国王グラードの 亡き 両親……？）");
+                }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             // 種アイテム（フィールド宝）
@@ -5636,7 +5651,11 @@ async function checkAction() {
                 else if (npc.id === 'npc_tower_sage') { await typeMessage("【塔の番人】\nここは 天空の塔の 1階。\n太古の 守護者が 頂に 眠っておる……\nその 力を 受け継ぐに ふさわしい 者のみが\n先へ 進めると いうぞ。\nご武運を！"); }
                 else if (npc.id === 'npc_sky_guard') { await typeMessage("【天空の守護者】\nよく ここまで たどりついた……\nその血脈……天空の 王は ずっと\nお前を 待ち続けておった。\n全力で ぶつかるがよい。\n必ずや 真実を 知る 力を 授けられるはずだ！"); }
                 else if (npc.id === 'npc_guard_demon') {
-                    if (partyData.flags.flag_sky_truth_known) {
+                    if (partyData.flags.is_second_loop) {
+                        await typeMessage("【魔族の兵士】\n……お前たちが 来るのを\nずっと 待っておった……。\n百年……百年もの間\nわれらは 偽りの 主に 仕えてきた……！");
+                        await typeMessage("【魔族の兵士】\nグラ王様……本物の 初代国王は\nわれらの 真の 主君だった……！\nなのに われらは……その 肉体を 奪った者に\nずっと 操られていたのだ！");
+                        await typeMessage("【魔族の兵士】\nお前たちが 過去を 変えに 来た……\nそれは わかる。\nだが……われらの 魂に 誓い、\nこの 戦いだけは 受けてもらわねばならぬ！");
+                    } else if (partyData.flags.flag_sky_truth_known) {
                         await typeMessage("【魔族の兵士】\n…人間を守らねば……\nあいつ（偽の王）が 世界を 喰らい尽くす前に……");
                         await typeMessage("【魔族の兵士】\nグラ王様を 信じるな……などと\n言わないでくれ……！\nわれらは……人間のために 戦っているのだ……！");
                     } else {
@@ -5644,7 +5663,7 @@ async function checkAction() {
                     }
                     let _gid = 'death_knight'; if (!masterData.monsters[_gid]) masterData.monsters[_gid] = { name: '魔族の兵士', max_hp: 180, atk: 38, def: 22, spd: 18, exp: 350, gold: 180 };
                     hideGoldWindow(); let _gw = await executeBattle([_gid]); showGoldWindow(); updateGoldWindow();
-                    if (_gw) { delete currentMap.npcs[key]; await typeMessage("魔族の兵士を たおした！"); }
+                    if (_gw) { delete currentMap.npcs[key]; if (partyData.flags.is_second_loop) { await typeMessage("魔族の兵士を たおした……\n「……よく やった……\n聖王グラードを……救ってやってくれ……！」"); } else { await typeMessage("魔族の兵士を たおした！"); } }
                 }
                 else if(npc.id.includes('shop') || npc.id.includes('bazaar')) { if (npc.id.includes('weapon') || npc.id.includes('bazaar') || npc.id === 'npc_strong_weapon_shop') await eventWeaponShop(npc.id); else await eventShop(npc.id); }
                 else if(npc.id.includes('priest') || npc.id.includes('church')) await eventPriest();
