@@ -4208,45 +4208,55 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
         if (rand < 0.11) fr('rgba(0,0,0,0.18)', fl(rand * 20) + 2, fl(rand * 20) + 2, 3, 2);
     } else if (tile === 21 || tile === 22) { // 下り階段(21) / 上り階段(22) — DQ風石段
         const isDown = tile === 21;
-        // 暖色系の石目カラー（どの画面でも"石"に見えるよう統一）
-        const C = demon  ? { bg:'#0a0010', fl:'#160a22', edg:'#d090e8', top:'#905898', frt:'#44126c', mt:'#0e061a' }
-                : cave   ? { bg:'#060606', fl:'#101010', edg:'#b0a898', top:'#787068', frt:'#3a3430', mt:'#0a0a08' }
+        // コンテキスト別カラー（背景・エッジ・天面・影・目地・穴の6色）
+        const C = demon  ? { bg:'#12001e', fl:'#3a1850', edg:'#e8a0ff', top:'#9858c0', frt:'#280860', mt:'#1a0830' }
+                : cave   ? { bg:'#0c0a0a', fl:'#4a4444', edg:'#d4ccbe', top:'#908880', frt:'#201c1c', mt:'#181414' }
                 : (castle || tower)
-                         ? { bg:'#080808', fl:'#161614', edg:'#c8c0b0', top:'#989080', frt:'#484038', mt:'#0e0e0c' }
-                :          { bg:'#080604', fl:'#161208', edg:'#d0bc98', top:'#988068', frt:'#463c22', mt:'#100e06' };
+                         ? { bg:'#0e0e12', fl:'#50505a', edg:'#ddd8ce', top:'#a0989c', frt:'#282630', mt:'#1a1820' }
+                :          { bg:'#100c08', fl:'#504438', edg:'#e0c8a0', top:'#988468', frt:'#281e10', mt:'#181008' };
 
         // 石床（背景）
         fr(C.fl, 0, 0, T, T);
+        // 石目（横モルタル）
+        ctx.strokeStyle=C.mt; ctx.lineWidth=0.5; ctx.globalAlpha=0.35;
+        for(let gy=4;gy<T;gy+=6){ctx.beginPath();ctx.moveTo(px,py+gy);ctx.lineTo(px+T,py+gy);ctx.stroke();}
+        ctx.globalAlpha=1;
 
-        // 暗い穴（下り=底7px、上り=上7px）
-        const hH=7, hY = isDown ? T-hH : 0;
-        fr(C.bg, 0, hY, T, hH);
-        ctx.globalAlpha=0.6; fr(C.bg,0,isDown?hY-1:hY+hH,T,1); ctx.globalAlpha=1;
-        ctx.globalAlpha=0.3; fr(C.bg,0,isDown?hY-2:hY+hH+1,T,1); ctx.globalAlpha=1;
+        // 暗い穴（下り=底8px、上り=上8px）
+        const hH=8, hY = isDown ? T-hH : 0;
+        // 穴のグラデーション（端が少し明るく、中心が暗い）
+        const hGrd = ctx.createLinearGradient(px, py+hY, px, py+hY+hH);
+        if(isDown){ hGrd.addColorStop(0,C.fl+'88'); hGrd.addColorStop(0.4,C.bg); hGrd.addColorStop(1,C.bg); }
+        else       { hGrd.addColorStop(0,C.bg); hGrd.addColorStop(0.6,C.bg); hGrd.addColorStop(1,C.fl+'88'); }
+        ctx.fillStyle=hGrd; ctx.fillRect(px,py+hY,T,hH);
 
-        // 3段の石段（各5px: 1edg+3top+1frt、側壁なし・幅差8pxで明快に）
-        // 下り: si=0(w=24, y=2) → si=2(w=8, y=12)、暗穴=y=17..23
-        // 上り: si=0(w=8, y=7) → si=2(w=24, y=17)、暗穴=y=0..6
-        const STEPS=3, SH=5, startY = isDown ? 2 : hH;
+        // 4段の石段（各SH px: 1edg+SH-2top+1frt）
+        const STEPS=4, SH=4, startY = isDown ? 0 : hH;
         for(let si=0; si<STEPS; si++){
             const sy     = startY + si*SH;
-            const indent = isDown ? si*4 : (STEPS-1-si)*4;
+            const indent = isDown ? si*3 : (STEPS-1-si)*3;
             const w      = T - indent*2;
-            if(w<4 || sy<0 || sy+SH>T) continue;
+            if(w<6 || sy<0 || sy+SH>T) continue;
 
-            fr(C.edg, indent, sy,   w, 1);  // エッジ（明）
-            fr(C.top, indent, sy+1, w, 3);  // 上面（中）
-            fr(C.frt, indent, sy+4, w, 1);  // 前面（暗）
+            fr(C.edg, indent, sy,         w, 1);          // 明エッジ（上面ハイライト）
+            fr(C.top, indent, sy+1,       w, SH-2);       // 天面
+            fr(C.frt, indent, sy+SH-1,   w, 1);          // 影（前面）
 
-            // 石目（縦モルタル2本）
-            ctx.globalAlpha=0.28;
-            fr(C.mt, indent+fl(w*0.33), sy+1, 1, 3);
-            fr(C.mt, indent+fl(w*0.66), sy+1, 1, 3);
+            // 石目縦線
+            ctx.globalAlpha=0.22;
+            fr(C.mt, indent+fl(w*0.35), sy+1, 1, SH-2);
+            fr(C.mt, indent+fl(w*0.68), sy+1, 1, SH-2);
             ctx.globalAlpha=1;
         }
 
-        // タイル縁取り
-        ctx.strokeStyle=C.mt; ctx.lineWidth=0.5; ctx.globalAlpha=0.25;
+        // 方向インジケータ（▼ or ▲）
+        const arrX=px+fl(T/2), arrY=isDown ? py+T-hH-5 : py+hH+5;
+        ctx.fillStyle=isDown?C.edg:C.edg; ctx.font=`bold ${T<=20?6:7}px sans-serif`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.globalAlpha=0.82; ctx.fillText(isDown?'▼':'▲', arrX, arrY); ctx.globalAlpha=1;
+
+        // 縁取り
+        ctx.strokeStyle=C.mt; ctx.lineWidth=0.5; ctx.globalAlpha=0.2;
         ctx.strokeRect(px+0.5,py+0.5,T-1,T-1);
         ctx.globalAlpha=1;
     } else if (tile === 8) { // ワープ
