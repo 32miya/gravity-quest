@@ -941,13 +941,17 @@ let npcWanderState = {};        // { "x,y": { homeX, homeY, id, name } }
 let npcWanderTick = 0;          // drawMap 呼び出し回数カウンター
 let _lastWanderMapId = null;    // マップ変更検出用
 let _walkPhase = 0; let _lastMoveTime = 0;
+// 静的タイルキャッシュ（カメラ位置が変わるまで再描画不要な背景レイヤー）
+let _staticTileCache = null; let _staticCacheKey = ''; let _cachedLights = [];
+// getMapRandom 結果キャッシュ（結果は時不変なので一度計算すれば十分）
+const _gmrCache = {};
 const tilesetImg = new Image(); tilesetImg.crossOrigin = "Anonymous"; tilesetImg.src = "https://cdn.gravity.place/aiugc/game/material/2026-04-09/88e120ab-ee16-4c1a-bdfb-4ffad407b6ad.jpeg";
 const bunnyGirlImg = new Image(); bunnyGirlImg.crossOrigin = "Anonymous"; bunnyGirlImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/c1add1db1f1ce5ccad9e1b76fee60b9c_1776406373895474042.png"; externalImages['bunnyGirl'] = bunnyGirlImg;
 const bossKillerImg = new Image(); bossKillerImg.crossOrigin = "Anonymous"; bossKillerImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/6ff181fac171a736632e5c47176aac74_1776417245054740369.png"; externalImages['boss_desert_killer'] = bossKillerImg;
 const bossPhantomImg = new Image(); bossPhantomImg.crossOrigin = "Anonymous"; bossPhantomImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/163550736f43d02b7c81a47fa8d51961_1776417304673228521.png"; externalImages['boss_trial_phantom'] = bossPhantomImg;
 const SHEET_COLS = 30; const SHEET_ROWS = 16; const TILE_IMG_MAP = { 3: { cx: 23, cy: 0 }, 6: { cx: 5, cy: 5 }, 7: { cx: 7, cy: 1 }, 8: { cx: 22, cy: 4 } };
 
-function getMapRandom(x, y, mapId) { let seed = 0; let mStr = mapId || ""; for(let i=0; i<mStr.length; i++) seed += mStr.charCodeAt(i); return Math.abs(Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453) % 1; }
+function getMapRandom(x, y, mapId) { const _k = x + '|' + y + '|' + (mapId||''); if (_gmrCache[_k] !== undefined) return _gmrCache[_k]; let seed = 0; let mStr = mapId || ""; for(let i=0; i<mStr.length; i++) seed += mStr.charCodeAt(i); return (_gmrCache[_k] = Math.abs(Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453) % 1); }
 function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return mapObj.name; if (!mapId) return "フィールド"; if (mapId.includes('town_01')) return "城下町グラマニア"; if (mapId.includes('castle_01')) return "グラマニア城"; if (mapId.includes('dungeon_1f')) return "試練の洞窟 1F"; if (mapId.includes('dungeon_b1f')) return "試練の洞窟 B1F"; if (mapId.includes('dungeon_b2f')) return "試練の洞窟 B2F"; if (mapId.includes('dungeon_b3f')) return "試練の洞窟 B3F"; if (mapId.includes('tower_1f')) return "天空の塔 1F"; if (mapId.includes('tower_2f')) return "天空の塔 2F"; if (mapId.includes('tower_3f')) return "天空の塔 3F"; if (mapId.includes('demon_castle_1f')) return "魔王城 1F"; if (mapId.includes('demon_castle_2f')) return "魔王城 2F"; if (mapId.includes('demon_castle_3f')) return "魔王城 3F"; if (mapId.includes('demon_castle_4f')) return "魔王城 4F"; if (mapId.includes('shrine')) return "ほこら"; if (mapId.includes('town') || mapId.includes('village') || mapId.includes('market')) return "街・村"; if (mapId.includes('dungeon') || mapId.includes('cave')) return "ダンジョン"; if (mapId.includes('field')) return "フィールド"; return "未知の場所"; }
 function getCurrentWorldPos() { let m = partyData.pos.map; let wx = -1, wy = -1; if (m.startsWith('map_field_') && m.split('_').length >= 4) { wx = parseInt(m.split('_')[2]); wy = parseInt(m.split('_')[3]); } else if (m.includes('town') || m.includes('castle')) { wx = 2; wy = 2; } else if (m.includes('dungeon') || m.includes('cave')) { wx = 2; wy = 0; } else if (m.includes('shrine')) { wx = 2; wy = 3; } else if (m.includes('north')) { wx = 2; wy = 0; } else if (m.includes('south')) { wx = 2; wy = 4; } else if (m.includes('east')) { wx = 4; wy = 2; } else if (m.includes('west')) { wx = 0; wy = 2; } if (wx === -1 || wy === -1) { wx = 2; wy = 2; } return {x: wx, y: wy}; }
 async function showWorldMap() {
@@ -4461,12 +4465,21 @@ function drawMap() {
         _mapsToRender.push({ map: currentMap, mapId: _mapId, offX: 0, offY: 0 });
     }
 
+    const _sCacheKey = `${_mapId}|${Math.round(camX)}|${Math.round(camY)}|${cWidth}|${cHeight}`;
+    const _sCacheHit = _staticCacheKey === _sCacheKey && _staticTileCache && _staticTileCache.width === cWidth && _staticTileCache.height === cHeight;
+    let _dc;
+    if (!_sCacheHit) {
+        if (!_staticTileCache || _staticTileCache.width !== cWidth || _staticTileCache.height !== cHeight) { _staticTileCache = document.createElement('canvas'); _staticTileCache.width = cWidth; _staticTileCache.height = cHeight; }
+        _dc = _staticTileCache.getContext('2d'); _dc.clearRect(0, 0, cWidth, cHeight);
+    }
+
     for (const { map: _rMap, mapId: _rMapId, offX: _rOX, offY: _rOY } of _mapsToRender) {
     for(let y = 0; y < _rMap.height; y++) {
         for(let x = 0; x < _rMap.width; x++) {
             const vx = x+_rOX, vy = y+_rOY;
             const tile = _rMap.tiles[y * _rMap.width + x]; const px = vx*TILE_SIZE - camX; const py = vy*TILE_SIZE - camY;
             if (px < -TILE_SIZE || px > cWidth || py < -TILE_SIZE || py > cHeight) continue;
+            if (_sCacheHit || tile === 5 || tile === 8 || tile === 23) continue;
             let bgImg = null; let fgImg = null; let color = getTileColor(tile);
             // 文脈別フォールバックカラー（外部画像が読めない時の補正）
             if (tile === 0 || tile === 23) {
@@ -4502,9 +4515,9 @@ function drawMap() {
 
             const _rand = getMapRandom(x, y, _rMapId);
             let drawnCustom = false;
-            if (bgImg && bgImg.complete && bgImg.naturalHeight > 0) { ctx.drawImage(bgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
-            if (fgImg && fgImg.complete && fgImg.naturalHeight > 0) { if (!drawnCustom && color) { ctx.fillStyle = color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); } ctx.drawImage(fgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
-            if (!drawnCustom) { drawProceduralTile(ctx, tile, px, py, _rand, _drawNow, _mc, lights); drawnCustom = true; }
+            if (bgImg && bgImg.complete && bgImg.naturalHeight > 0) { _dc.drawImage(bgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
+            if (fgImg && fgImg.complete && fgImg.naturalHeight > 0) { if (!drawnCustom && color) { _dc.fillStyle = color; _dc.fillRect(px, py, TILE_SIZE, TILE_SIZE); } _dc.drawImage(fgImg, px, py, TILE_SIZE, TILE_SIZE); drawnCustom = true; }
+            if (!drawnCustom) { drawProceduralTile(_dc, tile, px, py, _rand, _drawNow, _mc, lights); drawnCustom = true; }
         }
     }
     }
@@ -4781,7 +4794,7 @@ function drawMap() {
     }
 
     // DQ4風 扉グラフィック（城・ダンジョン・塔の部屋間遷移ポイント）
-    if (!_isFieldMap && currentMap && currentMap.exits) {
+    if (!_sCacheHit && !_isFieldMap && currentMap && currentMap.exits) {
         const _doorSolid = [1,2,4,5,15,16,17,18,19,20];
         for (const [_dek, _dev] of Object.entries(currentMap.exits)) {
             if (!_dev || !_dev.map) continue;
@@ -4798,12 +4811,12 @@ function drawMap() {
                 if(_ax<0||_ay<0||_ax>=currentMap.width||_ay>=currentMap.height) return true;
                 return _doorSolid.includes(currentMap.tiles[_ay*currentMap.width+_ax]);
             });
-            if(_adjSolid) _drawRoomDoor(ctx, _depx, _depy, _mc);
+            if(_adjSolid) _drawRoomDoor(_dc, _depx, _depy, _mc);
         }
     }
 
     // DQ-style building icons at field map exit positions（果てマップも含む）
-    if (_isFieldMap || _isExtremeField) {
+    if (!_sCacheHit && (_isFieldMap || _isExtremeField)) {
         const _iconMaps = _isExtremeField ? [{ map: currentMap, mapId: _mapId, offX: 0, offY: 0 }] : _mapsToRender;
         for (const { map: _rMap2, offX: _rOX2, offY: _rOY2 } of _iconMaps) {
             if (!_rMap2.exits) continue;
@@ -4827,9 +4840,25 @@ function drawMap() {
                 else if (_dm2.includes('dungeon') || _dm2.includes('cave')) _bt2 = 'dungeon';
                 else if (_dm2.includes('dharma')) _bt2 = 'dharma';
                 else if (_dm2.includes('demon') || _dm2.includes('death') || _dm2.includes('maou')) _bt2 = 'demon';
-                if (_bt2) _drawFieldBuilding(ctx, _bt2, _epx2, _epy2);
+                if (_bt2) _drawFieldBuilding(_dc, _bt2, _epx2, _epy2);
             }
         }
+    }
+
+    // キャッシュ保存 → 静的レイヤーを main canvas に blit
+    if (!_sCacheHit) { _cachedLights = lights.slice(); _staticCacheKey = _sCacheKey; }
+    ctx.drawImage(_staticTileCache, 0, 0);
+    if (_sCacheHit) lights = _cachedLights.slice();
+
+    // アニメーションタイル（水=5, ワープ=8, 旅の扉=23）は毎フレーム直接描画
+    for (const { map: _rMapA, mapId: _rMapAId, offX: _rOXA, offY: _rOYA } of _mapsToRender) {
+        for(let _ay = 0; _ay < _rMapA.height; _ay++) { for(let _ax = 0; _ax < _rMapA.width; _ax++) {
+            const _at = _rMapA.tiles[_ay * _rMapA.width + _ax];
+            if (_at !== 5 && _at !== 8 && _at !== 23) continue;
+            const _apx = (_ax+_rOXA)*TILE_SIZE - camX, _apy = (_ay+_rOYA)*TILE_SIZE - camY;
+            if (_apx < -TILE_SIZE || _apx > cWidth || _apy < -TILE_SIZE || _apy > cHeight) continue;
+            drawProceduralTile(ctx, _at, _apx, _apy, getMapRandom(_ax, _ay, _rMapAId), _drawNow, _mc, lights);
+        }}
     }
 
     let _shipDrawPos=null,_shipDrawDir=partyData.dir;if(_isFieldMap&&partyData.flags&&partyData.flags.has_ship&&currentMap.tiles){const _sn=Math.min(4,(partyData.members||[]).length);for(let _si=_sn-1;_si>=0;_si--){const _smp=_si===0?{x:partyData.pos.x,y:partyData.pos.y,dir:partyData.dir}:(moveHistory[_si-1]||null);if(!_smp||_smp.x<0||_smp.y<0||_smp.x>=currentMap.width||_smp.y>=currentMap.height)continue;if(currentMap.tiles[_smp.y*currentMap.width+_smp.x]===5){_shipDrawPos={x:_smp.x,y:_smp.y};_shipDrawDir=_smp.dir||partyData.dir;break;}}}let displayOrder = []; partyData.members.forEach(m => { if(m.hp > 0) displayOrder.push(m); }); partyData.members.forEach(m => { if(m.hp <= 0) displayOrder.push(m); });
@@ -4910,7 +4939,7 @@ function drawMap() {
     if (!isCave && !isCastle && !isTown && !isMountain) {
         ctx.globalCompositeOperation = 'screen';
         let t = Date.now() / 1000; let maxX = currentMap.width * TILE_SIZE; let maxY = currentMap.height * TILE_SIZE;
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < 12; i++) {
             let seedX = getMapRandom(i, 0, mapIdStr); let seedY = getMapRandom(0, i, mapIdStr);
             let speedX = (getMapRandom(i, 1, mapIdStr) - 0.5) * 2; let speedY = (getMapRandom(1, i, mapIdStr) - 0.5) * 2;
             let worldX = ((((seedX * 10000 + t * speedX * 20) % maxX) + maxX) % maxX); let worldY = ((((seedY * 10000 + t * speedY * 20 + Math.sin(t*2 + i)*15) % maxY) + maxY) % maxY);
