@@ -6027,8 +6027,10 @@ async function checkAction() {
                             await typeMessage("【聖王グラード（魂）】\nお前たちの 勇気と 愛が\nこの 世界を 救ったのじゃ……。\n誇り高く……生きよ……。");
                             await typeMessage(`＊　＊　真のゲームクリア！　＊　＊\n${_heroName}たちの 名は えいえんに\nグラマニアの 歴史に 刻まれた！`);
                             partyData.flags.last_boss_defeated = true;
-                            let clearCode2 = Date.now().toString(36).toUpperCase().slice(-8);
-                            await typeMessage("とくべつな じゅもんを おおしえしましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん（真エンディング記念）\nこれを メモして 次の冒険へ お役立てください。", "TRUE_" + clearCode2); await typeMessage("タイトル画面に もどります。"); location.reload(); return;
+                            partyData.flags.is_second_loop_unlocked = true;
+                            localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
+                            await typeMessage("タイトル画面に もどります。\nAボタン または Enterキーを 押してください。");
+                            location.reload(); return;
                         } else if (_isFinal) {
                             // 1周目・衝撃の大どんでん返し
                             await typeMessage("【グラ王】\nよく……ぞ…… 我が……末裔よ……");
@@ -6055,9 +6057,13 @@ async function checkAction() {
                             await typeMessage(`${_heroName}たちは 絶望の 中に いた。\nしかし その 胸に ひとつの\n「呪文（ちから）」が 宿っていた……。`);
                             await typeMessage("────── この 絶望の 歴史を\n覆す 呪文（ちから）を 手に入れた！ ──────");
                             partyData.flags.last_boss_defeated = true;
+                            partyData.flags.is_second_loop_unlocked = true;
                             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
-                            let clearCode = Date.now().toString(36).toUpperCase().slice(-8);
-                            await typeMessage("とくべつな じゅもんを おおしえしましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん（1周目クリア記念）\nこれを メモして 次の冒険へ お役立てください。", "CLEAR_" + clearCode); await typeMessage("タイトル画面に もどります。"); location.reload(); return;
+                            let clearCode = 'CLEAR_' + packSaveData(partyData);
+                            await typeMessage("とくべつな じゅもんを おおしえしましょう。\nこれが 2周目を 始めるための\n「ふっかつのじゅもん」です。\nメモするか コピーして おいてください。");
+                            await showCustomDialog('copy', "ふっかつのじゅもん（1周目クリア）\n\n入力方法：\n・タイトル →「ふっかつのじゅもん」\n  または\n・タイトル →「つづきから（2周目）」\n\n※枠内を長押しでコピーできます", clearCode);
+                            await typeMessage("タイトル画面に もどります。\nAボタン または Enterキーを 押してください。");
+                            location.reload(); return;
                         } else { await typeMessage(`${_bn}を たおした！\nみちが ひらけた！`); }
                     } else { return; }
                 }
