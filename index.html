@@ -4398,6 +4398,8 @@ function drawMap() {
     let lights = [];
     const _fieldMatch = _mapId && _mapId.match(/^map_field_(\d)_(\d)$/);
     const _isFieldMap = !!_fieldMatch;
+    // 東西南北の果てマップ（map_field_west_2 等）もフィールド扱いで建物アイコンを描画
+    const _isExtremeField = !_isFieldMap && _mapId && /map_field_(west|east|north|south)/.test(_mapId);
     const _fgx = _isFieldMap ? parseInt(_fieldMatch[1]) : -1;
     const _fgy = _isFieldMap ? parseInt(_fieldMatch[2]) : -1;
     const _mapsToRender = [];
@@ -4738,9 +4740,10 @@ function drawMap() {
         }
     }
 
-    // DQ-style building icons at field map exit positions
-    if (_isFieldMap) {
-        for (const { map: _rMap2, offX: _rOX2, offY: _rOY2 } of _mapsToRender) {
+    // DQ-style building icons at field map exit positions（果てマップも含む）
+    if (_isFieldMap || _isExtremeField) {
+        const _iconMaps = _isExtremeField ? [{ map: currentMap, mapId: _mapId, offX: 0, offY: 0 }] : _mapsToRender;
+        for (const { map: _rMap2, offX: _rOX2, offY: _rOY2 } of _iconMaps) {
             if (!_rMap2.exits) continue;
             for (const _ek of Object.keys(_rMap2.exits)) {
                 const _ed = _rMap2.exits[_ek];
