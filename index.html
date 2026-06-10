@@ -4609,7 +4609,7 @@ function drawMap() {
 
                     ctx.restore();
                 }
-            } else if(npc.id.includes('king') && externalImages['king']) { drawSpriteLocal(ctx, externalImages['king'], px, py, 48);
+            } else if(npc.id.includes('king') && !npc.id.includes('pirate') && externalImages['king'] && (_mapId.includes('castle') && !_mapId.includes('demon'))) { drawSpriteLocal(ctx, externalImages['king'], px, py, 48);
             } else if(npc.id.includes('master_dragon') && externalImages['masterDragon']) { drawDragonLocal(ctx, externalImages['masterDragon'], px, py, 160);
             } else if((npc.id.includes('demon') || npc.id.includes('maou') || npc.id === 'boss_maou') && !npc.id.includes('statue')) {
                 if (externalImages['demonKing'] && externalImages['demonKing'].complete && externalImages['demonKing'].naturalHeight > 0) { drawDragonLocal(ctx, externalImages['demonKing'], px, py, 70, 10); }
@@ -5319,14 +5319,15 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
 
-            // ★王様（魔王討伐前の初回・進行状況別）
-            if (npc.id && npc.id !== 'boss_pirate_king' && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && !partyData.flags.last_boss_defeated) {
+            // ★王様（城マップかつ魔王討伐前の初回・進行状況別）
+            const _inKingCastle = partyData.pos.map.includes('castle') && !partyData.pos.map.includes('demon') && !partyData.pos.map.includes('death');
+            if (_inKingCastle && npc.id && npc.id !== 'boss_pirate_king' && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && !partyData.flags.last_boss_defeated) {
                 if (!partyData.flags.flag_king_met) {
                     await typeMessage("【国王グラード】\nおお……きたか。\nよくぞ グラマニア城に 参った……\nずっと 待っておったぞ。");
                     await typeMessage("【国王グラード】\n今から 一年前……\n世界の東に 大魔王が 目覚め\n各地を 闇に 染めはじめた。\nお前の ような 力が……必要なのじゃ。");
                     await typeMessage("【国王グラード】\nわが 騎士団は 壊滅した……。\n（王の 唇の 端が かすかに ゆがんだ 気がした）\n民を……一刻も 早く 救わねばならぬ。");
                     await typeMessage("【国王グラード】\n星占い師が こう 告げた。\n「東の天空の塔に 眠る 光の力を\n手に入れた 者のみが 魔王を 滅ぼせる」と。\nお前が その 者じゃ……光の 紋章の 継承者よ。");
-                    await typeMessage("【国王グラード】\nまずは 北の試練の洞窟で 力を試せ。\nそして 東へ 向かい\n天空の塔の 頂を 目指すのだ！");
+                    await typeMessage("【国王グラード】\nまずは 南の試練の洞窟で 力を試せ。\nそして 東へ 向かい\n天空の塔の 頂を 目指すのだ！");
                     await typeMessage("【国王グラード】\n勇者よ……\nこの国の 命運を お前たちに 託す。\nお前には……必ず できる。");
                     partyData.flags.flag_king_met = true;
                 } else if (partyData.flags.flag_mage_trial_cleared) {
@@ -5338,8 +5339,8 @@ async function checkAction() {
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
-            // ★国王グラード（魔王討伐後）
-            if (npc.id && npc.id !== 'boss_pirate_king' && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && partyData.flags.last_boss_defeated) {
+            // ★国王グラード（魔王討伐後・城マップのみ）
+            if (_inKingCastle && npc.id && npc.id !== 'boss_pirate_king' && (npc.id.includes('king') || npc.id.includes('gura_king') || npc.id.includes('gramnia_king')) && partyData.flags.last_boss_defeated) {
                 if (!partyData.flags.flag_king_ending_told) {
                     await typeMessage("【国王グラード】\nおお……勇者よ！\nよくぞ 帰ってきた！！\nそなたたちが 魔王を 倒してくれたのか！！");
                     await typeMessage("【国王グラード】\n世界中から 歓声が 届いておる。\n魔物の 群れが 消え、\n民の 顔に 笑顔が 戻ったと！");
@@ -5401,7 +5402,7 @@ async function checkAction() {
                 else if (partyData.flags.flag_mage_trial_cleared) { await typeMessage("【野の賢者 ガンダ】\nお主たちの 眼が 変わった。\n究極の魔法まで 手に入れたか。\n魔王城は もうすぐ そこじゃ……ご武運を。"); }
                 else {
                     await typeMessage("【野の賢者 ガンダ】\n……魔王を 滅ぼしたいのなら\n天空の 力が 必要じゃ。");
-                    await typeMessage("【野の賢者 ガンダ】\nこの地の 南に\n天空の塔の 入り口がある。\n頂には 太古の 守護者が 眠っておる。\n倒せれば その 力が お前たちに 宿るだろう。");
+                    await typeMessage("【野の賢者 ガンダ】\nこの地の 東に\n天空の塔の 入り口がある。\n頂には 太古の 守護者が 眠っておる。\n倒せれば その 力が お前たちに 宿るだろう。");
                     await typeMessage("【野の賢者 ガンダ】\nしかし 守護者は 強い……\n十分に 力を 蓄えてから\n挑むのじゃぞ。");
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
@@ -5499,7 +5500,7 @@ async function checkAction() {
             if (npc.id === "npc_guide_north") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王を 倒したとは！\nあなたたちが 世界の 英雄ですね！"); }
                 else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n試練の 洞窟を 乗り越えたなら\n東の 大陸へ 向かいましょう。\n天空の 塔が あの方向に あります！"); }
-                else { await typeMessage("【案内人】\nこの 先 北へ 進むと\n試練の 洞窟があります。\nまずは そこで 力を 試してみては？"); }
+                else { await typeMessage("【案内人】\nこの 先 南西へ 進むと\n試練の 洞窟があります。\nまずは そこで 力を 試してみては？"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_east_tower") {
@@ -5606,7 +5607,7 @@ async function checkAction() {
             }
             if (npc.id === "npc_villager_03") {
                 if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【農夫】\n試練の 洞窟を 制覇したとは！\nあなたは 普通の 旅人じゃ ありませんね。"); }
-                else { await typeMessage("【農夫】\n西の 海岸を 北に 行くと\n試練の 洞窟が あるそうです。\nわしには 関係ない 話ですが……。"); }
+                else { await typeMessage("【農夫】\n南西に 向かうと\n試練の 洞窟が あるそうです。\nわしには 関係ない 話ですが……。"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_villager_04") {
@@ -5634,7 +5635,7 @@ async function checkAction() {
             if (npc.id === "npc_gar_child_01") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【子供】\nすごい すごい！\n魔王を やっつけた 本物の 勇者だ！！\nボクも 大きくなったら 勇者になるぞ！！"); }
                 else if (partyData.flags.has_ship) { await typeMessage("【子供】\nすごいなあ……\n船で 海を 旅するなんて！\nボクも いつか 大冒険したい！！"); }
-                else { await typeMessage("【子供】\nねえねえ！\n旅人さんって どこから 来たの？\n北の 洞窟って こわいの？\nボクも 冒険家に なりたいんだあ！"); }
+                else { await typeMessage("【子供】\nねえねえ！\n旅人さんって どこから 来たの？\n南の 洞窟って こわいの？\nボクも 冒険家に なりたいんだあ！"); }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_gar_fisherman_01") {
