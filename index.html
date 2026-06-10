@@ -4522,6 +4522,72 @@ function drawMap() {
     }
     }
 
+    // DQ4風 扉グラフィック（城・ダンジョン・塔の部屋間遷移ポイント）
+    if (!_sCacheHit && !_isFieldMap && currentMap && currentMap.exits) {
+        const _doorSolid = [1,2,4,5,15,16,17,18,19,20];
+        for (const [_dek, _dev] of Object.entries(currentMap.exits)) {
+            if (!_dev || !_dev.map) continue;
+            const [_dex, _dey] = _dek.split(',').map(Number);
+            const _depx = _dex*TILE_SIZE - camX, _depy = _dey*TILE_SIZE - camY;
+            if (_depx < -TILE_SIZE*2||_depx > cWidth+TILE_SIZE||_depy < -TILE_SIZE*2||_depy > cHeight+TILE_SIZE) continue;
+            const _det = currentMap.tiles[_dey*currentMap.width+_dex];
+            if (_det === 21 || _det === 22 || _det === 8 || _det === 23) continue;
+            if (_doorSolid.includes(_det)) continue;
+            const _adjSolid = [[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy])=>{
+                const _ax=_dex+dx,_ay=_dey+dy;
+                if(_ax<0||_ay<0||_ax>=currentMap.width||_ay>=currentMap.height) return true;
+                return _doorSolid.includes(currentMap.tiles[_ay*currentMap.width+_ax]);
+            });
+            if(_adjSolid) _drawRoomDoor(_dc, _depx, _depy, _mc);
+        }
+    }
+
+    // DQ-style building icons at field map exit positions（果てマップも含む）
+    if (!_sCacheHit && (_isFieldMap || _isExtremeField)) {
+        const _iconMaps = _isExtremeField ? [{ map: currentMap, mapId: _mapId, offX: 0, offY: 0 }] : _mapsToRender;
+        for (const { map: _rMap2, offX: _rOX2, offY: _rOY2 } of _iconMaps) {
+            if (!_rMap2.exits) continue;
+            for (const _ek of Object.keys(_rMap2.exits)) {
+                const _ed = _rMap2.exits[_ek];
+                const [_ex2,_ey2] = _ek.split(',').map(Number);
+                const _evx2 = _ex2+_rOX2, _evy2 = _ey2+_rOY2;
+                const _epx2 = _evx2*TILE_SIZE - camX;
+                const _epy2 = _evy2*TILE_SIZE - camY;
+                if (_epx2 < -TILE_SIZE*5 || _epx2 > cWidth+TILE_SIZE*5) continue;
+                if (_epy2 < -TILE_SIZE*5 || _epy2 > cHeight+TILE_SIZE*5) continue;
+                const _dm2 = (_ed && _ed.map) ? _ed.map : '';
+                const _exitTile2 = _rMap2.tiles[_ey2 * _rMap2.width + _ex2];
+                let _bt2 = null;
+                if (_exitTile2 === 23) _bt2 = 'shrine';
+                else if (_dm2.includes('town') || _dm2.includes('market')) _bt2 = 'town';
+                else if (_dm2.includes('village')) _bt2 = 'village';
+                else if (_dm2.includes('shrine')) _bt2 = 'shrine';
+                else if (_dm2.includes('tower') && !_dm2.includes('demon')) _bt2 = 'tower';
+                else if (_dm2.includes('castle') && !_dm2.includes('demon') && !_dm2.includes('death')) _bt2 = 'castle';
+                else if (_dm2.includes('dungeon') || _dm2.includes('cave')) _bt2 = 'dungeon';
+                else if (_dm2.includes('dharma')) _bt2 = 'dharma';
+                else if (_dm2.includes('demon') || _dm2.includes('death') || _dm2.includes('maou')) _bt2 = 'demon';
+                if (_bt2) _drawFieldBuilding(_dc, _bt2, _epx2, _epy2);
+            }
+        }
+    }
+
+    // キャッシュ保存 → 静的レイヤーを main canvas に blit
+    if (!_sCacheHit) { _cachedLights = lights.slice(); _staticCacheKey = _sCacheKey; }
+    ctx.drawImage(_staticTileCache, 0, 0);
+    if (_sCacheHit) lights = _cachedLights.slice();
+
+    // アニメーションタイル（水=5, ワープ=8, 旅の扉=23）は毎フレーム直接描画
+    for (const { map: _rMapA, mapId: _rMapAId, offX: _rOXA, offY: _rOYA } of _mapsToRender) {
+        for(let _ay = 0; _ay < _rMapA.height; _ay++) { for(let _ax = 0; _ax < _rMapA.width; _ax++) {
+            const _at = _rMapA.tiles[_ay * _rMapA.width + _ax];
+            if (_at !== 5 && _at !== 8 && _at !== 23) continue;
+            const _apx = (_ax+_rOXA)*TILE_SIZE - camX, _apy = (_ay+_rOYA)*TILE_SIZE - camY;
+            if (_apx < -TILE_SIZE || _apx > cWidth || _apy < -TILE_SIZE || _apy > cHeight) continue;
+            drawProceduralTile(ctx, _at, _apx, _apy, getMapRandom(_ax, _ay, _rMapAId), _drawNow, _mc, lights);
+        }}
+    }
+
     for (const { map: _rMap, mapId: _rMapId, offX: _rOX, offY: _rOY } of _mapsToRender) {
     if (_rMap.npcs) {
         Object.keys(_rMap.npcs).forEach(key => {
@@ -4791,74 +4857,6 @@ function drawMap() {
                 drawNpcSign(ctx, _scx, _basePy, '🔥', '魔王城', '#622');
         });
     }
-    }
-
-    // DQ4風 扉グラフィック（城・ダンジョン・塔の部屋間遷移ポイント）
-    if (!_sCacheHit && !_isFieldMap && currentMap && currentMap.exits) {
-        const _doorSolid = [1,2,4,5,15,16,17,18,19,20];
-        for (const [_dek, _dev] of Object.entries(currentMap.exits)) {
-            if (!_dev || !_dev.map) continue;
-            const [_dex, _dey] = _dek.split(',').map(Number);
-            const _depx = _dex*TILE_SIZE - camX, _depy = _dey*TILE_SIZE - camY;
-            if (_depx < -TILE_SIZE*2||_depx > cWidth+TILE_SIZE||_depy < -TILE_SIZE*2||_depy > cHeight+TILE_SIZE) continue;
-            const _det = currentMap.tiles[_dey*currentMap.width+_dex];
-            // 階段タイル(21/22)は既に描画済み。床タイルにある出口（扉）のみ描画
-            if (_det === 21 || _det === 22 || _det === 8 || _det === 23) continue;
-            if (_doorSolid.includes(_det)) continue;
-            // 隣接タイルの少なくとも1辺が壁（ソリッド）の場合のみ扉を描く（壁の開口部）
-            const _adjSolid = [[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy])=>{
-                const _ax=_dex+dx,_ay=_dey+dy;
-                if(_ax<0||_ay<0||_ax>=currentMap.width||_ay>=currentMap.height) return true;
-                return _doorSolid.includes(currentMap.tiles[_ay*currentMap.width+_ax]);
-            });
-            if(_adjSolid) _drawRoomDoor(_dc, _depx, _depy, _mc);
-        }
-    }
-
-    // DQ-style building icons at field map exit positions（果てマップも含む）
-    if (!_sCacheHit && (_isFieldMap || _isExtremeField)) {
-        const _iconMaps = _isExtremeField ? [{ map: currentMap, mapId: _mapId, offX: 0, offY: 0 }] : _mapsToRender;
-        for (const { map: _rMap2, offX: _rOX2, offY: _rOY2 } of _iconMaps) {
-            if (!_rMap2.exits) continue;
-            for (const _ek of Object.keys(_rMap2.exits)) {
-                const _ed = _rMap2.exits[_ek];
-                const [_ex2,_ey2] = _ek.split(',').map(Number);
-                const _evx2 = _ex2+_rOX2, _evy2 = _ey2+_rOY2;
-                const _epx2 = _evx2*TILE_SIZE - camX;
-                const _epy2 = _evy2*TILE_SIZE - camY;
-                if (_epx2 < -TILE_SIZE*5 || _epx2 > cWidth+TILE_SIZE*5) continue;
-                if (_epy2 < -TILE_SIZE*5 || _epy2 > cHeight+TILE_SIZE*5) continue;
-                const _dm2 = (_ed && _ed.map) ? _ed.map : '';
-                const _exitTile2 = _rMap2.tiles[_ey2 * _rMap2.width + _ex2];
-                let _bt2 = null;
-                if (_exitTile2 === 23) _bt2 = 'shrine'; // 旅の扉タイルは祠アイコンで表示
-                else if (_dm2.includes('town') || _dm2.includes('market')) _bt2 = 'town';
-                else if (_dm2.includes('village')) _bt2 = 'village';
-                else if (_dm2.includes('shrine')) _bt2 = 'shrine';
-                else if (_dm2.includes('tower') && !_dm2.includes('demon')) _bt2 = 'tower';
-                else if (_dm2.includes('castle') && !_dm2.includes('demon') && !_dm2.includes('death')) _bt2 = 'castle';
-                else if (_dm2.includes('dungeon') || _dm2.includes('cave')) _bt2 = 'dungeon';
-                else if (_dm2.includes('dharma')) _bt2 = 'dharma';
-                else if (_dm2.includes('demon') || _dm2.includes('death') || _dm2.includes('maou')) _bt2 = 'demon';
-                if (_bt2) _drawFieldBuilding(_dc, _bt2, _epx2, _epy2);
-            }
-        }
-    }
-
-    // キャッシュ保存 → 静的レイヤーを main canvas に blit
-    if (!_sCacheHit) { _cachedLights = lights.slice(); _staticCacheKey = _sCacheKey; }
-    ctx.drawImage(_staticTileCache, 0, 0);
-    if (_sCacheHit) lights = _cachedLights.slice();
-
-    // アニメーションタイル（水=5, ワープ=8, 旅の扉=23）は毎フレーム直接描画
-    for (const { map: _rMapA, mapId: _rMapAId, offX: _rOXA, offY: _rOYA } of _mapsToRender) {
-        for(let _ay = 0; _ay < _rMapA.height; _ay++) { for(let _ax = 0; _ax < _rMapA.width; _ax++) {
-            const _at = _rMapA.tiles[_ay * _rMapA.width + _ax];
-            if (_at !== 5 && _at !== 8 && _at !== 23) continue;
-            const _apx = (_ax+_rOXA)*TILE_SIZE - camX, _apy = (_ay+_rOYA)*TILE_SIZE - camY;
-            if (_apx < -TILE_SIZE || _apx > cWidth || _apy < -TILE_SIZE || _apy > cHeight) continue;
-            drawProceduralTile(ctx, _at, _apx, _apy, getMapRandom(_ax, _ay, _rMapAId), _drawNow, _mc, lights);
-        }}
     }
 
     let _shipDrawPos=null,_shipDrawDir=partyData.dir;if(_isFieldMap&&partyData.flags&&partyData.flags.has_ship&&currentMap.tiles){const _sn=Math.min(4,(partyData.members||[]).length);for(let _si=_sn-1;_si>=0;_si--){const _smp=_si===0?{x:partyData.pos.x,y:partyData.pos.y,dir:partyData.dir}:(moveHistory[_si-1]||null);if(!_smp||_smp.x<0||_smp.y<0||_smp.x>=currentMap.width||_smp.y>=currentMap.height)continue;if(currentMap.tiles[_smp.y*currentMap.width+_smp.x]===5){_shipDrawPos={x:_smp.x,y:_smp.y};_shipDrawDir=_smp.dir||partyData.dir;break;}}}let displayOrder = []; partyData.members.forEach(m => { if(m.hp > 0) displayOrder.push(m); }); partyData.members.forEach(m => { if(m.hp <= 0) displayOrder.push(m); });
@@ -5160,7 +5158,7 @@ async function moveParty(dx, dy) {
             if (_toField) {
                 let _canExit = !!(nextMap.exits && nextMap.exits[`${_lx},${_ly}`]);
                 if (!_canExit) {
-                    const _isoS=_hasShip?[1,2,4,15,16,17,18,19,20]:[1,2,4,5,15,16,17,18,19,20];
+                    const _isoS=_hasShip?[1,2,4,15,16,17,18]:[1,2,4,5,15,16,17,18,19,20];
                     const _isoV=new Set([`${_lx},${_ly}`]); const _isoQ=[[_lx,_ly]];
                     isoLoop: while(_isoQ.length>0&&_isoV.size<400){
                         const[icx,icy]=_isoQ.shift();
