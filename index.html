@@ -3278,78 +3278,117 @@ function _drawFieldBuilding(ctx, bType, px, py) {
     const T = TILE_SIZE, fl = Math.floor;
     ctx.save();
     if (bType === 'town') {
-        // DQ風 2階建て町グラフィック（入口タイルの草地の上に重ねて描画）
-        const bw = fl(T*2.0), bx = px+fl(T/2)-fl(bw/2);
+        // DQ4風 城壁付き城下町（壁+城門+3棟の屋根が見える）
+        const bw=fl(T*2.6), bx=px+fl(T/2)-fl(bw/2);
         // 影
-        ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(bx+4,py-fl(T*2.4)+4,bw+2,fl(T*2.4)+2);
-        // 石畳の基礎
-        ctx.fillStyle='#907a62'; ctx.fillRect(bx-2,py-4,bw+4,6);
-        ctx.strokeStyle='#70584a'; ctx.lineWidth=0.7;
-        for(let sx=bx+4;sx<bx+bw;sx+=9){ctx.beginPath();ctx.moveTo(sx,py-4);ctx.lineTo(sx,py+2);ctx.stroke();}
-        // 1階外壁
-        const w1H=fl(T*0.88);
-        ctx.fillStyle='#c8a870'; ctx.fillRect(bx,py-4-w1H,bw,w1H);
-        ctx.fillStyle='#d8b880'; ctx.fillRect(bx+1,py-3-w1H,bw-2,w1H-2);
-        ctx.strokeStyle='rgba(100,70,30,0.25)'; ctx.lineWidth=0.7;
-        for(let gy=py-4-w1H+5;gy<py-4;gy+=5){ctx.beginPath();ctx.moveTo(bx,gy);ctx.lineTo(bx+bw,gy);ctx.stroke();}
-        // 入口アーチ
-        const dW=fl(T*0.55),dH=fl(T*0.60),dX=bx+fl((bw-dW)/2),dY=py-4;
-        const aR=fl(dW/2),aCY=dY-dH+aR;
-        ctx.fillStyle='#100806';
-        ctx.beginPath();ctx.arc(dX+aR,aCY,aR,Math.PI,0);ctx.rect(dX,aCY,dW,dH-aR);ctx.fill();
-        ctx.fillStyle='#6e3c18'; ctx.fillRect(dX+1,aCY,fl(dW*0.44),dH-aR);
-        ctx.fillStyle='#5c3010'; ctx.fillRect(dX+2,aCY+fl((dH-aR)*0.35),fl(dW*0.38),fl((dH-aR)*0.2));
-        ctx.fillStyle='#7a4820'; ctx.fillRect(dX+fl(dW*0.52),aCY,fl(dW*0.44),dH-aR);
-        ctx.fillStyle='#6a3c18'; ctx.fillRect(dX+fl(dW*0.54),aCY+fl((dH-aR)*0.35),fl(dW*0.38),fl((dH-aR)*0.2));
-        ctx.fillStyle='#c89030';
-        ctx.fillRect(dX+fl(dW*0.30),aCY+fl((dH-aR)*0.5),2,2);
-        ctx.fillRect(dX+fl(dW*0.64),aCY+fl((dH-aR)*0.5),2,2);
-        ctx.strokeStyle='#2a1008';ctx.lineWidth=1;
-        ctx.beginPath();ctx.moveTo(dX+aR,aCY);ctx.lineTo(dX+aR,dY);ctx.stroke();
-        ctx.strokeStyle='#a08050';ctx.lineWidth=1.5;
-        ctx.beginPath();ctx.arc(dX+aR,aCY,aR+1,Math.PI,0);ctx.stroke();
-        // 1階窓（左右、十字格子）
-        const wW=7,wH=8,w1y=py-4-fl(w1H*0.58);
-        [[bx+fl(T*0.12),w1y],[bx+bw-fl(T*0.12)-wW,w1y]].forEach(([wx,wy])=>{
-            ctx.fillStyle='#ffeea8';ctx.fillRect(wx,wy,wW,wH);
-            ctx.strokeStyle='#987040';ctx.lineWidth=0.8;ctx.strokeRect(wx,wy,wW,wH);
-            ctx.beginPath();ctx.moveTo(wx+fl(wW/2),wy);ctx.lineTo(wx+fl(wW/2),wy+wH);ctx.stroke();
-            ctx.beginPath();ctx.moveTo(wx,wy+fl(wH/2));ctx.lineTo(wx+wW,wy+fl(wH/2));ctx.stroke();
+        ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.fillRect(bx+5,py-fl(T*2.1)+5,bw,fl(T*2.1));
+        // 石畳地面
+        ctx.fillStyle='#9a8468'; ctx.fillRect(bx-2,py-3,bw+4,5);
+        ctx.strokeStyle='#7a6448'; ctx.lineWidth=0.5;
+        for(let sx=bx+6;sx<bx+bw-2;sx+=8){ctx.beginPath();ctx.moveTo(sx,py-3);ctx.lineTo(sx,py+2);ctx.stroke();}
+        // 城壁（石積み）
+        const wY=py-3, wH=fl(T*0.95), wW=bw;
+        ctx.fillStyle='#b0a080'; ctx.fillRect(bx,wY-wH,wW,wH);
+        ctx.fillStyle='#c0b090'; ctx.fillRect(bx+1,wY-wH+1,wW-2,wH-2);
+        ctx.strokeStyle='rgba(80,60,20,0.18)'; ctx.lineWidth=0.6;
+        for(let gy=wY-wH+6;gy<wY;gy+=6){ctx.beginPath();ctx.moveTo(bx,gy);ctx.lineTo(bx+wW,gy);ctx.stroke();}
+        for(let gx=bx+9;gx<bx+wW;gx+=9){ctx.beginPath();ctx.moveTo(gx,wY-wH);ctx.lineTo(gx,wY);ctx.stroke();}
+        // 城壁上の胸壁（凸凹）
+        const merlonW=fl(wW/9), merlonH=5, merlonY=wY-wH;
+        ctx.fillStyle='#b0a080';
+        for(let i=0;i<9;i+=2){ ctx.fillRect(bx+i*merlonW,merlonY-merlonH,merlonW-1,merlonH+1); }
+        // 左右の塔（城壁より高い）
+        [[bx-2,fl(T*0.45),fl(T*1.35)],[bx+wW-fl(T*0.45)+2,fl(T*0.45),fl(T*1.35)]].forEach(([tx,tw,th])=>{
+            ctx.fillStyle='#9a9070'; ctx.fillRect(tx,wY-th,tw,th);
+            ctx.fillStyle='#aaA080'; ctx.fillRect(tx+1,wY-th+1,tw-2,th-2);
+            ctx.strokeStyle='rgba(60,50,20,0.2)'; ctx.lineWidth=0.5;
+            for(let gy=wY-th+5;gy<wY-wH;gy+=5){ctx.beginPath();ctx.moveTo(tx,gy);ctx.lineTo(tx+tw,gy);ctx.stroke();}
+            for(let i=0;i<3;i++) ctx.fillRect(tx+i*fl(tw/3),wY-th-4,fl(tw/3)-1,5);
+            ctx.fillStyle='#1a1208'; ctx.fillRect(tx+fl(tw*0.22),wY-th+6,fl(tw*0.56),5);
+            ctx.fillStyle='#1a1208'; ctx.fillRect(tx+fl(tw*0.22),wY-th+15,fl(tw*0.56),4);
         });
-        // 看板
-        const sW=fl(T*0.82),sH=5,sX=bx+fl((bw-sW)/2),sY=py-4-fl(w1H*0.15);
-        ctx.fillStyle='#5a3012';ctx.fillRect(sX-1,sY-sH-1,sW+2,sH+2);
-        ctx.fillStyle='#d0a050';ctx.fillRect(sX,sY-sH,sW,sH);
-        ctx.fillStyle='#2c1004';ctx.font='bold 5px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('町',sX+fl(sW/2)+1,sY-fl(sH/2)+1);
-        ctx.fillStyle='#fff8c0';ctx.fillText('町',sX+fl(sW/2),sY-fl(sH/2));
-        // 2階外壁
-        const w2Y=py-4-w1H,w2H=fl(T*0.50),w2X=bx+fl(T*0.12),w2W=bw-fl(T*0.24);
-        ctx.fillStyle='#b89060';ctx.fillRect(w2X,w2Y-w2H,w2W,w2H);
-        ctx.fillStyle='#c8a070';ctx.fillRect(w2X+1,w2Y-w2H+1,w2W-2,w2H-2);
-        ctx.strokeStyle='rgba(80,50,20,0.22)';ctx.lineWidth=0.7;
-        for(let gy=w2Y-w2H+4;gy<w2Y;gy+=5){ctx.beginPath();ctx.moveTo(w2X,gy);ctx.lineTo(w2X+w2W,gy);ctx.stroke();}
-        // 2階窓（中央2つ）
-        const w2y=w2Y-fl(w2H*0.65);
-        [w2X+fl(w2W*0.18),w2X+fl(w2W*0.62)].forEach(wx=>{
-            ctx.fillStyle='#ffeea8';ctx.fillRect(wx,w2y,6,7);
-            ctx.strokeStyle='#987040';ctx.lineWidth=0.7;ctx.strokeRect(wx,w2y,6,7);
+        // 城門（アーチ型、中央）
+        const gW=fl(T*0.72),gH=fl(T*0.74),gX=bx+fl((wW-gW)/2),gY=wY;
+        const gaR=fl(gW/2),gaCY=gY-gH+gaR;
+        ctx.fillStyle='#120e08';
+        ctx.beginPath();ctx.arc(gX+gaR,gaCY,gaR,Math.PI,0);ctx.rect(gX,gaCY,gW,gH-gaR);ctx.fill();
+        // 城門の扉（左右分割）
+        ctx.fillStyle='#4a2c10'; ctx.fillRect(gX+1,gaCY,fl(gW/2)-1,gH-gaR);
+        ctx.fillStyle='#5a3818'; ctx.fillRect(gX+2,gaCY+3,fl(gW/2)-3,fl((gH-gaR)*0.38));
+        ctx.fillStyle='#5c3810'; ctx.fillRect(gX+fl(gW/2)+1,gaCY,fl(gW/2)-2,gH-gaR);
+        ctx.fillStyle='#6a4420'; ctx.fillRect(gX+fl(gW/2)+2,gaCY+3,fl(gW/2)-4,fl((gH-gaR)*0.38));
+        ctx.fillStyle='#d09820'; ctx.fillRect(gX+fl(gW/2)-1,gaCY+fl((gH-gaR)*0.42),2,2);
+        ctx.strokeStyle='#7a5030'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(gX+gaR,gaCY); ctx.lineTo(gX+gaR,gY); ctx.stroke();
+        ctx.strokeStyle='#c0a060'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(gX+gaR,gaCY,gaR+1,Math.PI,0); ctx.stroke();
+        // 城壁左右の窓
+        [[bx+fl(T*0.2),wY-fl(wH*0.55)],[bx+wW-fl(T*0.2)-8,wY-fl(wH*0.55)]].forEach(([wx,wy])=>{
+            ctx.fillStyle='#ffe8a0'; ctx.fillRect(wx,wy,8,9);
+            ctx.strokeStyle='#9a7838'; ctx.lineWidth=0.8; ctx.strokeRect(wx,wy,8,9);
+            ctx.beginPath();ctx.moveTo(wx+4,wy);ctx.lineTo(wx+4,wy+9);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(wx,wy+4);ctx.lineTo(wx+8,wy+4);ctx.stroke();
         });
-        // 屋根（切妻）
-        const rBY=w2Y-w2H,rMX=bx+fl(bw/2),rPY=rBY-fl(T*0.60);
-        ctx.fillStyle='#8c2818';
-        ctx.beginPath();ctx.moveTo(bx-5,rBY);ctx.lineTo(rMX,rPY);ctx.lineTo(bx+bw+5,rBY);ctx.closePath();ctx.fill();
-        ctx.fillStyle='#a83020';
-        ctx.beginPath();ctx.moveTo(bx-5,rBY);ctx.lineTo(rMX,rPY);ctx.lineTo(rMX,rBY);ctx.closePath();ctx.fill();
-        ctx.strokeStyle='rgba(60,10,5,0.3)';ctx.lineWidth=0.5;
-        for(let ri=1;ri<4;ri++){const ly=rBY+fl((rPY-rBY)*ri/4);const lx=fl(Math.abs(rMX-bx-5)*ri/4);ctx.beginPath();ctx.moveTo(bx-5+lx,ly);ctx.lineTo(bx+bw+5-lx,ly);ctx.stroke();}
-        ctx.strokeStyle='#6a1e10';ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(bx-5,rBY);ctx.lineTo(rMX,rPY);ctx.lineTo(bx+bw+5,rBY);ctx.stroke();
-        // 旗
-        ctx.strokeStyle='#c0c0c0';ctx.lineWidth=1;
-        ctx.beginPath();ctx.moveTo(rMX,rPY);ctx.lineTo(rMX,rPY-10);ctx.stroke();
-        ctx.fillStyle='#d83030';
-        ctx.beginPath();ctx.moveTo(rMX,rPY-10);ctx.lineTo(rMX+8,rPY-7);ctx.lineTo(rMX,rPY-4);ctx.closePath();ctx.fill();
+        // 城壁の裏側に見える3棟の赤い屋根
+        const roofBaseY=wY-wH-1;
+        [[bx+fl(bw*0.12),fl(bw*0.24)],[bx+fl(bw*0.38),fl(bw*0.26)],[bx+fl(bw*0.64),fl(bw*0.24)]].forEach(([rx,rw])=>{
+            const rmx=rx+fl(rw/2), rpy2=roofBaseY-fl(T*0.60);
+            ctx.fillStyle='#7c2010';
+            ctx.beginPath();ctx.moveTo(rx-3,roofBaseY);ctx.lineTo(rmx,rpy2);ctx.lineTo(rx+rw+3,roofBaseY);ctx.closePath();ctx.fill();
+            ctx.fillStyle='#9a2c18';
+            ctx.beginPath();ctx.moveTo(rx-3,roofBaseY);ctx.lineTo(rmx,rpy2);ctx.lineTo(rmx,roofBaseY);ctx.closePath();ctx.fill();
+            ctx.strokeStyle='#601808'; ctx.lineWidth=1.5;
+            ctx.beginPath();ctx.moveTo(rx-3,roofBaseY);ctx.lineTo(rmx,rpy2);ctx.lineTo(rx+rw+3,roofBaseY);ctx.stroke();
+        });
+        // 旗（中央塔）
+        const fpX=bx+fl(bw/2), fpY=wY-wH-fl(T*0.60)-4;
+        ctx.strokeStyle='#c8c8b0'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(fpX,fpY); ctx.lineTo(fpX,fpY-10); ctx.stroke();
+        ctx.fillStyle='#d83028'; ctx.beginPath(); ctx.moveTo(fpX,fpY-10); ctx.lineTo(fpX+9,fpY-7); ctx.lineTo(fpX,fpY-4); ctx.closePath(); ctx.fill();
+    } else if (bType === 'village') {
+        // DQ4風 村（茅葺き屋根の小屋 2棟）
+        const bx=px-fl(T*0.3);
+        // 影
+        ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(bx+4,py-fl(T*1.35)+4,fl(T*2.0),fl(T*1.4));
+        // 地面（土）
+        ctx.fillStyle='#a08c68'; ctx.fillRect(bx-2,py-3,fl(T*2.0)+4,5);
+        // ---- 左の家 ----
+        const h1x=bx, h1w=fl(T*0.88), h1bY=py-3, h1wH=fl(T*0.58);
+        ctx.fillStyle='#d4c090'; ctx.fillRect(h1x,h1bY-h1wH,h1w,h1wH);
+        ctx.fillStyle='#e0cc9c'; ctx.fillRect(h1x+1,h1bY-h1wH+1,h1w-2,h1wH-2);
+        ctx.strokeStyle='rgba(80,60,20,0.18)'; ctx.lineWidth=0.5;
+        for(let gy=h1bY-h1wH+5;gy<h1bY-2;gy+=5){ctx.beginPath();ctx.moveTo(h1x+1,gy);ctx.lineTo(h1x+h1w-1,gy);ctx.stroke();}
+        // 入口（小さいアーチ）
+        ctx.fillStyle='#1a1008'; ctx.beginPath(); ctx.arc(h1x+fl(h1w/2),h1bY-fl(h1wH*0.32),fl(h1w*0.18),Math.PI,0); ctx.rect(h1x+fl(h1w*0.32),h1bY-fl(h1wH*0.32),fl(h1w*0.36),fl(h1wH*0.32)); ctx.fill();
+        ctx.fillStyle='#5a3818'; ctx.fillRect(h1x+fl(h1w*0.34),h1bY-fl(h1wH*0.3),fl(h1w*0.14),fl(h1wH*0.28));
+        ctx.fillStyle='#6a4828'; ctx.fillRect(h1x+fl(h1w*0.52),h1bY-fl(h1wH*0.3),fl(h1w*0.14),fl(h1wH*0.28));
+        // 窓
+        ctx.fillStyle='#ffe090'; ctx.fillRect(h1x+2,h1bY-fl(h1wH*0.78),5,5); ctx.fillRect(h1x+h1w-7,h1bY-fl(h1wH*0.78),5,5);
+        ctx.strokeStyle='#9a7838'; ctx.lineWidth=0.7; ctx.strokeRect(h1x+2,h1bY-fl(h1wH*0.78),5,5); ctx.strokeRect(h1x+h1w-7,h1bY-fl(h1wH*0.78),5,5);
+        // 茅葺き屋根（段重ね風）
+        const h1rBY=h1bY-h1wH, h1rMX=h1x+fl(h1w/2);
+        [[0,fl(T*0.52),'#5a4018'],[2,fl(T*0.62),'#6a5020'],[4,fl(T*0.72),'#7a6028']].forEach(([off,rpy,rc])=>{
+            ctx.fillStyle=rc;
+            ctx.beginPath();ctx.moveTo(h1x-4+off,h1rBY+off);ctx.lineTo(h1rMX,h1rBY-rpy);ctx.lineTo(h1x+h1w+4-off,h1rBY+off);ctx.closePath();ctx.fill();
+        });
+        ctx.strokeStyle='#3a2808'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(h1x-4,h1rBY); ctx.lineTo(h1rMX,h1rBY-fl(T*0.72)); ctx.lineTo(h1x+h1w+4,h1rBY); ctx.stroke();
+        // 煙突
+        ctx.fillStyle='#706050'; ctx.fillRect(h1x+fl(h1w*0.62),h1rBY-fl(T*0.48),4,fl(T*0.28));
+        ctx.fillStyle='rgba(200,200,180,0.3)'; ctx.beginPath(); ctx.arc(h1x+fl(h1w*0.64),h1rBY-fl(T*0.5),3,0,Math.PI*2); ctx.fill();
+        // ---- 右の家（少し小さい） ----
+        const h2x=bx+fl(T*1.05), h2w=fl(T*0.78), h2bY=py-3, h2wH=fl(T*0.50);
+        ctx.fillStyle='#c8b888'; ctx.fillRect(h2x,h2bY-h2wH,h2w,h2wH);
+        ctx.fillStyle='#d8c898'; ctx.fillRect(h2x+1,h2bY-h2wH+1,h2w-2,h2wH-2);
+        ctx.strokeStyle='rgba(80,60,20,0.15)'; ctx.lineWidth=0.5;
+        for(let gy=h2bY-h2wH+5;gy<h2bY-2;gy+=5){ctx.beginPath();ctx.moveTo(h2x+1,gy);ctx.lineTo(h2x+h2w-1,gy);ctx.stroke();}
+        ctx.fillStyle='#1a1008'; ctx.fillRect(h2x+fl(h2w*0.34),h2bY-fl(h2wH*0.48),fl(h2w*0.32),fl(h2wH*0.48));
+        ctx.fillStyle='#5a3818'; ctx.fillRect(h2x+fl(h2w*0.36),h2bY-fl(h2wH*0.46),fl(h2w*0.13),fl(h2wH*0.44));
+        ctx.fillStyle='#6a4828'; ctx.fillRect(h2x+fl(h2w*0.51),h2bY-fl(h2wH*0.46),fl(h2w*0.13),fl(h2wH*0.44));
+        ctx.fillStyle='#ffe090'; ctx.fillRect(h2x+2,h2bY-fl(h2wH*0.75),4,4);
+        ctx.strokeStyle='#9a7838'; ctx.lineWidth=0.7; ctx.strokeRect(h2x+2,h2bY-fl(h2wH*0.75),4,4);
+        const h2rBY=h2bY-h2wH, h2rMX=h2x+fl(h2w/2);
+        [[0,fl(T*0.44),'#5a4018'],[2,fl(T*0.54),'#6a5020'],[4,fl(T*0.62),'#7a6028']].forEach(([off,rpy,rc])=>{
+            ctx.fillStyle=rc;
+            ctx.beginPath();ctx.moveTo(h2x-3+off,h2rBY+off);ctx.lineTo(h2rMX,h2rBY-rpy);ctx.lineTo(h2x+h2w+3-off,h2rBY+off);ctx.closePath();ctx.fill();
+        });
+        ctx.strokeStyle='#3a2808'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(h2x-3,h2rBY); ctx.lineTo(h2rMX,h2rBY-fl(T*0.62)); ctx.lineTo(h2x+h2w+3,h2rBY); ctx.stroke();
     } else if (bType === 'castle') {
         const bx = px - fl(T*0.5);
         // shadow
@@ -3397,27 +3436,122 @@ function _drawFieldBuilding(ctx, bType, px, py) {
         ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('城',px+T/2,py+T-5);
         ctx.fillStyle='#aad0ff'; ctx.fillText('城',px+T/2-1,py+T-6);
     } else if (bType === 'shrine') {
-        const bx = px - 2;
-        ctx.fillStyle='rgba(0,0,0,0.18)'; ctx.fillRect(bx+3,py-fl(T*0.88)+3,fl(T*1.1),fl(T*1.0));
-        ctx.fillStyle='#c0a080'; ctx.fillRect(bx,py-fl(T*0.05),fl(T*1.1),fl(T*0.18));
-        ctx.fillStyle='#e8d8a0'; ctx.fillRect(bx+fl(T*0.1),py-fl(T*0.45),fl(T*0.9),fl(T*0.42));
-        ctx.fillStyle='#a02020'; ctx.beginPath(); ctx.moveTo(bx-5,py-fl(T*0.45)); ctx.lineTo(bx+fl(T*0.55),py-fl(T*0.98)); ctx.lineTo(bx+fl(T*1.15),py-fl(T*0.45)); ctx.closePath(); ctx.fill();
-        ctx.fillStyle='#c02828'; ctx.beginPath(); ctx.moveTo(bx-4,py-fl(T*0.47)); ctx.lineTo(bx+fl(T*0.55),py-fl(T*0.95)); ctx.lineTo(bx+fl(T*1.14),py-fl(T*0.47)); ctx.lineTo(bx+fl(T*1.14),py-fl(T*0.42)); ctx.lineTo(bx-4,py-fl(T*0.42)); ctx.closePath(); ctx.fill();
-        ctx.fillStyle='#302010'; ctx.beginPath(); ctx.arc(bx+fl(T*0.55),py-fl(T*0.17),fl(T*0.14),Math.PI,0); ctx.rect(bx+fl(T*0.41),py-fl(T*0.17),fl(T*0.28),fl(T*0.14)); ctx.fill();
-        ctx.fillStyle='rgba(255,220,100,0.75)'; ctx.beginPath(); ctx.arc(bx+fl(T*0.2),py-fl(T*0.5),2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(bx+fl(T*0.9),py-fl(T*0.5),2,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('祠',px+T/2,py+T-5);
-        ctx.fillStyle='#ffcc66'; ctx.fillText('祠',px+T/2-1,py+T-6);
+        // DQ4風 鳥居+祠（鳥居が前景、社殿が後ろ）
+        const cx=px+fl(T/2);
+        // 影
+        ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(cx-fl(T*0.85)+4,py-fl(T*1.42)+4,fl(T*1.7),fl(T*1.5));
+        // 石段
+        [[0,4,fl(T*1.1)],[2,3,fl(T*0.95)]].forEach(([sy,sh,sw])=>{
+            ctx.fillStyle='#c0b090'; ctx.fillRect(cx-fl(sw/2),py-sy-sh,sw,sh);
+            ctx.strokeStyle='#9a8868'; ctx.lineWidth=0.5; ctx.strokeRect(cx-fl(sw/2),py-sy-sh,sw,sh);
+        });
+        // 社殿（後ろの小さな建物）
+        const sdW=fl(T*0.88), sdH=fl(T*0.44), sdX=cx-fl(sdW/2), sdY=py-7-sdH;
+        ctx.fillStyle='#c8b880'; ctx.fillRect(sdX,sdY,sdW,sdH);
+        ctx.fillStyle='#d8c890'; ctx.fillRect(sdX+1,sdY+1,sdW-2,sdH-2);
+        ctx.strokeStyle='rgba(80,60,10,0.2)'; ctx.lineWidth=0.5;
+        for(let gy=sdY+5;gy<sdY+sdH;gy+=5){ctx.beginPath();ctx.moveTo(sdX+1,gy);ctx.lineTo(sdX+sdW-1,gy);ctx.stroke();}
+        // 扉
+        ctx.fillStyle='#1a1008'; ctx.fillRect(cx-5,sdY+fl(sdH*0.22),10,fl(sdH*0.78));
+        ctx.fillStyle='#4a2810'; ctx.fillRect(cx-4,sdY+fl(sdH*0.24),4,fl(sdH*0.7));
+        ctx.fillStyle='#5a3818'; ctx.fillRect(cx+1,sdY+fl(sdH*0.24),3,fl(sdH*0.7));
+        // 社殿屋根（緩やかな曲線で反り屋根を表現）
+        const srBY=sdY, srMX=cx, srPY=srBY-fl(T*0.52);
+        ctx.fillStyle='#7a1808';
+        ctx.beginPath();
+        ctx.moveTo(sdX-5,srBY); ctx.quadraticCurveTo(sdX-2,srBY-3,srMX,srPY);
+        ctx.quadraticCurveTo(sdX+sdW+2,srBY-3,sdX+sdW+5,srBY); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#921e10';
+        ctx.beginPath();
+        ctx.moveTo(sdX-5,srBY); ctx.quadraticCurveTo(sdX-2,srBY-3,srMX,srPY);
+        ctx.lineTo(srMX,srBY); ctx.closePath(); ctx.fill();
+        // 反り屋根の軒先（水平の桁）
+        ctx.fillStyle='#8a1808'; ctx.fillRect(sdX-5,srBY-3,sdW+10,3);
+        ctx.strokeStyle='#5a1008'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.moveTo(sdX-5,srBY); ctx.quadraticCurveTo(sdX-2,srBY-3,srMX,srPY); ctx.quadraticCurveTo(sdX+sdW+2,srBY-3,sdX+sdW+5,srBY); ctx.stroke();
+        // 棟飾り（千木）
+        ctx.strokeStyle='#5a0808'; ctx.lineWidth=1.2;
+        [[-3,3],[3,-3]].forEach(([dx,dy])=>{ctx.beginPath();ctx.moveTo(srMX+dx,srPY+dy);ctx.lineTo(srMX-dx+1,srPY-5);ctx.stroke();});
+        // === 鳥居（前景に大きく描画）===
+        const tH=fl(T*1.08), tW=fl(T*1.48), tX=cx-fl(tW/2), tY=py-3;
+        const pillarW=4;
+        // 柱（左右）
+        ctx.fillStyle='#c01010';
+        ctx.fillRect(tX+fl(tW*0.08),tY-tH,pillarW,tH);
+        ctx.fillRect(tX+tW-fl(tW*0.08)-pillarW,tY-tH,pillarW,tH);
+        // 柱の根元（石台）
+        ctx.fillStyle='#808880'; ctx.fillRect(tX+fl(tW*0.06),tY-4,pillarW+4,4); ctx.fillRect(tX+tW-fl(tW*0.08)-pillarW-2,tY-4,pillarW+4,4);
+        // 笠木（一番上の丸太）
+        const kasaY=tY-tH+2;
+        ctx.fillStyle='#c81810'; ctx.fillRect(tX,kasaY-5,tW,5);
+        // 笠木の反り（両端が上がる）
+        ctx.fillStyle='#c81810';
+        ctx.beginPath(); ctx.moveTo(tX-3,kasaY); ctx.quadraticCurveTo(tX+fl(tW/4),kasaY-2,cx,kasaY-3); ctx.quadraticCurveTo(tX+fl(tW*0.75),kasaY-2,tX+tW+3,kasaY); ctx.lineTo(tX+tW+3,kasaY-5); ctx.lineTo(tX-3,kasaY-5); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle='#8a0808'; ctx.lineWidth=1.2;
+        ctx.beginPath(); ctx.moveTo(tX-3,kasaY); ctx.quadraticCurveTo(cx-fl(tW/4),kasaY-3,cx,kasaY-3); ctx.quadraticCurveTo(cx+fl(tW/4),kasaY-3,tX+tW+3,kasaY); ctx.stroke();
+        // 島木（下の細い横木）
+        const shimaY=tY-fl(tH*0.75);
+        ctx.fillStyle='#b81010'; ctx.fillRect(tX+fl(tW*0.04),shimaY-3,tW-fl(tW*0.08),3);
+        // 貫（柱を貫く横木）
+        ctx.fillStyle='#a01010'; ctx.fillRect(tX+fl(tW*0.02),shimaY+1,tW-fl(tW*0.04),2);
     } else if (bType === 'tower') {
-        const bx = px + 4;
-        ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect(bx+3,py-fl(T*1.48)+3,fl(T*0.8),fl(T*1.65));
-        ctx.fillStyle='#6070a0'; ctx.fillRect(bx,py-fl(T*1.4),fl(T*0.8),fl(T*1.55));
-        ctx.fillStyle='#7080b0'; ctx.fillRect(bx+2,py-fl(T*1.35),fl(T*0.7),fl(T*1.45));
-        ctx.fillStyle='#9090c8'; for(let _bi=0;_bi<3;_bi++) ctx.fillRect(bx+_bi*fl(T*0.27),py-fl(T*1.4)-5,fl(T*0.2),6);
-        ctx.fillRect(bx,py-fl(T*1.4)-2,fl(T*0.8),3);
-        ctx.fillStyle='#e8d040'; ctx.fillRect(bx+fl(T*0.22),py-fl(T*1.1),fl(T*0.35),5); ctx.fillRect(bx+fl(T*0.22),py-fl(T*0.78),fl(T*0.35),5); ctx.fillRect(bx+fl(T*0.22),py-fl(T*0.46),fl(T*0.35),5);
-        ctx.fillStyle='#202035'; ctx.beginPath(); ctx.arc(bx+fl(T*0.4),py-fl(T*0.14),fl(T*0.16),Math.PI,0); ctx.rect(bx+fl(T*0.24),py-fl(T*0.14),fl(T*0.32),fl(T*0.15)); ctx.fill();
-        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('塔',px+T/2,py+T-5);
-        ctx.fillStyle='#aaaaff'; ctx.fillText('塔',px+T/2-1,py+T-6);
+        // DQ4風 石造りの魔法塔（灰色石・細長・胸壁付き）
+        const tw=fl(T*0.78), tx=px+fl(T/2)-fl(tw/2), th=fl(T*1.72), tBase=py-2;
+        // 影
+        ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(tx+4,tBase-th+4,tw,th+2);
+        // 塔本体（台形：底より少し細く）
+        const tTopW=fl(tw*0.82), tTopX=tx+fl((tw-tTopW)/2);
+        ctx.fillStyle='#6a7480';
+        ctx.beginPath(); ctx.moveTo(tx,tBase); ctx.lineTo(tx+tw,tBase); ctx.lineTo(tTopX+tTopW,tBase-th); ctx.lineTo(tTopX,tBase-th); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#7a8490';
+        ctx.beginPath(); ctx.moveTo(tx+2,tBase); ctx.lineTo(tx+tw-2,tBase); ctx.lineTo(tTopX+tTopW-2,tBase-th+2); ctx.lineTo(tTopX+2,tBase-th+2); ctx.closePath(); ctx.fill();
+        // 石積み横目地
+        ctx.strokeStyle='rgba(40,50,60,0.22)'; ctx.lineWidth=0.6;
+        for(let gy=tBase-6;gy>tBase-th+2;gy-=6){
+            const prog=(tBase-gy)/th; const lx=tx+fl(prog*fl((tw-tTopW)/2)); const lw=tw-fl(prog*(tw-tTopW));
+            ctx.beginPath(); ctx.moveTo(lx+1,gy); ctx.lineTo(lx+lw-1,gy); ctx.stroke();
+        }
+        // 石積み縦目地（互い違い）
+        for(let row=0;row<8;row++){
+            const gy=tBase-6-row*6; const prog=(tBase-gy)/th;
+            const lx=tx+fl(prog*fl((tw-tTopW)/2)); const lw=tw-fl(prog*(tw-tTopW));
+            const offset=(row%2)*fl(lw/6);
+            ctx.strokeStyle='rgba(40,50,60,0.15)'; ctx.lineWidth=0.5;
+            for(let gx=lx+fl(lw/4)+offset;gx<lx+lw-2;gx+=fl(lw/3)){
+                ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(gx,gy-6); ctx.stroke();
+            }
+        }
+        // 矢狭間（細長い窓）x3
+        const slotW=4,slotH=7;
+        [[0.35,0.28],[0.35,0.55],[0.35,0.78]].forEach(([wx,wy])=>{
+            const slx=tx+fl((tw-slotW)*wx)+fl((tBase-tBase)*(tw-tTopW)*wy/th);
+            const sly=tBase-fl(th*wy);
+            ctx.fillStyle='#0e1420'; ctx.fillRect(slx,sly,slotW,slotH);
+            ctx.fillStyle='rgba(100,160,220,0.22)'; ctx.fillRect(slx+1,sly+1,slotW-2,slotH-2);
+        });
+        // 入口（アーチ型）
+        const eW=fl(tw*0.44),eH=fl(T*0.35),eX=tx+fl((tw-eW)/2),eY=tBase;
+        const eR=fl(eW/2);
+        ctx.fillStyle='#0e1420';
+        ctx.beginPath(); ctx.arc(eX+eR,eY-eH+eR,eR,Math.PI,0); ctx.rect(eX,eY-eH+eR,eW,eH-eR); ctx.fill();
+        ctx.fillStyle='#2a1808'; ctx.fillRect(eX+1,eY-eH+eR,fl(eW/2)-1,eH-eR);
+        ctx.fillStyle='#3a2010'; ctx.fillRect(eX+fl(eW/2)+1,eY-eH+eR,fl(eW/2)-2,eH-eR);
+        ctx.strokeStyle='#8090a0'; ctx.lineWidth=1.2;
+        ctx.beginPath(); ctx.arc(eX+eR,eY-eH+eR,eR+1,Math.PI,0); ctx.stroke();
+        // 頂部 胸壁（凸凹）
+        const mY=tBase-th, mW=tTopW, mX=tTopX, merlH=5;
+        ctx.fillStyle='#5a6470';
+        const nMerlon=5;
+        for(let i=0;i<nMerlon;i++){
+            if(i%2===0) ctx.fillRect(mX+fl(i*mW/nMerlon),mY-merlH,fl(mW/nMerlon)-1,merlH+2);
+        }
+        ctx.fillRect(mX,mY,mW,2);
+        // 魔法の光（頂上の宝玉）
+        const glowX=tx+fl(tw/2), glowY=tBase-th-merlH-4;
+        const grd=ctx.createRadialGradient(glowX,glowY,1,glowX,glowY,5);
+        grd.addColorStop(0,'rgba(180,220,255,0.95)'); grd.addColorStop(1,'rgba(80,140,220,0)');
+        ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(glowX,glowY,5,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(220,240,255,0.9)'; ctx.beginPath(); ctx.arc(glowX,glowY,2,0,Math.PI*2); ctx.fill();
     } else if (bType === 'dungeon') {
         const bx = px - 4;
         ctx.fillStyle='#302838'; ctx.beginPath(); ctx.arc(bx+fl(T*0.65),py-fl(T*0.35),fl(T*0.62),0,Math.PI*2); ctx.fill();
@@ -4475,7 +4609,8 @@ function drawMap() {
                 if (_epy2 < -TILE_SIZE*5 || _epy2 > cHeight+TILE_SIZE*5) continue;
                 const _dm2 = (_ed && _ed.map) ? _ed.map : '';
                 let _bt2 = null;
-                if (_dm2.includes('town') || _dm2.includes('village') || _dm2.includes('market')) _bt2 = 'town';
+                if (_dm2.includes('town') || _dm2.includes('market')) _bt2 = 'town';
+                else if (_dm2.includes('village')) _bt2 = 'village';
                 else if (_dm2.includes('shrine')) _bt2 = 'shrine';
                 else if (_dm2.includes('tower') && !_dm2.includes('demon')) _bt2 = 'tower';
                 else if (_dm2.includes('castle') && !_dm2.includes('demon') && !_dm2.includes('death')) _bt2 = 'castle';
