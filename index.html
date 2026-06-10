@@ -4514,55 +4514,58 @@ function drawMap() {
                 else if (npc.id === "obj_parents_relic") { ctx.font = "22px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🖼️", px + TILE_SIZE/2, py + TILE_SIZE/2); ctx.globalAlpha = 1.0; }
                 else if(chestImg && chestImg.complete && chestImg.naturalHeight > 0) { ctx.drawImage(chestImg, px, py, TILE_SIZE, TILE_SIZE); } else { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(isOpened ? "🧳" : "🎁", px + TILE_SIZE/2, py + TILE_SIZE/2); } ctx.globalAlpha = 1.0;
             } else if(npc.id === 'boss_dungeon') {
-                let _bcx = px+TILE_SIZE/2, _bcy = py+TILE_SIZE/2;
-                {
-                    // 元・王宮騎士の英霊 — フィールドスプライト（青銀甲冑の霊体騎士）
-                    const _bs=TILE_SIZE,_now2=Date.now();
-                    // 霊体オーラ（青白、脈動）
-                    const _ap=0.36+Math.sin(_now2/500)*0.14;
-                    const _rg=ctx.createRadialGradient(_bcx,_bcy-4,0,_bcx,_bcy-4,_bs);
-                    _rg.addColorStop(0,`rgba(100,180,255,${_ap})`);_rg.addColorStop(1,'rgba(10,30,110,0)');
-                    ctx.fillStyle=_rg;ctx.beginPath();ctx.arc(_bcx,_bcy-4,_bs,0,Math.PI*2);ctx.fill();
-                    // 浮遊する光の粒
-                    ctx.fillStyle=`rgba(160,220,255,${0.62+Math.sin(_now2/320)*0.3})`;
-                    for(let _i=0;_i<4;_i++){const _a=(_now2/750+_i*1.57)%(Math.PI*2);ctx.beginPath();ctx.arc(_bcx+Math.cos(_a)*10,_bcy-4+Math.sin(_a)*7,1.2,0,Math.PI*2);ctx.fill();}
-                    // 兜の上部ドーム
-                    ctx.fillStyle='#6888b8';ctx.beginPath();ctx.arc(_bcx,_bcy-14,8,Math.PI,0);ctx.fill();
-                    ctx.fillStyle='#8aaad4';ctx.beginPath();ctx.arc(_bcx-2,_bcy-16,5,Math.PI*1.1,0);ctx.fill();
-                    // 兜の縁金
-                    ctx.fillStyle='#8098c0';ctx.fillRect(_bcx-9,_bcy-14,18,3);
-                    // バイザー（暗い面窓）
-                    ctx.fillStyle='#0e1622';ctx.fillRect(_bcx-7,_bcy-11,14,6);
-                    ctx.fillStyle='#1a2030';ctx.fillRect(_bcx-6,_bcy-10,12,4);
-                    // 青い眼光
-                    const _ey=0.88+Math.sin(_now2/280)*0.12;
-                    ctx.fillStyle=`rgba(60,160,255,${_ey})`;
-                    ctx.beginPath();ctx.arc(_bcx-3,_bcy-8,2.2,0,Math.PI*2);ctx.fill();
-                    ctx.beginPath();ctx.arc(_bcx+3,_bcy-8,2.2,0,Math.PI*2);ctx.fill();
-                    ctx.fillStyle=`rgba(100,200,255,${_ey*0.32})`;
-                    ctx.beginPath();ctx.arc(_bcx-3,_bcy-8,4.5,0,Math.PI*2);ctx.fill();
-                    ctx.beginPath();ctx.arc(_bcx+3,_bcy-8,4.5,0,Math.PI*2);ctx.fill();
-                    // 顎当て
-                    ctx.fillStyle='#5878a0';ctx.fillRect(_bcx-7,_bcy-5,14,3);
-                    // 胸甲（ブレストプレート）
-                    ctx.fillStyle='#5c78a8';ctx.fillRect(_bcx-8,_bcy-2,16,9);
-                    ctx.fillStyle='#7090c0';ctx.fillRect(_bcx-7,_bcy-1,14,7);
-                    // 胸の聖十字紋章
-                    ctx.fillStyle='rgba(190,225,255,0.85)';
-                    ctx.fillRect(_bcx-1,_bcy,2,6);ctx.fillRect(_bcx-5,_bcy+2,10,2);
-                    // 肩当て（パウルドロン）
-                    ctx.fillStyle='#4868a0';ctx.fillRect(_bcx-13,_bcy-2,5,5);ctx.fillRect(_bcx+8,_bcy-2,5,5);
-                    ctx.fillStyle='#6888b8';ctx.fillRect(_bcx-13,_bcy-2,5,2);ctx.fillRect(_bcx+8,_bcy-2,5,2);
-                    // 聖剣（右側・斜め上構え）
-                    ctx.save();ctx.translate(_bcx+10,_bcy-5);ctx.rotate(-0.38);
-                    ctx.strokeStyle='rgba(200,232,255,0.95)';ctx.lineWidth=2;
-                    ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(0,-22);ctx.stroke();
-                    ctx.strokeStyle='rgba(140,190,255,0.45)';ctx.lineWidth=4;ctx.stroke();
-                    ctx.fillStyle='#90a8c8';ctx.fillRect(-5,8,10,4);
-                    ctx.strokeStyle='rgba(220,242,255,0.7)';ctx.lineWidth=0.9;
-                    ctx.beginPath();ctx.moveTo(0,8);ctx.lineTo(0,-22);ctx.stroke();
-                    ctx.restore();
-                }
+                // 元・王宮騎士の英霊 — DQ4風フィールドスプライト（勇者パーティと同等サイズ）
+                const _t2=Date.now();
+                const _bob2=Math.sin(_t2/700)*2.5;
+                const _cx=px+TILE_SIZE/2, _cy=py+TILE_SIZE+_bob2; // 足元基準
+                ctx.save();
+                // ① 霊体オーラ（広い青白グロー）
+                {const _g=ctx.createRadialGradient(_cx,_cy-32,3,_cx,_cy-28,34);_g.addColorStop(0,`rgba(80,160,255,${0.28+Math.sin(_t2/600)*0.08})`);_g.addColorStop(0.6,`rgba(40,100,200,0.14}`);_g.addColorStop(1,'rgba(10,30,120,0)');ctx.fillStyle=_g;ctx.beginPath();ctx.arc(_cx,_cy-28,34,0,Math.PI*2);ctx.fill();}
+                // ② 浮遊粒子（6個、公転）
+                for(let _pi=0;_pi<6;_pi++){const _pa=(_t2/900+_pi*1.05)%(Math.PI*2);const _pr=18+Math.sin(_t2/400+_pi)*3;ctx.fillStyle=`rgba(140,200,255,${0.5+Math.sin(_t2/300+_pi)*0.28})`;ctx.beginPath();ctx.arc(_cx+Math.cos(_pa)*_pr,_cy-28+Math.sin(_pa)*_pr*0.55,1.8,0,Math.PI*2);ctx.fill();}
+                // ③ 下半身（霊体・フェードアウト）
+                {const _g=ctx.createLinearGradient(_cx,_cy-16,_cx,_cy);_g.addColorStop(0,'rgba(60,90,160,0.65)');_g.addColorStop(1,'rgba(30,60,140,0)');ctx.fillStyle=_g;ctx.beginPath();ctx.ellipse(_cx,_cy-10,9,12,0,0,Math.PI*2);ctx.fill();}
+                // ④ 胴体・胸甲
+                ctx.fillStyle='#263860';ctx.fillRect(_cx-11,_cy-32,22,16);
+                ctx.fillStyle='#344e88';ctx.fillRect(_cx-10,_cy-31,20,14);
+                ctx.fillStyle='rgba(160,200,255,0.35)';ctx.fillRect(_cx-9,_cy-31,9,6); // ハイライト
+                // ⑤ 聖十字紋章（脈動）
+                {const _ea=0.72+Math.sin(_t2/420)*0.22;ctx.fillStyle=`rgba(180,225,255,${_ea})`;ctx.fillRect(_cx-1,_cy-27,3,9);ctx.fillRect(_cx-6,_cy-23,12,3);}
+                // ⑥ 肩当て
+                ctx.fillStyle='#1e3070';ctx.fillRect(_cx-17,_cy-32,7,7);ctx.fillRect(_cx+10,_cy-32,7,7);
+                ctx.fillStyle='#3a58a8';ctx.fillRect(_cx-17,_cy-32,7,3);ctx.fillRect(_cx+10,_cy-32,7,3);
+                ctx.fillStyle='rgba(100,160,240,0.5)';ctx.fillRect(_cx-16,_cy-32,5,1);ctx.fillRect(_cx+11,_cy-32,5,1);
+                // ⑦ 顎当て
+                ctx.fillStyle='#3a5090';ctx.fillRect(_cx-9,_cy-18,18,4);ctx.fillStyle='#4a62a8';ctx.fillRect(_cx-8,_cy-18,16,3);
+                // ⑧ 兜（ドーム）
+                ctx.fillStyle='#2a4090';ctx.beginPath();ctx.arc(_cx,_cy-42,12,Math.PI,0);ctx.fill();
+                ctx.fillStyle='#3a5ab8';ctx.beginPath();ctx.arc(_cx-2,_cy-44,8,Math.PI*1.08,0);ctx.fill();
+                ctx.fillStyle='rgba(160,210,255,0.55)';ctx.beginPath();ctx.arc(_cx-4,_cy-46,4,Math.PI*1.15,Math.PI*1.85);ctx.fill(); // 兜光沢
+                // ⑨ 兜の縁（バイザー上縁）
+                ctx.fillStyle='#344e98';ctx.fillRect(_cx-12,_cy-31,24,3);
+                // ⑩ バイザー（面窓）
+                ctx.fillStyle='#060c18';ctx.fillRect(_cx-9,_cy-28,18,9);
+                ctx.fillStyle='#0a1422';ctx.fillRect(_cx-8,_cy-27,16,7);
+                // バイザー格子
+                ctx.strokeStyle='rgba(30,70,170,0.55)';ctx.lineWidth=0.8;
+                for(let _gi=0;_gi<3;_gi++){ctx.beginPath();ctx.moveTo(_cx-7,_cy-25+_gi*2.5);ctx.lineTo(_cx+7,_cy-25+_gi*2.5);ctx.stroke();}
+                // ⑪ 眼光（青白、脈動）
+                {const _ea=0.88+Math.sin(_t2/280)*0.1;
+                ctx.fillStyle=`rgba(50,150,255,${_ea})`;ctx.beginPath();ctx.arc(_cx-5,_cy-23,3.2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(_cx+5,_cy-23,3.2,0,Math.PI*2);ctx.fill();
+                ctx.fillStyle=`rgba(120,210,255,${_ea*0.45})`;ctx.beginPath();ctx.arc(_cx-5,_cy-23,6,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(_cx+5,_cy-23,6,0,Math.PI*2);ctx.fill();
+                ctx.fillStyle=`rgba(220,245,255,${_ea})`;ctx.beginPath();ctx.arc(_cx-5,_cy-23,1.2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(_cx+5,_cy-23,1.2,0,Math.PI*2);ctx.fill();}
+                // ⑫ 左腕（半透明）
+                ctx.strokeStyle='rgba(60,100,180,0.65)';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(_cx-11,_cy-28);ctx.lineTo(_cx-16,_cy-18);ctx.stroke();
+                ctx.strokeStyle='rgba(80,130,200,0.4)';ctx.lineWidth=2;ctx.stroke();
+                // ⑬ 聖剣（右側・大きく、グロー付き）
+                ctx.save();ctx.translate(_cx+14,_cy-22);ctx.rotate(-0.42);
+                {const _sg=ctx.createLinearGradient(0,-32,0,12);_sg.addColorStop(0,`rgba(200,235,255,${0.95+Math.sin(_t2/350)*0.05})`);_sg.addColorStop(0.6,'rgba(130,185,255,0.6)');_sg.addColorStop(1,'rgba(80,130,220,0)');
+                ctx.strokeStyle=_sg;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,12);ctx.lineTo(0,-32);ctx.stroke();
+                ctx.strokeStyle='rgba(230,245,255,0.95)';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(0,12);ctx.lineTo(0,-32);ctx.stroke();}
+                ctx.fillStyle='#7090c0';ctx.fillRect(-8,8,16,4);ctx.fillStyle='#9ab0d8';ctx.fillRect(-8,8,16,1.5); // 鍔
+                ctx.fillStyle='#3a2850';ctx.fillRect(-2.5,12,5,8); // 柄
+                ctx.restore();
+                ctx.restore();
             } else if(npc.id === 'boss_sky') {
                 if (externalImages['angel'] && externalImages['angel'].complete && externalImages['angel'].naturalHeight > 0) { drawSpriteLocal(ctx, externalImages['angel'], px, py, 52); }
                 else {
