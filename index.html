@@ -5225,6 +5225,29 @@ async function checkAction() {
         const npc = currentMap.npcs[key]; const extDef = externalEntitiesData[npc.id];
         showGoldWindow();
         try {
+            // 2周目: 魔王城クリア後、城の王様に話しかける → 偽王正体明かし → グラ王最終形態
+            if (partyData.flags.is_second_loop && partyData.flags.flag_2nd_maou_cleared && !partyData.flags.last_boss_defeated && npc.id.includes('king') && npc.id !== 'boss_pirate_king') {
+                let _lv2 = (partyData.members.find(m=>m.hp>0)||partyData.members[0]).lv;
+                let _hn2 = partyData.members[0] ? partyData.members[0].name : '勇者';
+                await typeMessage("【偽の国王グラード】\nよく 帰ってきたな 勇者よ。\n魔王城の 悪を 倒したそうだな……。");
+                await typeMessage("【偽の国王グラード】\nふふふ……だが わしは 知っておるぞ。\nお前たちが 全ての 真実を 知っている ということを。");
+                await typeMessage("【偽の国王グラード】\nそうだ……わしこそが 百年前の 初代魔王。\nあの弱き王の 肉体を 奪い\nこの世界を 支配してきた 真の 王者じゃ！！");
+                await typeMessage(`【偽の国王グラード】\n${_hn2}よ……お前たちを ここで 終わらせよう！\n今こそ わしが 真の 姿を 現す……！！`);
+                if (!masterData.monsters['boss_gura_final']) masterData.monsters['boss_gura_final'] = { name: 'グラ王（最終形態）', max_hp: 1100 + _lv2 * 35, atk: 35 + _lv2 * 8, def: 25 + _lv2 * 5, spd: 22 + _lv2 * 4, exp: _lv2 * 400, gold: _lv2 * 200 };
+                hideGoldWindow(); let _bwK = await executeBattle(['boss_gura_final']); showGoldWindow(); updateGoldWindow();
+                if (!_bwK) return;
+                await typeMessage("【偽の国王グラード】\n……そんな……バカな……！\nわしが……人間 ごときに……！！");
+                AudioManager.playBGM('victory');
+                await typeMessage("偽の国王グラードが 砕け散った……！\n百年の 呪縛が 解け\n世界に 真の 光が 戻ってきた……！！");
+                await typeMessage("【聖王グラード（魂）】\n……末裔よ。\nよくぞ やり遂げた……。\n百年の 怨念が やっと 晴れた……。");
+                await typeMessage("【聖王グラード（魂）】\nお前たちの 勇気と 愛が\nこの 世界を 救ったのじゃ……。\n誇り高く……生きよ……。");
+                await typeMessage(`＊　＊　真のゲームクリア！　＊　＊\n${_hn2}たちの 名は えいえんに\nグラマニアの 歴史に 刻まれた！`);
+                partyData.flags.last_boss_defeated = true; partyData.flags.is_second_loop_unlocked = true;
+                localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
+                await typeMessage("タイトル画面に もどります。\nAボタン または Enterキーを 押してください。");
+                location.reload(); return;
+            }
+
             if (partyData.flags.last_boss_defeated) {
                 if (npc.id.includes('maou_castle_gate')) { partyData.flags.gate_removed = true; delete currentMap.npcs[key]; state = 'FIELD'; hideAllWindows(); drawMap(); return; }
                 let _is2nd_end = partyData.flags.is_second_loop;
@@ -6019,37 +6042,27 @@ async function checkAction() {
                             await typeMessage("【天空の王】\n城へ 帰れば……全てが 分かるだろう。\nその時 どうか 正しい 選択を してくれ。");
                             await typeMessage(`天空の 力が ${_heroName}たちに 宿った！\n（魔族の 言葉が 理解できるように なった……！）`);
                         } else if (_isFinal && _is2nd) {
-                            // 2周目・真エンディング
-                            await typeMessage("【偽の国王グラード】\n……そんな……バカな……！\nわしが……人間 ごときに……！！");
-                            AudioManager.playBGM('victory');
-                            await typeMessage("偽の国王グラードが 砕け散った……！\n百年の 呪縛が 解け\n世界に 真の 光が 戻ってきた……！！");
-                            await typeMessage("【聖王グラード（魂）】\n……末裔よ。\nよくぞ やり遂げた……。\n百年の 怨念が やっと 晴れた……。");
-                            await typeMessage("【聖王グラード（魂）】\nお前たちの 勇気と 愛が\nこの 世界を 救ったのじゃ……。\n誇り高く……生きよ……。");
-                            await typeMessage(`＊　＊　真のゲームクリア！　＊　＊\n${_heroName}たちの 名は えいえんに\nグラマニアの 歴史に 刻まれた！`);
-                            partyData.flags.last_boss_defeated = true;
-                            partyData.flags.is_second_loop_unlocked = true;
-                            localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
-                            await typeMessage("タイトル画面に もどります。\nAボタン または Enterキーを 押してください。");
-                            location.reload(); return;
+                            // 2周目: 魔王城のボス撃破 → 城下町グラマニアへ帰還
+                            await typeMessage("【偽の国王グラード】\n……くっ……！\nこの姿では……まだ 終わりでは ない……！");
+                            await typeMessage("（偽の国王グラードが 魔王城から 姿を消した……）\nしかし……何かが まだ 終わっていない気がする……。");
+                            await typeMessage("「……城下町 グラマニアへ 帰れ。\n全てを 終わらせるために……」");
+                            partyData.flags.flag_2nd_maou_cleared = true;
+                            let _retMapId = (externalMapData && externalMapData['map_town_01']) ? 'map_town_01' : Object.keys(externalMapData||{})[0] || 'map_town_01';
+                            partyData.pos = { map: _retMapId, x: 10, y: 18 }; partyData.dir = 2;
+                            currentMap = await loadExternalData('map-' + _retMapId); moveHistory = [];
+                            state = 'FIELD'; hideAllWindows(); drawMap(); updateBGM(); return;
                         } else if (_isFinal) {
-                            // 1周目・衝撃の大どんでん返し
+                            // 1周目・衝撃の大どんでん返し（最終形態なし）
                             await typeMessage("【グラ王】\nよく……ぞ…… 我が……末裔よ……");
                             await typeMessage("【グラ王】\nわしは……グラード。\n百年前の……本物の 初代国王じゃ。\n長い……長い 時を かけて\nやっと……お前に 会えた……！");
                             await typeMessage("【グラ王】\n城に いる グラードは……偽物じゃ。\n百年前に わしの 肉体を 奪い\n人間を 操り続けた 初代魔王……！\n急いで……城へ……戻れ……！");
-                            await typeMessage("【グラ王】\nし……しかし……このままでは……！\n百年の 怨念が……暴走して しまう……！！\n末裔よ……わしを……解き放って くれ……！！");
-                            await typeMessage("グラ王の 残った 怨念が 燃え上がり……\n理性を 失った 悲しき 竜の 最終形態へと 変じた……！！");
-                            await typeMessage(`【グラ王（最終形態）】\nGAAAA……！！\n（百年の 怨念が 凝縮され\n竜の 本能だけが 目覚めた……！！）`);
-                            if (!masterData.monsters['boss_gura_final']) masterData.monsters['boss_gura_final'] = { name: 'グラ王（最終形態）', max_hp: 900 + _lv * 30, atk: 30 + _lv * 7, def: 20 + _lv * 4, spd: 20 + _lv * 3, exp: _lv * 300, gold: _lv * 150 };
-                            hideGoldWindow(); let _bwFinal = await executeBattle(['boss_gura_final']); showGoldWindow(); updateGoldWindow();
-                            if (!_bwFinal) return;
-                            await typeMessage("（……グラ王の 咆哮が 静まり……）\n百年の 怨念が……ようやく 解き放たれた……！");
-                            await typeMessage("【グラ王（光となりながら）】\n……ありがとう……末裔よ……\nこれで……わしは……安らかに……眠れる……。");
+                            await typeMessage("【グラ王】\n……末裔よ……。\nこの力を……使うのだ……。\n必ず……偽物を 倒して くれ……！！");
                             AudioManager.playBGM('battle_final');
                             await typeMessage("その瞬間……！\nグラマニア城の 方角から\n漆黒の 闇が 世界を 包み込んだ……！！");
                             await typeMessage("玉座の後ろから\n実体を 現した 何かが 降臨した……！");
                             await typeMessage("【偽の国王グラード】\nくははは！！\n骨肉の 相食む 呪われた 血の 一族よ！\nよくぞ 祖先を その手で 殺してくれた！\n今こそ わしが 世界を 手に 入れる！！");
-                            await typeMessage("【グラ王（かすかな 声で）】\n……まだ……力が……残って おる……！\n行け……末裔よ……偽物を……頼む……！！");
-                            await typeMessage(`グラ王の 解き放たれた 魂が 集まり……\n最後の 力を 振り絞って 偽の王に 特攻した……！！`);
+                            await typeMessage("【グラ王】\n……まだ……力が 残っておる……！\n行け……末裔よ……逃げろ……！！");
+                            await typeMessage("グラ王の 残った 怨念が 燃え上がり……\n理性を 失った 悲しき 竜の 姿へと 変じた……！！");
                             await typeMessage(`グラ王（悲しき竜）は 偽の王に 特攻し\n${_heroName}たちを 城の 外へと\n必死に 逃がした……！！`);
                             await typeMessage("…………。\n……光が 消えた。\nグラ王の 気配が……もう 感じられない。");
                             AudioManager.playBGM('game_over');
@@ -6112,7 +6125,38 @@ async function checkAction() {
                 else if(npc.id.includes('priest') || npc.id.includes('church')) await eventPriest();
                 else if(npc.id.includes('inn')) await eventInn(npc.id);
                 else if(npc.id.includes('casino') || npc.id.includes('bunny')) await eventCasino();
-                else await typeMessage(`【${npc.name}】\nこんにちは！`);
+                else {
+                    let _nName = npc.name || npc.id;
+                    // 2周目: 魔王城クリア後・偽王未討伐 → 「平和が来たのに何か不安」の個別ニュアンス
+                    if (partyData.flags.is_second_loop && partyData.flags.flag_2nd_maou_cleared && !partyData.flags.last_boss_defeated) {
+                        const _nId = npc.id || '';
+                        let _uMsg;
+                        if (_nId.includes('guard') || _nId.includes('soldier') || _nId.includes('knight')) {
+                            _uMsg = `【${_nName}】\n……魔王城の 悪は 倒れた。\nだが なぜ まだ 哨戒を 続けるよう\n命令が 続いているのだろう……。`;
+                        } else if (_nId.includes('priest') || _nId.includes('church')) {
+                            _uMsg = `【${_nName}】\nお祈りを 続けています……。\n魔王が 消えたというのに\n闇が 晴れた 気が しないのです……。`;
+                        } else if (_nId.includes('merchant') || _nId.includes('shop') || _nId.includes('inn')) {
+                            _uMsg = `【${_nName}】\n平和に なったはずなのに……\nお客さんが みんな 怯えた 顔を してる。\n何かを 恐れているみたいに……。`;
+                        } else if (_nId.includes('woman') || _nId.includes('girl')) {
+                            _uMsg = `【${_nName}】\n（小声で）\n……あの方に 近づいては ダメよ。\n目が……目が 怖いの。\nあの方、本当に 王様なの……？`;
+                        } else if (_nId.includes('child') || _nId.includes('kid') || _nId.includes('boy')) {
+                            _uMsg = `【${_nName}】\nねえ……王様の 顔、\nなんか 変じゃない？\nお父さんも お母さんも 怖い って 言ってた……。`;
+                        } else if (_nId.includes('old') || _nId.includes('elder')) {
+                            _uMsg = `【${_nName}】\nわしは 長く 生きてきた……。\nあの 王様の 顔……\n百年前の 絵と そっくりなのが ずっと 気になっておる。`;
+                        } else {
+                            const _msgs2 = [
+                                `【${_nName}】\n……魔王城の 悪が 倒れたというのに。\nなぜ こんなに 胸が ざわめくのだろう……。`,
+                                `【${_nName}】\n平和に なったはずなのに……\n国王グラードの 顔を 見るたびに\nなぜか 怖く なってしまう……。`,
+                                `【${_nName}】\nみんなが 喜んでいる。\nだが……なにか まだ 終わっていない 気がする。`,
+                                `【${_nName}】\n（遠くを 見つめて……）\n……あの城の 空気が 変わった 気がする。\n気のせいかな……。`,
+                            ];
+                            _uMsg = _msgs2[Math.floor(Math.abs(Math.sin(tx * 13.7 + ty * 7.3)) * _msgs2.length)];
+                        }
+                        await typeMessage(_uMsg);
+                    } else {
+                        await typeMessage(`【${_nName}】\nこんにちは！`);
+                    }
+                }
             }
         } finally { hideGoldWindow(); }
         state = 'FIELD'; hideAllWindows(); drawMap();
