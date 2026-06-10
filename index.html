@@ -240,7 +240,7 @@
             ],
             items: [
                 { id: "i01", name: "やくそう（草）", effect: "hp_recovery", value: 30, price: 8, description: "傷口に塗るとHPが30回復する。" },
-                { id: "i02", name: "どくけし草", effect: "cure_poison", price: 10, description: "毒を消し去る苦い草。" },
+                { id: "i02", name: "毒消し草", effect: "cure_poison", price: 20, description: "毒を消し去る苦い草。" },
                 { id: "i03", name: "魔法のせいすい", effect: "mp_recovery", value: 15, price: 150, description: "MPを少し回復する聖なる水。" },
                 { id: "i04", name: "キメラのつばさ", effect: "warp_town", price: 25, description: "最後に行った町へ一瞬で戻る。" },
                 { id: "i05", name: "世界樹の葉", effect: "revive", price: 1000, description: "死者を一度だけ蘇らせる奇跡の葉。" },
@@ -269,6 +269,8 @@
           { id: "behoim", name: "ベホイム", type: "heal", target: "ally", mp_cost: 7, power: 80, element: "light", description: "生命力を大きく活性化させる" },
           { id: "behomara", name: "ベホマラ", type: "heal", target: "allies", mp_cost: 18, power: 100, element: "light", description: "慈愛の光が味方全員を包む" },
           { id: "zaorn", name: "ザオーン", type: "heal", target: "ally", mp_cost: 15, power: 1, element: "light", description: "魂を呼び戻し生き返らせる" },
+          { id: "kiari", name: "キアリー", type: "heal", target: "ally", mp_cost: 5, power: 0, element: "light", description: "毒や眠りの状態異常を癒やす" },
+          { id: "behoma", name: "ベホマ", type: "heal", target: "ally", mp_cost: 30, power: 9999, element: "light", description: "対象者1人のHPを完全に回復する" },
 
           // --- 攻撃系：単体（一点突破） ---
           { id: "meran", name: "メラン", type: "attack", target: "enemy", mp_cost: 2, power: 15, element: "fire", description: "小さな火の玉を放つ" },
@@ -428,12 +430,12 @@ const characterData = [
 
         // --- 魔法習得テーブル ---
         const magicTable = {
-            hero: { 3: ["ホイム"], 6: ["メラン"], 9: ["ルーラ"], 11: ["レミト"], 14: ["ベホイム"], 17: ["トヘロ"], 23: ["ライデン"] },
+            hero: { 3: ["ホイム"], 5: ["キアリー"], 6: ["メラン"], 9: ["ルーラ"], 11: ["レミト"], 14: ["ベホイム"], 17: ["トヘロ"], 21: ["ベホマ"], 23: ["ライデン"] },
             warrior: {}, 
             mage: { 1: ["メラン"], 4: ["ヒャドン"], 7: ["ギラン"], 10: ["ルカン"], 13: ["メラミィ"], 15: ["トラマナ"], 19: ["バイキル"], 22: ["ヒャダイン"], 26: ["ベギラン"] },
-            priest: { 1: ["ホイム"], 4: ["スカラー"], 8: ["バギス"], 12: ["ベホイム"], 15: ["マヌーサ"], 20: ["ザオーン"], 24: ["ベホマラ"] },
+            priest: { 1: ["ホイム"], 4: ["スカラー"], 5: ["キアリー"], 8: ["バギス"], 12: ["ベホイム"], 15: ["マヌーサ"], 20: ["ザオーン"], 21: ["ベホマ"], 24: ["ベホマラ"] },
             grappler: {},
-            sage: { 2: ["ホイム"], 5: ["メラン"], 16: ["ヒャドン"], 18: ["バギス"], 21: ["ベホイム"], 25: ["ギラン"], 27: ["メラミィ"], 29: ["ヒャダイン"], 31: ["ザオラル"], 33: ["ベギラン"], 35: ["ライデン"], 38: ["ベホマラ"] },
+            sage: { 2: ["ホイム"], 5: ["キアリー", "メラン"], 16: ["ヒャドン"], 18: ["バギス"], 21: ["ベホイム", "ベホマ"], 25: ["ギラン"], 27: ["メラミィ"], 29: ["ヒャダイン"], 31: ["ザオラル"], 33: ["ベギラン"], 35: ["ライデン"], 38: ["ベホマラ"] },
             paladin: { 5: ["スカラー"], 18: ["ホイム"], 28: ["マヌーサ"], 40: ["ザオーン"] },
             jester: { 16: ["トヘロ"], 27: ["ルーラ"], 39: ["レミト"] },
             samurai: {},
