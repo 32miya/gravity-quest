@@ -2857,6 +2857,36 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
         fixExternalMapConnections();
         fixMapExits();
         fixAllExitLandings();
+        // === ダンジョン・塔の出口タイルを 21/22 に自動設定 ===
+        // 外部JSONのwarp_pointはexitsに変換されるがtile番号は0(床)のまま。
+        // exit位置のtileが通行可能タイルなら目的地の深さで21(下)か22(上/出口)を設定する。
+        {
+            const _dungeonDepth = id => {
+                if (!id) return -1;
+                if (/field|town|village|market|shrine|castle(?!.*demon)/.test(id)) return -1; // フィールド系 = -1
+                const _bf = id.match(/b(\d+)f/i); if (_bf) return parseInt(_bf[1]);
+                const _f  = id.match(/(\d+)f/i);  if (_f)  return parseInt(_f[1]) - 1;
+                return 0;
+            };
+            const _walkTiles = new Set([0, 9, 10, 11, 12]);
+            for (const _mid of Object.keys(externalMapData)) {
+                const _isDng = /dungeon|cave|tower|demon_castle/.test(_mid);
+                if (!_isDng) continue;
+                const _mm = externalMapData[_mid];
+                if (!_mm || !_mm.exits || !_mm.tiles) continue;
+                const _srcD = _dungeonDepth(_mid);
+                for (const [_ek, _ev] of Object.entries(_mm.exits)) {
+                    if (!_ev || !_ev.map) continue;
+                    const [_ex, _ey] = _ek.split(',').map(Number);
+                    if (_ex < 0 || _ey < 0 || _ex >= _mm.width || _ey >= _mm.height) continue;
+                    const _ti = _ey * _mm.width + _ex;
+                    if (!_walkTiles.has(_mm.tiles[_ti])) continue; // 既に特殊タイルなら skip
+                    const _destD = _dungeonDepth(_ev.map);
+                    if (_destD === -1 || _destD < _srcD) { _mm.tiles[_ti] = 22; } // 上り/出口
+                    else if (_destD > _srcD)              { _mm.tiles[_ti] = 21; } // 下り
+                }
+            }
+        }
         // === map_field_4_2（東の孤島）の脱出保証 ===
         // 四方が海で自動出口が生成されない場合、map_field_4_1 北向き出口を強制追加
         {
