@@ -5038,6 +5038,33 @@ async function moveParty(dx, dy) {
                 }
             }
         }
+        // 船でフィールドマップ境界越え：水タイルには出口がないため直接隣接マップへ遷移
+        if (_onFieldB && partyData.flags && partyData.flags.has_ship) {
+            const _fmM = _mapIdB.match(/map_field_(\d)_(\d)/);
+            if (_fmM) {
+                let _ngx = parseInt(_fmM[1]), _ngy = parseInt(_fmM[2]);
+                let _nlx = partyData.pos.x, _nly = partyData.pos.y;
+                if (dx > 0) { _ngx++; _nlx = 1; }
+                else if (dx < 0) { _ngx--; _nlx = currentMap.width - 2; }
+                else if (dy > 0) { _ngy++; _nly = 1; }
+                else { _ngy--; _nly = currentMap.height - 2; }
+                if (_ngx >= 0 && _ngx <= 4 && _ngy >= 0 && _ngy <= 4) {
+                    const _nFId = `map_field_${_ngx}_${_ngy}`;
+                    const _nFMap = externalMapData && externalMapData[_nFId];
+                    if (_nFMap && _nlx >= 0 && _nly >= 0 && _nlx < _nFMap.width && _nly < _nFMap.height) {
+                        const _nFTile = _nFMap.tiles[_nly * _nFMap.width + _nlx];
+                        if (![1,2,4,15,16,17,18].includes(_nFTile)) {
+                            _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
+                            partyData.pos = { map: _nFId, x: _nlx, y: _nly };
+                            partyData.last_field_pos = { map: _nFId, x: _nlx, y: _nly };
+                            if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {};
+                            partyData.flags.visited_maps[_nFId] = true;
+                            currentMap = _nFMap; moveHistory = []; drawMap(); updateBGM(); return;
+                        }
+                    }
+                }
+            }
+        }
         return;
     }
     const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
