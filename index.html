@@ -4499,7 +4499,7 @@ function drawMap() {
     if (_rMap.npcs) {
         Object.keys(_rMap.npcs).forEach(key => {
             const [nx, ny] = key.split(','); const npc = _rMap.npcs[key]; const _basePx = (parseInt(nx)+_rOX)*TILE_SIZE - camX; const _basePy = (parseInt(ny)+_rOY)*TILE_SIZE - camY;
-            const _noAnim = npc.id.includes('chest') || npc.id.includes('obj_') || npc.id.includes('king') || npc.id.includes('demon') || npc.id.includes('dragon');
+            const _noAnim = npc.id.includes('chest') || npc.id.includes('obj_') || npc.id.includes('king') || (npc.id.includes('demon') && !npc.id.includes('guide')) || npc.id.includes('dragon');
             const _nBob = _noAnim ? 0 : Math.round(Math.sin(Date.now() / 900 + parseInt(nx) * 2.3 + parseInt(ny) * 1.7) * 1.5);
             const px = _basePx; const py = _basePy + _nBob;
             if (px < -TILE_SIZE*2 || px > cWidth || py < -TILE_SIZE*2 || py > cHeight) return;
@@ -4663,7 +4663,7 @@ function drawMap() {
                 }
             } else if(npc.id.includes('king') && !npc.id.includes('pirate') && externalImages['king'] && (_mapId.includes('castle') && !_mapId.includes('demon'))) { drawSpriteLocal(ctx, externalImages['king'], px, py, 48);
             } else if(npc.id.includes('master_dragon') && externalImages['masterDragon']) { drawDragonLocal(ctx, externalImages['masterDragon'], px, py, 160);
-            } else if((npc.id.includes('demon') || npc.id.includes('maou') || npc.id === 'boss_maou') && !npc.id.includes('statue')) {
+            } else if((npc.id.includes('demon') || npc.id.includes('maou') || npc.id === 'boss_maou') && !npc.id.includes('statue') && !npc.id.includes('guide')) {
                 if (externalImages['demonKing'] && externalImages['demonKing'].complete && externalImages['demonKing'].naturalHeight > 0) { drawDragonLocal(ctx, externalImages['demonKing'], px, py, 70, 10); }
                 else { ctx.fillStyle='rgba(120,0,60,0.3)'; ctx.beginPath(); ctx.arc(px+TILE_SIZE/2,py+TILE_SIZE/2,20,0,Math.PI*2); ctx.fill(); ctx.font='28px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👿',px+TILE_SIZE/2,py+TILE_SIZE/2+2); }
 
