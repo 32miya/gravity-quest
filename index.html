@@ -2139,7 +2139,7 @@ function generateFieldMapsForGravityQuest() {
     if (externalMapData["map_field_north_2"]) forceExit("map_field_2_0",7,0,"map_field_north_2",7,13);
     if (externalMapData["map_field_south_2"]) forceExit("map_field_2_4",7,14,"map_field_south_2",7,1);
     if (externalMapData["map_field_east_2"]) forceExit("map_field_4_2",14,7,"map_field_east_2",1,7);
-    if (externalMapData["map_field_east_2"]) forceExit("map_field_east_2",0,7,"map_field_4_2",13,7); // 逆方向: 東の果て→map4_2
+    if (externalMapData["map_field_east_2"]) forceExit("map_field_east_2",0,7,"map_field_4_2",7,7); // 逆方向: 東の果て→map4_2 中央に着地
     if (externalMapData["map_field_west_2"]) forceExit("map_field_0_2",0,7,"map_field_west_2",13,7);
 
     // === 旅の扉(tile 23)設置 ===
@@ -2149,6 +2149,16 @@ function generateFieldMapsForGravityQuest() {
         const _swW = _sw.width || 12;
         if (_sw.tiles[9*_swW+6] !== 22) { _sw.tiles[9*_swW+6] = 9; }
         delete _sw.npcs['6,9'];
+        // shrine_warp の tile22（出口階段）がフィールドへ向いている場合、
+        // 必ず祠の入口 map_field_2_3 へ戻るよう強制上書き
+        for (const [_sk, _se] of Object.entries(_sw.exits || {})) {
+            if (!_se || !_se.map) continue;
+            const [_skx, _sky] = _sk.split(',').map(Number);
+            const _st = _sw.tiles[_sky * _swW + _skx];
+            if (_st === 22 && /field/.test(_se.map)) {
+                _se.map = 'map_field_2_3'; _se.x = 7; _se.y = 7;
+            }
+        }
     }
 
     // [task5/6] 西の果て(map_field_west_2)入口付近に時の扉(tile 23)を設置し
@@ -2847,6 +2857,37 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
         fixExternalMapConnections();
         fixMapExits();
         fixAllExitLandings();
+        // === map_field_4_2（東の孤島）の脱出保証 ===
+        // 四方が海で自動出口が生成されない場合、map_field_4_1 北向き出口を強制追加
+        {
+            const _f42 = externalMapData['map_field_4_2'];
+            const _f41 = externalMapData['map_field_4_1'];
+            if (_f42 && _f41) {
+                const _hasNorthExit = Object.values(_f42.exits || {}).some(e => e && /field_4_1/.test(e.map));
+                if (!_hasNorthExit) {
+                    // 中央付近（y=1 行）で歩けるタイルを探す
+                    const _solidB = [1,2,4,5,15,16,17,18,19,20];
+                    let _placed = false;
+                    for (let _tx = 5; _tx <= 9 && !_placed; _tx++) {
+                        if (!_solidB.includes(_f42.tiles[1*_f42.width+_tx]) && !_f42.exits[`${_tx},0`]) {
+                            _f42.tiles[0*_f42.width+_tx] = 11; // 陸地タイルに変更
+                            _f42.exits[`${_tx},0`] = { map: 'map_field_4_1', x: _tx, y: 13 };
+                            // 逆方向: 4_1→4_2
+                            _f41.tiles[14*_f41.width+_tx] = 11;
+                            _f41.exits[`${_tx},14`] = { map: 'map_field_4_2', x: _tx, y: 1 };
+                            _placed = true;
+                        }
+                    }
+                    // y=1行も陸地でない場合: 強制的に (7,1) を陸地にして出口を追加
+                    if (!_placed) {
+                        _f42.tiles[0*_f42.width+7] = 11; _f42.tiles[1*_f42.width+7] = 11;
+                        _f42.exits['7,0'] = { map: 'map_field_4_1', x: 7, y: 13 };
+                        _f41.tiles[14*_f41.width+7] = 11;
+                        _f41.exits['7,14'] = { map: 'map_field_4_2', x: 7, y: 1 };
+                    }
+                }
+            }
+        }
         // === 港町入口を東大陸南部(field_4_2)に確実配置 ===
         // 天空の塔クリア後に南へ歩けば必ず到達できる位置（陸路保証）
         {
