@@ -2016,141 +2016,155 @@ function findLand(mapId, cx, cy) {
     return null;
 }
 function generateFieldMapsForGravityQuest() {
-    // ワールドグリッド: 225x225タイル (5x5マップ x 45x45タイル/マップ)
+    // ワールドグリッド: 225x225タイル (5x5 x 45x45)
     const GW = 225, GH = 225;
     const world = new Array(GW * GH).fill(5);
 
+    // 陸地塗り
     const fillEll = (cx, cy, rx, ry, tile) => {
-        for (let gy2 = Math.max(0,cy-ry); gy2 <= Math.min(GH-1,cy+ry); gy2++) {
-            for (let gx2 = Math.max(0,cx-rx); gx2 <= Math.min(GW-1,cx+rx); gx2++) {
+        for(let gy2=Math.max(0,cy-ry);gy2<=Math.min(GH-1,cy+ry);gy2++)
+            for(let gx2=Math.max(0,cx-rx);gx2<=Math.min(GW-1,cx+rx);gx2++){
                 const dx=(gx2-cx)/rx, dy=(gy2-cy)/ry;
-                if (dx*dx+dy*dy <= 1) world[gy2*GW+gx2] = tile;
+                if(dx*dx+dy*dy<=1) world[gy2*GW+gx2]=tile;
             }
-        }
     };
+    // 条件付き塗り（陸地のみ）
     const fillEllCond = (cx, cy, rx, ry, tile) => {
-        for (let gy2 = Math.max(0,cy-ry); gy2 <= Math.min(GH-1,cy+ry); gy2++) {
-            for (let gx2 = Math.max(0,cx-rx); gx2 <= Math.min(GW-1,cx+rx); gx2++) {
+        for(let gy2=Math.max(0,cy-ry);gy2<=Math.min(GH-1,cy+ry);gy2++)
+            for(let gx2=Math.max(0,cx-rx);gx2<=Math.min(GW-1,cx+rx);gx2++){
                 const dx=(gx2-cx)/rx, dy=(gy2-cy)/ry;
-                if (dx*dx+dy*dy <= 1 && world[gy2*GW+gx2] !== 5) world[gy2*GW+gx2] = tile;
+                if(dx*dx+dy*dy<=1 && world[gy2*GW+gx2]!==5) world[gy2*GW+gx2]=tile;
             }
-        }
     };
 
     // ==================================================================
-    // 世界地図設計: グラマニア大陸(主) + 試練半島 + 4つの孤島
-    //
-    // ■ 徒歩到達可能エリア:
-    //   グラマニア主大陸 (col0-3, row0-2) +
-    //   西海岸を南下した先の 試練の半島 (col0 x=0-42, row3-4)
-    //
-    // ■ 船必須の4島:
-    //   島1: 南西の村島 (col1, row3-4) → 南西の村・Town_02
-    //   島2: 東の島    (col4, row0-2) → 天空の塔・東の市場・Town_03
-    //   島3: 南の祠島  (col2, row3-4) → 祠
-    //   島4: 魔王島    (col4, row3-4) → 魔王城
+    // グラマニア主大陸 + 試練半島 + 4孤島
+    // 有機的な海岸線: 多数の楕円を重ねてDQ4風の自然な形状を生成
     // ==================================================================
 
-    // --- グラマニア主大陸 (col0-3, row0-2) ---
-    fillEll(100, 100, 88, 58, 11); // 本体（中央）
-    fillEll( 55,  85, 28, 22, 11); // 西部
-    fillEll( 25,  80, 18, 22, 11); // 西岸北部
-    fillEll( 25, 110, 16, 20, 11); // 西岸南部（試練半島への入口）
-    fillEll(140, 105, 16, 14, 11); // 東方（col3内に留める）
-    fillEll(112,  48, 20, 28, 11); // 北方延伸（2_0方向）
-    fillEll( 72,  48, 16, 16, 11); // 北西方面
-    fillEll( 38,  52, 14, 16, 11); // 北西岸
+    // ■ グラマニア主大陸（不規則形状・多楕円重ね合わせ）
+    // 大陸中核
+    fillEll(108, 100, 52, 40, 11); // 中核A
+    fillEll( 88,  88, 35, 28, 11); // 北西ローブ
+    fillEll(132,  92, 32, 26, 11); // 北東ローブ
+    fillEll( 96, 122, 38, 18, 11); // 南方延伸（海峡手前）
+    fillEll( 65,  96, 26, 22, 11); // 西腕
+    fillEll( 42,  80, 18, 16, 11); // 西岸北部
+    fillEll( 35, 105, 16, 18, 11); // 西岸中部
+    fillEll(116,  50, 18, 24, 11); // 北腕（2_0へ）
+    fillEll( 78,  52, 15, 14, 11); // 北西岸（1_0）
+    fillEll( 45,  56, 14, 14, 11); // 北西角（0_0/0_1）
+    fillEll(148,  96, 16, 14, 11); // 東岬（col3）
+    fillEll(140, 115, 14, 12, 11); // 東岬南
 
-    // --- 試練の半島 (col0 x=0-42, row3-4) ※徒歩で到達可能 ---
-    fillEll( 20, 155, 18, 14, 11); // 半島北部 (0_3西側)
-    fillEll( 20, 195, 18, 16, 11); // 試練の洞窟島 (0_4中心)
-    fillEll( 18, 175, 12,  9, 11); // 半島連結部
+    // ■ 試練の半島（主大陸西岸から明確に繋がる）
+    fillEll( 26, 112, 18, 14, 11); // 半島基部（主大陸に接続）
+    fillEll( 24, 132, 18, 14, 11); // 半島上部
+    fillEll( 22, 158, 17, 16, 11); // 半島中部
+    fillEll( 20, 195, 18, 16, 11); // 洞窟島（0_4）
 
-    // --- 島1: 南西の村島 (col1, row3-4) ---
-    fillEll( 67, 162, 32, 22, 11); // 本体 (1_3中心)
-    fillEll( 72, 198, 16, 14, 11); // 南端 (1_4)
-    fillEll( 70, 180, 12,  9, 11); // 連結
+    // ■ 島1: 南西の村島（独立）
+    fillEll( 70, 160, 30, 22, 11); // 本体（1_3中心よりやや東）
+    fillEll( 62, 148, 18, 10, 11); // 北端突出
+    fillEll( 75, 182, 20, 14, 11); // 南端（1_4）
+    fillEll( 55, 172, 16, 10, 11); // 西端ローブ
 
-    // --- 島2: 東の島 (col4, row0-2) ※橋なし・完全孤島 ---
-    fillEll(202,  65, 28, 32, 11); // 本体 (4_1中心)
-    fillEll(202,  22, 18, 16, 11); // 北端 (4_0)
-    fillEll(202, 112, 20, 20, 11); // 南端 (4_2)
+    // ■ 島2: 東の島（内部に山脈・建物は東寄りに）
+    fillEll(205,  68, 28, 34, 11); // 本体（東寄り: x=205）
+    fillEll(210,  22, 18, 16, 11); // 北端（4_0: さらに東）
+    fillEll(207, 115, 22, 20, 11); // 南端（4_2）
+    fillEll(188,  75, 14, 18, 11); // 西岸ローブ（港側）
 
-    // --- 島3: 南の祠島 (col2, row3-4) ---
-    fillEll(112, 162, 22, 16, 11); // 祠の島 (2_3)
-    fillEll(112, 200, 16, 14, 11); // 南端 (2_4)
+    // ■ 島3: 南の祠島
+    fillEll(112, 162, 22, 16, 11); // 祠の島（2_3）
+    fillEll(108, 200, 16, 14, 11); // 南端（2_4）
+    fillEll(125, 168, 14, 10, 11); // 東ローブ
 
-    // --- 島4: 魔王島 (col4, row3-4) ---
-    fillEll(202, 168, 22, 16, 11); // 北部 (4_3)
-    fillEll(202, 205, 22, 18, 11); // 本体 (4_4)
+    // ■ 島4: 魔王島
+    fillEll(205, 170, 22, 16, 11); // 北部（4_3）
+    fillEll(202, 208, 22, 18, 11); // 本体（4_4）
+    fillEll(215, 185, 12,  8, 11); // 東突出
 
-    // --- 小島・岩礁 ---
-    fillEll(155,  48, 12,  8, 11); // 北東岩礁 (3_0)
-    fillEll(165,  32, 10,  7, 11); // 北東前哨
-    fillEll(110,  28, 10,  8, 11); // 北方前哨 (2_0北部)
-    fillEll(158, 162,  8,  6, 11); // 東南小島 (3_3)
+    // ■ 小島・岩礁
+    fillEll(158,  50, 12,  8, 11); // 北東岩礁（3_0）
+    fillEll(168,  32, 10,  7, 11); // 北東前哨
+    fillEll(112,  28, 10,  8, 11); // 北方前哨（2_0北部）
+    fillEll(160, 162,  8,  6, 11); // 東南小島（3_3）
+    fillEll( 88, 202, 12,  8, 11); // 南西近辺の小島
 
-    // --- 地形オーバーレイ DQ4スタイル ---
-    // 主大陸の森
-    fillEllCond( 85,  88, 18, 12, 19); fillEllCond( 55,  68, 14,  9, 19);
-    fillEllCond( 40,  70, 10,  7, 19); fillEllCond(130,  75, 14,  9, 19);
-    fillEllCond( 78, 122, 10,  7, 19); fillEllCond(135, 122, 12,  8, 19);
-    fillEllCond( 78,  45, 10,  7, 19);
-    // 各島の森
-    fillEllCond(190,  70, 10,  7, 19); // 東の島
-    fillEllCond( 65, 162, 10,  6, 19); // 南西村島
-    fillEllCond( 18, 175,  8,  5, 19); // 試練半島の林
-    fillEllCond(202, 175,  8,  6, 19); // 魔王島の黒き森
-    // 山岳
-    fillEllCond( 95, 100, 20, 14, 20); // グラマニア山脈
-    fillEllCond(138, 108, 14,  9, 20); fillEllCond( 35,  88, 12,  8, 20);
-    fillEllCond(202,  62, 10,  7, 20); fillEllCond(200, 168,  9,  6, 20);
-    fillEllCond( 35,  50, 10,  6, 20); fillEllCond( 18, 200, 10,  7, 20);
-    fillEllCond(112, 197, 10,  7, 20);
-    // 砂漠・草地
-    fillEllCond(115, 205, 14,  9, 0); fillEllCond(132, 195, 10,  7, 0);
-    fillEllCond(112, 162, 10,  7, 12); fillEllCond( 70, 108, 10,  7, 12);
-    fillEllCond(148, 105, 10,  7, 12); fillEllCond( 68, 165, 10,  6, 12);
-
-    // ================================================================
-    // 海路切断（島の完全分離）
-    // ================================================================
-
-    // 1. 主大陸 → 試練半島は維持（x=0-42 のみ南部接続を許可）
-    //    それ以外の南部（x=43以東）を主大陸から切断
-    for(let _y=128;_y<=150;_y++) for(let _x=43;_x<=155;_x++) world[_y*GW+_x]=5;
-
-    // 2. 試練半島(col0 x=0-42) と 南西村島(col1 x=45-89) の間に海峡
-    for(let _y=130;_y<=224;_y++) for(let _x=43;_x<=56;_x++) world[_y*GW+_x]=5;
-
-    // 3. 主大陸 ↔ 東の島: col3-4の間に完全な海峡
-    for(let _y=0;_y<=134;_y++) for(let _x=160;_x<=188;_x++) world[_y*GW+_x]=5;
-
-    // 4. 東の島 ↔ 魔王島: row2-3の間
-    for(let _y=145;_y<=162;_y++) for(let _x=163;_x<=224;_x++) world[_y*GW+_x]=5;
-
+    // ==================================================================
+    // 有機的な海峡（楕円の海で滑らかな分離）
+    // ==================================================================
+    // 主大陸と南部諸島の間の海（有機的なS字形チャンネル）
+    fillEll( 75, 140, 38, 14, 5); // 海峡西部
+    fillEll(112, 143, 32, 12, 5); // 海峡中央
+    fillEll(145, 140, 24, 10, 5); // 海峡東部
+    fillEll( 52, 146, 18, 10, 5); // 海峡西端
+    // 試練半島と村島の間の海峡（曲線状）
+    fillEll( 46, 158, 16, 24, 5); // 半島東海峡
+    fillEll( 52, 142, 12, 10, 5); // 海峡上部
+    // 主大陸東端と東の島の間の海峡
+    fillEll(165,  80, 18, 42, 5); // 東海峡（縦長）
+    fillEll(160,  50, 12, 18, 5); // 東海峡北部
+    fillEll(162, 115, 12, 18, 5); // 東海峡南部
+    // 東の島と魔王島の間
+    fillEll(200, 152, 30, 12, 5); // 東-魔王間海峡
     // 外周2タイルを強制水
     for(let _j=0;_j<2;_j++) for(let _i=0;_i<GW;_i++){
         world[_j*GW+_i]=5; world[(GH-1-_j)*GW+_i]=5;
         world[_i*GW+_j]=5; world[_i*GW+(GW-1-_j)]=5;
     }
 
-    // === 各45×45マップ内の陸地連結保証（BFS） ===
+    // ==================================================================
+    // DQ4風 地形オーバーレイ
+    // ==================================================================
+    // 森
+    fillEllCond( 82,  88, 18, 12, 19); // グラマニア西方森
+    fillEllCond( 55,  70, 14,  9, 19); // 西海岸林
+    fillEllCond( 38,  72, 10,  7, 19); // 西端林
+    fillEllCond(128,  78, 14,  9, 19); // 北東の森
+    fillEllCond( 78, 120, 10,  7, 19); // 南西部の森
+    fillEllCond(132, 118, 12,  8, 19); // 東南の森
+    fillEllCond(190,  72, 10,  7, 19); // 東の島の森
+    fillEllCond( 62, 162, 10,  6, 19); // 南西村島の森
+    fillEllCond( 20, 172,  8,  5, 19); // 試練半島の林
+    fillEllCond(203, 178,  8,  6, 19); // 魔王島の黒き森
+    // 山（DQ4風・侵入不可ゾーン）
+    fillEllCond( 98, 102, 22, 15, 20); // グラマニア山脈（メイン）
+    fillEllCond(136, 105, 16, 10, 20); // 東方山岳
+    fillEllCond( 38,  88, 12,  8, 20); // 西方山岳
+    fillEllCond(205,  62, 12,  8, 20); // 東の島・北部山岳
+    fillEllCond(210, 100, 10,  7, 20); // 東の島・内陸山岳
+    fillEllCond(200, 170,  9,  6, 20); // 魔王島の山
+    fillEllCond( 18, 200, 10,  7, 20); // 試練半島の崖
+    fillEllCond(112, 197, 10,  7, 20); // 南島の山
+    fillEllCond( 38,  58, 10,  6, 20); // 北西の山
+    // 砂漠・草地
+    fillEllCond(115, 205, 14,  9, 0);
+    fillEllCond(132, 195, 10,  7, 0);
+    fillEllCond(112, 162, 10,  7, 12); // 祠島の草地
+    fillEllCond( 70, 108, 10,  7, 12);
+    fillEllCond(148, 105, 10,  7, 12);
+
+    // ==================================================================
+    // BFS 陸地連結保証（孤立パッチを最大連結成分に接続）
+    // ==================================================================
     for(let gy=0;gy<5;gy++) for(let gx=0;gx<5;gx++){
         const x0=gx*45, y0=gy*45;
         let mainComp=null, bestSz=0;
         const seen=new Set();
+        // 山以外の通行可能タイルで最大連結成分を特定
         for(let ty=0;ty<45;ty++) for(let tx=0;tx<45;tx++){
             const wx=x0+tx, wy=y0+ty, k=`${wx},${wy}`;
-            if(world[wy*GW+wx]===5||seen.has(k)) continue;
+            if(world[wy*GW+wx]===5||world[wy*GW+wx]===20||seen.has(k)) continue;
             const comp=new Set([k]); const bq=[[wx,wy]]; seen.add(k);
-            while(bq.length){const[cx,cy]=bq.shift();for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy,nk=`${nx},${ny}`;if(seen.has(nk)||nx<x0||ny<y0||nx>=x0+45||ny>=y0+45||world[ny*GW+nx]===5)continue;seen.add(nk);comp.add(nk);bq.push([nx,ny]);}}
+            while(bq.length){const[cx,cy]=bq.shift();for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy,nk=`${nx},${ny}`;if(seen.has(nk)||nx<x0||ny<y0||nx>=x0+45||ny>=y0+45||world[ny*GW+nx]===5||world[ny*GW+nx]===20)continue;seen.add(nk);comp.add(nk);bq.push([nx,ny]);}}
             if(comp.size>bestSz){bestSz=comp.size;mainComp=comp;}
         }
         if(!mainComp) continue;
         for(let ty=0;ty<45;ty++) for(let tx=0;tx<45;tx++){
             const wx=x0+tx, wy=y0+ty, k=`${wx},${wy}`;
-            if(world[wy*GW+wx]===5||mainComp.has(k)) continue;
+            if(world[wy*GW+wx]===5||world[wy*GW+wx]===20||mainComp.has(k)) continue;
             const par=new Map([[k,null]]); const pq=[[wx,wy]]; let tgt=null;
             pfl:while(pq.length&&par.size<900){const[cx,cy]=pq.shift();for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy,nk=`${nx},${ny}`;if(par.has(nk)||nx<x0||ny<y0||nx>=x0+45||ny>=y0+45)continue;par.set(nk,`${cx},${cy}`);if(mainComp.has(nk)){tgt=nk;break pfl;}pq.push([nx,ny]);}}
             if(tgt){let c=par.get(tgt);while(c){const[px,py]=c.split(',').map(Number);if(world[py*GW+px]===5){world[py*GW+px]=11;mainComp.add(`${px},${py}`);}c=par.get(c);}}
@@ -2164,15 +2178,14 @@ function generateFieldMapsForGravityQuest() {
         const tiles1D = [], exits = {};
         for(let ty=0;ty<45;ty++) for(let tx=0;tx<45;tx++)
             tiles1D.push(world[(gy*45+ty)*GW+(gx*45+tx)]);
-        if(gy>0) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45)*GW+wx]!==5&&world[((gy-1)*45+44)*GW+wx]!==5)exits[`${tx},0`]={map:`map_field_${gx}_${gy-1}`,x:tx,y:43};}
-        if(gy<4) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45+44)*GW+wx]!==5&&world[((gy+1)*45)*GW+wx]!==5)exits[`${tx},44`]={map:`map_field_${gx}_${gy+1}`,x:tx,y:1};}
-        if(gx>0) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45]!==5&&world[wy*GW+(gx-1)*45+44]!==5)exits[`0,${ty}`]={map:`map_field_${gx-1}_${gy}`,x:43,y:ty};}
-        if(gx<4) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45+44]!==5&&world[wy*GW+(gx+1)*45]!==5)exits[`44,${ty}`]={map:`map_field_${gx+1}_${gy}`,x:1,y:ty};}
-        // エンカウントゾーン（スタート地点2_2からの距離）
-        const dist = Math.abs(gx-2)+Math.abs(gy-2);
-        const isLate = (gx===4&&gy>=3)||(gx>=3&&gy===4);
-        const isMid = !isLate&&((gx===4)||(gy>=3&&gx>=2)||(dist>=3));
-        const isEarlyMid = !isLate&&!isMid&&dist===2;
+        if(gy>0) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45)*GW+wx]!==5&&world[(gy*45)*GW+wx]!==20&&world[((gy-1)*45+44)*GW+wx]!==5&&world[((gy-1)*45+44)*GW+wx]!==20)exits[`${tx},0`]={map:`map_field_${gx}_${gy-1}`,x:tx,y:43};}
+        if(gy<4) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45+44)*GW+wx]!==5&&world[(gy*45+44)*GW+wx]!==20&&world[((gy+1)*45)*GW+wx]!==5&&world[((gy+1)*45)*GW+wx]!==20)exits[`${tx},44`]={map:`map_field_${gx}_${gy+1}`,x:tx,y:1};}
+        if(gx>0) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45]!==5&&world[wy*GW+gx*45]!==20&&world[wy*GW+(gx-1)*45+44]!==5&&world[wy*GW+(gx-1)*45+44]!==20)exits[`0,${ty}`]={map:`map_field_${gx-1}_${gy}`,x:43,y:ty};}
+        if(gx<4) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45+44]!==5&&world[wy*GW+gx*45+44]!==20&&world[wy*GW+(gx+1)*45]!==5&&world[wy*GW+(gx+1)*45]!==20)exits[`44,${ty}`]={map:`map_field_${gx+1}_${gy}`,x:1,y:ty};}
+        const dist=Math.abs(gx-2)+Math.abs(gy-2);
+        const isLate=(gx===4&&gy>=3)||(gx>=3&&gy===4);
+        const isMid=!isLate&&((gx===4)||(gy>=3&&gx>=2)||(dist>=3));
+        const isEarlyMid=!isLate&&!isMid&&dist===2;
         let enc;
         if(isLate) enc=["ancient_dragon","cyclops","vampire_lord","death_knight","behemoth","lich","archdemon","bahamut","hagure_gura"].filter(_ef);
         else if(isMid) enc=["killer_mantis","dark_mage","minotaur","troll","chimera","dullahan","cockatrice","flame_elemental","gargoyle","hagure_gura"].filter(_ef);
@@ -2184,26 +2197,23 @@ function generateFieldMapsForGravityQuest() {
 
     // === 建物配置ヘルパー ===
     const placeBuilding = (mapId, cx, cy, tile, destMap, destX, destY) => {
-        const m = externalMapData[mapId]; if(!m) return;
-        const p = findLand(mapId, cx, cy); if(!p) return;
-        m.tiles[p.y*m.width+p.x] = tile;
-        m.exits[p.k] = {map:destMap, x:destX, y:destY};
+        const m=externalMapData[mapId]; if(!m) return;
+        const p=findLand(mapId,cx,cy); if(!p) return;
+        m.tiles[p.y*m.width+p.x]=tile;
+        m.exits[p.k]={map:destMap,x:destX,y:destY};
     };
 
     // === 主要建物配置 ===
-    placeBuilding("map_field_2_2", 22, 22, 21, "map_town_01",    10, 18); // 城下町（主大陸）
+    placeBuilding("map_field_2_2", 22, 22, 21, "map_town_01",    10, 18); // 城下町（主大陸中央）
     placeBuilding("map_field_0_4", 10, 22, 22, "map_dungeon_1f",  7, 14); // 試練の洞窟（半島）
     placeBuilding("map_field_2_3", 22, 22, 22, "map_shrine_warp", 6,  9); // 祠（南島）
-    placeBuilding("map_field_1_3", 22, 22, 21, "map_town_02",    10, 18); // 南西の村（SW島）
-    placeBuilding("map_field_4_1", 22, 22, 21, "map_town_03",    11, 18); // 東の市場（東島）
+    placeBuilding("map_field_1_3", 25, 22, 21, "map_town_02",    10, 18); // 南西の村（SW島）
+    placeBuilding("map_field_4_1", 28, 22, 21, "map_town_03",    11, 18); // 東の市場（東島・内陸）
 
-    // 試練の洞窟クリア後に西岸に船NPC（ゲーム中に動的配置、ここでは不要）
-
-    // === forceExit（外部マップとの接続） ===
+    // === 外部マップ接続 ===
     const forceExit = (mapId, tx, ty, destMap, dx, dy) => {
-        const m = externalMapData[mapId]; if(!m||!externalMapData[destMap]) return;
-        const dm = externalMapData[destMap];
-        let _fx=dx, _fy=dy;
+        const m=externalMapData[mapId]; if(!m||!externalMapData[destMap]) return;
+        const dm=externalMapData[destMap]; let _fx=dx,_fy=dy;
         if(dm.tiles&&dm.tiles[_fy*dm.width+_fx]===5){const p=findLand(destMap,dx,dy)||findLand(destMap,Math.floor(dm.width/2),Math.floor(dm.height/2));if(p){_fx=p.x;_fy=p.y;}else return;}
         if(m.tiles[ty*m.width+tx]===5) m.tiles[ty*m.width+tx]=11;
         m.exits[`${tx},${ty}`]={map:destMap,x:_fx,y:_fy};
@@ -2214,7 +2224,6 @@ function generateFieldMapsForGravityQuest() {
     if(externalMapData["map_field_east_2"])  forceExit("map_field_east_2",0,22,"map_field_4_2",22,22);
     if(externalMapData["map_field_west_2"])  forceExit("map_field_0_2",0,22,"map_field_west_2",43,22);
 
-    // === ほこら入口スポーン確保 ===
     if(externalMapData['map_shrine_warp']){
         const _sw=externalMapData['map_shrine_warp']; const _swW=_sw.width||12;
         if(_sw.tiles[9*_swW+6]!==22) _sw.tiles[9*_swW+6]=9;
@@ -2222,8 +2231,7 @@ function generateFieldMapsForGravityQuest() {
         for(const[_sk,_se] of Object.entries(_sw.exits||{})){
             if(!_se||!_se.map) continue;
             const[_skx,_sky]=_sk.split(',').map(Number);
-            const _st=_sw.tiles[_sky*_swW+_skx];
-            if(_st===22&&/field/.test(_se.map)){_se.map='map_field_2_3';_se.x=22;_se.y=22;}
+            if(_sw.tiles[_sky*_swW+_skx]===22&&/field/.test(_se.map)){_se.map='map_field_2_3';_se.x=22;_se.y=22;}
         }
     }
 }
@@ -5134,7 +5142,8 @@ async function moveParty(dx, dy) {
         }
         return;
     }
-    const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; if(solidTiles.includes(tile)) return;
+    const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18, 20] : [1, 2, 4, 5, 15, 16, 17, 18, 20]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; // 山(20)は徒歩・船どちらも不可
+    if(solidTiles.includes(tile)) return;
     const key = `${nx},${ny}`; if (currentMap.npcs && currentMap.npcs[key]) return;
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
     _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
