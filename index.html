@@ -2018,7 +2018,7 @@ function findLand(mapId, cx, cy) {
 function generateFieldMapsForGravityQuest() {
     // ワールドグリッド: 225x225タイル (5x5マップ x 45x45タイル/マップ)
     const GW = 225, GH = 225;
-    const world = new Array(GW * GH).fill(5); // 5=海
+    const world = new Array(GW * GH).fill(5);
 
     const fillEll = (cx, cy, rx, ry, tile) => {
         for (let gy2 = Math.max(0,cy-ry); gy2 <= Math.min(GH-1,cy+ry); gy2++) {
@@ -2038,100 +2038,98 @@ function generateFieldMapsForGravityQuest() {
     };
 
     // ==================================================================
-    // 世界地図レイアウト（DQスタイル）
-    //   col: 0=西端  1=西  2=中央  3=東  4=東端
-    //   row: 0=北端  1=北  2=中段  3=南  4=南端
-    // 建物配置:
-    //   2_2: 城下町グラマニア (スタート地点)
-    //   0_4: 試練の洞窟 (南西の孤島)
-    //   2_3: 祠 (南の中島)
-    //   1_3: 南西の村 (SW諸島)
-    //   4_1: 東の市場 (東大陸)
+    // 世界地図設計: グラマニア大陸(主) + 試練半島 + 4つの孤島
+    //
+    // ■ 徒歩到達可能エリア:
+    //   グラマニア主大陸 (col0-3, row0-2) +
+    //   西海岸を南下した先の 試練の半島 (col0 x=0-42, row3-4)
+    //
+    // ■ 船必須の4島:
+    //   島1: 南西の村島 (col1, row3-4) → 南西の村・Town_02
+    //   島2: 東の島    (col4, row0-2) → 天空の塔・東の市場・Town_03
+    //   島3: 南の祠島  (col2, row3-4) → 祠
+    //   島4: 魔王島    (col4, row3-4) → 魔王城
     // ==================================================================
 
-    // --- グラマニア大陸（中央主要大陸）row1-2, col0-3 ---
-    fillEll(112, 112, 75, 55, 11); // メイン本体（1_1〜3_2を中心に広がる）
-    fillEll(60,  95,  30, 30, 11); // 西方延伸 (0_1, 1_1 西部)
-    fillEll(25,  80,  20, 25, 11); // 西海岸 (0_1 北部)
-    fillEll(30, 112,  18, 22, 11); // 西岸下部 (0_2)
-    fillEll(155,100,  22, 20, 11); // 東方延伸 (3_2 西部)
-    fillEll(112, 55,  20, 28, 11); // 北方延伸 (2_0/2_1 境界)
-    fillEll(75,  50,  18, 18, 11); // 北西方面 (1_0/1_1 境界)
-    fillEll(38,  55,  15, 18, 11); // 北西岸 (0_0/0_1 境界)
+    // --- グラマニア主大陸 (col0-3, row0-2) ---
+    fillEll(100, 100, 88, 58, 11); // 本体（中央）
+    fillEll( 55,  85, 28, 22, 11); // 西部
+    fillEll( 25,  80, 18, 22, 11); // 西岸北部
+    fillEll( 25, 110, 16, 20, 11); // 西岸南部（試練半島への入口）
+    fillEll(140, 105, 16, 14, 11); // 東方（col3内に留める）
+    fillEll(112,  48, 20, 28, 11); // 北方延伸（2_0方向）
+    fillEll( 72,  48, 16, 16, 11); // 北西方面
+    fillEll( 38,  52, 14, 16, 11); // 北西岸
 
-    // --- 東大陸（塔・市場） row0-2, col4 + col3北部 ---
-    fillEll(200, 67,  28, 32, 11); // 東大陸本体 (4_1 中心)
-    fillEll(200, 25,  18, 18, 11); // 北東島 (4_0)
-    fillEll(180, 85,  16, 12, 11); // 東大陸南西手 (3_1/4_1 境界)
-    fillEll(200,112,  20, 20, 11); // 東海岸中部 (4_2)
-    fillEll(175,115,  14, 12, 11); // 東−中央陸橋 (3_2/4_2 境界)
+    // --- 試練の半島 (col0 x=0-42, row3-4) ※徒歩で到達可能 ---
+    fillEll( 20, 155, 18, 14, 11); // 半島北部 (0_3西側)
+    fillEll( 20, 195, 18, 16, 11); // 試練の洞窟島 (0_4中心)
+    fillEll( 18, 175, 12,  9, 11); // 半島連結部
 
-    // --- 南西諸島（村・洞窟）row3-4, col0-1 ---
-    fillEll(62, 162,  38, 24, 11); // SW主島 (1_3 中心, 0_3)
-    fillEll(22, 202,  20, 18, 11); // 洞窟島 (0_4 中心)
-    fillEll(38, 182,  12, 10, 11); // 小橋 (0_3/0_4 境界)
-    fillEll(22, 157,  16, 14, 11); // 西端岸 (0_3)
-    fillEll(20, 135,  14, 10, 11); // 西海岸橋（0_2/0_3境界）徒歩ルート確保
-    fillEll(18, 112,  12,  8, 11); // 西海岸中部補強（0_2西端）
-    fillEll(70, 195,  14, 12, 11); // SW東島 (1_4)
+    // --- 島1: 南西の村島 (col1, row3-4) ---
+    fillEll( 67, 162, 32, 22, 11); // 本体 (1_3中心)
+    fillEll( 72, 198, 16, 14, 11); // 南端 (1_4)
+    fillEll( 70, 180, 12,  9, 11); // 連結
 
-    // --- 南中島（祠） row3-4, col2 ---
-    fillEll(112, 162,  24, 18, 11); // 祠の島 (2_3 中心)
-    fillEll(112, 200,  16, 14, 11); // 南出口接続 (2_4 中心)
+    // --- 島2: 東の島 (col4, row0-2) ※橋なし・完全孤島 ---
+    fillEll(202,  65, 28, 32, 11); // 本体 (4_1中心)
+    fillEll(202,  22, 18, 16, 11); // 北端 (4_0)
+    fillEll(202, 112, 20, 20, 11); // 南端 (4_2)
 
-    // --- 魔王の孤島 row3-4, col4 ---
-    fillEll(200, 167,  22, 16, 11); // 魔王島北部 (4_3)
-    fillEll(200, 205,  22, 18, 11); // 魔王城エリア (4_4)
+    // --- 島3: 南の祠島 (col2, row3-4) ---
+    fillEll(112, 162, 22, 16, 11); // 祠の島 (2_3)
+    fillEll(112, 200, 16, 14, 11); // 南端 (2_4)
 
-    // --- 中央海域の小島（ランダムな中間地点） ---
-    fillEll(155, 50,  12,  8, 11); // 北東の岩礁 (3_0)
-    fillEll(160,160,  10,  8, 11); // 南東小島 (3_3)
-    fillEll(110, 30,  10,  8, 11); // 北方前哨島 (2_0 北部)
-    fillEll(165, 35,  10,  8, 11); // 北東前哨島 (3_0)
+    // --- 島4: 魔王島 (col4, row3-4) ---
+    fillEll(202, 168, 22, 16, 11); // 北部 (4_3)
+    fillEll(202, 205, 22, 18, 11); // 本体 (4_4)
 
-    // --- 地形オーバーレイ DQ4スタイル（森・山・砂漠・草地） ---
-    // 森林地帯（tile 19）
-    fillEllCond( 88,  88, 18, 12, 19); // グラマニア西方大森林
-    fillEllCond( 58,  68, 14,  9, 19); // 西部海岸林
-    fillEllCond( 42,  72, 10,  7, 19); // 西端林
-    fillEllCond(130,  75, 15, 10, 19); // 北東の森
-    fillEllCond( 80, 125, 10,  7, 19); // 南西部の森
-    fillEllCond(135, 125, 12,  8, 19); // 東南の森
-    fillEllCond(190,  72, 10,  7, 19); // 東大陸の森
-    fillEllCond( 58, 162, 12,  8, 19); // SW島の森
-    fillEllCond( 25, 175, 10,  7, 19); // 洞窟島の林
-    fillEllCond(200, 175,  8,  6, 19); // 魔王島の黒き森
-    fillEllCond( 80,  48, 10,  7, 19); // 北の森
-    fillEllCond(155,  95, 10,  7, 19); // 東方の森
-    // 山岳地帯（tile 20）
-    fillEllCond( 98, 102, 20, 14, 20); // グラマニア山脈（メイン）
-    fillEllCond(140, 108, 14,  9, 20); // 東方山岳
-    fillEllCond( 38,  88, 12,  8, 20); // 西方山岳
-    fillEllCond(200,  62, 10,  7, 20); // 東大陸の峰
-    fillEllCond(200, 168,  9,  6, 20); // 魔王島の山
-    fillEllCond( 35,  52, 10,  6, 20); // 北西の山
-    fillEllCond(158,  52, 10,  6, 20); // 北東の山
-    fillEllCond( 22, 195, 10,  7, 20); // 洞窟島の崖
-    fillEllCond(112, 197, 10,  7, 20); // 南島の山
-    // 砂漠地帯（tile 0）
-    fillEllCond(115, 205, 14,  9, 0);  // 南砂漠（砂漠の島）
-    fillEllCond(132, 195, 10,  7, 0);  // 砂漠東部
-    fillEllCond(162, 162, 10,  6, 0);  // 東南の砂地
-    fillEllCond( 50, 200, 10,  7, 0);  // SW島の砂浜
-    // 背の高い草地（tile 12）- 草原と森の境界
-    fillEllCond(112, 162, 10,  7, 12); // 祠の島
-    fillEllCond( 72, 108, 10,  7, 12); // 西平原の草地
-    fillEllCond(152, 105, 10,  7, 12); // 東平原の草地
-    fillEllCond( 68, 165, 10,  6, 12); // SW島草地
-    fillEllCond(200, 115, 10,  7, 12); // 東海岸草地
+    // --- 小島・岩礁 ---
+    fillEll(155,  48, 12,  8, 11); // 北東岩礁 (3_0)
+    fillEll(165,  32, 10,  7, 11); // 北東前哨
+    fillEll(110,  28, 10,  8, 11); // 北方前哨 (2_0北部)
+    fillEll(158, 162,  8,  6, 11); // 東南小島 (3_3)
 
-    // === 海路必須エリアの陸路切断 ===
-    // 西海岸(x<50)は切断しない → 徒歩で洞窟(0_4)に到達可能
-    // SW中央部 ↔ 主大陸: y=148-158, x=50-140（南西の村・祠は船必須）
-    for(let _y=148;_y<=158;_y++) for(let _x=50;_x<=140;_x++) world[_y*GW+_x]=5;
-    // 東大陸 ↔ 魔王島: y=145-160, x=163-225
-    for(let _y=145;_y<=160;_y++) for(let _x=163;_x<=224;_x++) world[_y*GW+_x]=5;
-    // 外周2タイルを強制水（マップ端で世界が閉じる）
+    // --- 地形オーバーレイ DQ4スタイル ---
+    // 主大陸の森
+    fillEllCond( 85,  88, 18, 12, 19); fillEllCond( 55,  68, 14,  9, 19);
+    fillEllCond( 40,  70, 10,  7, 19); fillEllCond(130,  75, 14,  9, 19);
+    fillEllCond( 78, 122, 10,  7, 19); fillEllCond(135, 122, 12,  8, 19);
+    fillEllCond( 78,  45, 10,  7, 19);
+    // 各島の森
+    fillEllCond(190,  70, 10,  7, 19); // 東の島
+    fillEllCond( 65, 162, 10,  6, 19); // 南西村島
+    fillEllCond( 18, 175,  8,  5, 19); // 試練半島の林
+    fillEllCond(202, 175,  8,  6, 19); // 魔王島の黒き森
+    // 山岳
+    fillEllCond( 95, 100, 20, 14, 20); // グラマニア山脈
+    fillEllCond(138, 108, 14,  9, 20); fillEllCond( 35,  88, 12,  8, 20);
+    fillEllCond(202,  62, 10,  7, 20); fillEllCond(200, 168,  9,  6, 20);
+    fillEllCond( 35,  50, 10,  6, 20); fillEllCond( 18, 200, 10,  7, 20);
+    fillEllCond(112, 197, 10,  7, 20);
+    // 砂漠・草地
+    fillEllCond(115, 205, 14,  9, 0); fillEllCond(132, 195, 10,  7, 0);
+    fillEllCond(112, 162, 10,  7, 12); fillEllCond( 70, 108, 10,  7, 12);
+    fillEllCond(148, 105, 10,  7, 12); fillEllCond( 68, 165, 10,  6, 12);
+
+    // ================================================================
+    // 海路切断（島の完全分離）
+    // ================================================================
+
+    // 1. 主大陸 → 試練半島は維持（x=0-42 のみ南部接続を許可）
+    //    それ以外の南部（x=43以東）を主大陸から切断
+    for(let _y=128;_y<=150;_y++) for(let _x=43;_x<=155;_x++) world[_y*GW+_x]=5;
+
+    // 2. 試練半島(col0 x=0-42) と 南西村島(col1 x=45-89) の間に海峡
+    for(let _y=130;_y<=224;_y++) for(let _x=43;_x<=56;_x++) world[_y*GW+_x]=5;
+
+    // 3. 主大陸 ↔ 東の島: col3-4の間に完全な海峡
+    for(let _y=0;_y<=134;_y++) for(let _x=160;_x<=188;_x++) world[_y*GW+_x]=5;
+
+    // 4. 東の島 ↔ 魔王島: row2-3の間
+    for(let _y=145;_y<=162;_y++) for(let _x=163;_x<=224;_x++) world[_y*GW+_x]=5;
+
+    // 外周2タイルを強制水
     for(let _j=0;_j<2;_j++) for(let _i=0;_i<GW;_i++){
         world[_j*GW+_i]=5; world[(GH-1-_j)*GW+_i]=5;
         world[_i*GW+_j]=5; world[_i*GW+(GW-1-_j)]=5;
@@ -2166,12 +2164,11 @@ function generateFieldMapsForGravityQuest() {
         const tiles1D = [], exits = {};
         for(let ty=0;ty<45;ty++) for(let tx=0;tx<45;tx++)
             tiles1D.push(world[(gy*45+ty)*GW+(gx*45+tx)]);
-        // 隣接マップ出口（陸地接続部のみ）
         if(gy>0) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45)*GW+wx]!==5&&world[((gy-1)*45+44)*GW+wx]!==5)exits[`${tx},0`]={map:`map_field_${gx}_${gy-1}`,x:tx,y:43};}
         if(gy<4) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45+44)*GW+wx]!==5&&world[((gy+1)*45)*GW+wx]!==5)exits[`${tx},44`]={map:`map_field_${gx}_${gy+1}`,x:tx,y:1};}
         if(gx>0) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45]!==5&&world[wy*GW+(gx-1)*45+44]!==5)exits[`0,${ty}`]={map:`map_field_${gx-1}_${gy}`,x:43,y:ty};}
         if(gx<4) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45+44]!==5&&world[wy*GW+(gx+1)*45]!==5)exits[`44,${ty}`]={map:`map_field_${gx+1}_${gy}`,x:1,y:ty};}
-        // エンカウントゾーン（スタート地点2_2からのマンハッタン距離）
+        // エンカウントゾーン（スタート地点2_2からの距離）
         const dist = Math.abs(gx-2)+Math.abs(gy-2);
         const isLate = (gx===4&&gy>=3)||(gx>=3&&gy===4);
         const isMid = !isLate&&((gx===4)||(gy>=3&&gx>=2)||(dist>=3));
@@ -2185,7 +2182,7 @@ function generateFieldMapsForGravityQuest() {
         externalMapData[mapId]={width:45,height:45,tiles:tiles1D,encounters:enc,exits:exits,npcs:{},name:"フィールド"};
     }
 
-    // === 建物配置ヘルパー（map.widthを自動使用） ===
+    // === 建物配置ヘルパー ===
     const placeBuilding = (mapId, cx, cy, tile, destMap, destX, destY) => {
         const m = externalMapData[mapId]; if(!m) return;
         const p = findLand(mapId, cx, cy); if(!p) return;
@@ -2194,18 +2191,20 @@ function generateFieldMapsForGravityQuest() {
     };
 
     // === 主要建物配置 ===
-    placeBuilding("map_field_2_2", 22, 22, 21, "map_town_01",    10, 18); // 城下町
-    placeBuilding("map_field_0_4", 22, 22, 22, "map_dungeon_1f",  7, 14); // 試練の洞窟
-    placeBuilding("map_field_2_3", 22, 22, 22, "map_shrine_warp", 6,  9); // 祠
-    placeBuilding("map_field_1_3", 22, 22, 21, "map_town_02",    10, 18); // 南西の村
-    placeBuilding("map_field_4_1", 22, 22, 21, "map_town_03",    11, 18); // 東の市場
+    placeBuilding("map_field_2_2", 22, 22, 21, "map_town_01",    10, 18); // 城下町（主大陸）
+    placeBuilding("map_field_0_4", 10, 22, 22, "map_dungeon_1f",  7, 14); // 試練の洞窟（半島）
+    placeBuilding("map_field_2_3", 22, 22, 22, "map_shrine_warp", 6,  9); // 祠（南島）
+    placeBuilding("map_field_1_3", 22, 22, 21, "map_town_02",    10, 18); // 南西の村（SW島）
+    placeBuilding("map_field_4_1", 22, 22, 21, "map_town_03",    11, 18); // 東の市場（東島）
+
+    // 試練の洞窟クリア後に西岸に船NPC（ゲーム中に動的配置、ここでは不要）
 
     // === forceExit（外部マップとの接続） ===
     const forceExit = (mapId, tx, ty, destMap, dx, dy) => {
         const m = externalMapData[mapId]; if(!m||!externalMapData[destMap]) return;
         const dm = externalMapData[destMap];
         let _fx=dx, _fy=dy;
-        if(dm.tiles[_fy*dm.width+_fx]===5){const p=findLand(destMap,dx,dy)||findLand(destMap,Math.floor(dm.width/2),Math.floor(dm.height/2));if(p){_fx=p.x;_fy=p.y;}else return;}
+        if(dm.tiles&&dm.tiles[_fy*dm.width+_fx]===5){const p=findLand(destMap,dx,dy)||findLand(destMap,Math.floor(dm.width/2),Math.floor(dm.height/2));if(p){_fx=p.x;_fy=p.y;}else return;}
         if(m.tiles[ty*m.width+tx]===5) m.tiles[ty*m.width+tx]=11;
         m.exits[`${tx},${ty}`]={map:destMap,x:_fx,y:_fy};
     };
@@ -5443,7 +5442,7 @@ async function checkAction() {
                 if (partyData.flags.has_ship) {
                     await typeMessage("船はもう お前の ものだ。\n自由に 使うがよい。");
                 } else {
-                    await typeMessage("岸辺に 一艘の 船が 静かに 係留されている……\n守護霊が 遺した 船だ。\n乗っていくか？");
+                    await typeMessage("王家の 船が 岸辺に 係留されている。\n国王の 命により 勇者たちの ために 用意された 船だ。\n乗って いくか？");
                     const _yn = await selectMenu(["はい（乗り込む）", "いいえ"], 'cmd-window', 1, true);
                     if (_yn === 0) {
                         AudioManager.playSE('item_get');
@@ -5563,7 +5562,7 @@ async function checkAction() {
                     await typeMessage("【国王グラード】\n今から 一年前……\n世界の東に 大魔王が 目覚め\n各地を 闇に 染めはじめた。\nお前の ような 力が……必要なのじゃ。");
                     await typeMessage("【国王グラード】\nわが 騎士団は 壊滅した……。\n（王の 唇の 端が かすかに ゆがんだ 気がした）\n民を……一刻も 早く 救わねばならぬ。");
                     await typeMessage("【国王グラード】\n星占い師が こう 告げた。\n「東の天空の塔に 眠る 光の力を\n手に入れた 者のみが 魔王を 滅ぼせる」と。\nお前が その 者じゃ……光の 紋章の 継承者よ。");
-                    await typeMessage("【国王グラード】\nまずは 南の試練の洞窟で 力を試せ。\nそして 東へ 向かい\n天空の塔の 頂を 目指すのだ！");
+                    await typeMessage("【国王グラード】\n南の 海岸を 歩いて 進めば\n試練の 洞窟に 辿り 着ける。\n洞窟を 制覇したら 浜辺に 船が 現れるはずじゃ。\nその 船で 東の 島の 天空の 塔を 目指すのだ！");
                     await typeMessage("【国王グラード】\n勇者よ……\nこの国の 命運を お前たちに 託す。\nお前には……必ず できる。");
                     partyData.flags.flag_king_met = true;
                 } else if (partyData.flags.flag_mage_trial_cleared) {
@@ -5735,20 +5734,20 @@ async function checkAction() {
             // ★ストーリー導線ガイドNPC
             if (npc.id === "npc_guide_north") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王を 倒したとは！\nあなたたちが 世界の 英雄ですね！"); }
-                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n試練の 洞窟を 乗り越えたなら\n船も 手に 入ったはず！\n次は 東の 大陸へ 向かいましょう。\n天空の 塔が あの方向に あります！"); }
+                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n洞窟を 制覇しましたね！\n浜辺に 船が あるはずです。\nその 船で 各地の 孤島へ 渡れます。\n次は 東の 島、天空の 塔を 目指しましょう！"); }
                 else { await typeMessage("【案内人】\nこの 先 南西へ 進むと\n試練の 洞窟があります。\nまずは そこで 力を 試してみては？"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_east_tower") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n世界に 平和が 戻りました。\nあなたたちの おかげです！"); }
-                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【案内人】\n天空の 塔を 制覇したとは 見事！\n船も あるのでしょう？\n南の 海を 渡れば\n魔王の 島が 待っています！"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【案内人】\n天空の 塔を 制覇しましたか！\n南の 祠島へ 行き 真実を 知りましょう。\nそして 遥か 東南の 海の 果て……\nそこに 魔王の 城が あります！"); }
                 else { await typeMessage("【案内人】\n東の 大陸の 北に\n天空の 塔が そびえています。\n塔の 頂には 伝説の 守護者が いるそうですよ。"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_south") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\nお疲れ様でした！\n世界が 救われましたね！"); }
-                else if (partyData.flags.has_ship) { await typeMessage("【案内人】\n船を 持っているのですね。\n東の 天空の 塔にも 行けますし\n南の 海を 渡れば 魔王の 島が。\n気をつけて！"); }
-                else { await typeMessage("【案内人】\n南西に 試練の 洞窟が あります。\nそこを 乗り越えれば\n海への 扉が 開きますよ。\nまずは 力を 蓄えましょう！"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【案内人】\n船が ありますね！\n4つの 孤島へ 渡れます：\n東の 塔島・南西の 村島・\n南の 祠島・遠く 魔王島……\nどれも 船が なければ 渡れません！"); }
+                else { await typeMessage("【案内人】\n南の 海岸沿いを 歩けば\n試練の 洞窟に たどり 着けます。\n洞窟を 制覇すると 近くの 浜辺に\n船が 現れるという うわさがありますよ！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_demon") {
@@ -5842,7 +5841,7 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_villager_03") {
-                if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【農夫】\n試練の 洞窟を 制覇したとは！\nあなたは 普通の 旅人じゃ ありませんね。"); }
+                if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【農夫】\n試練の 洞窟を 制覇したとは！\n洞窟の 近くの 浜辺に 船があるらしい。\n船で 渡れる 島が 4つも あるそうですよ！"); }
                 else { await typeMessage("【農夫】\n南西に 向かうと\n試練の 洞窟が あるそうです。\nわしには 関係ない 話ですが……。"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -5883,7 +5882,7 @@ async function checkAction() {
             if (npc.id === "npc_gar_young_01") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【若者】\nやった！ 魔王が 倒れた！！\nこれで 旅が できる！\nボクも 世界を 旅するぞ！"); }
                 else if (partyData.flags.flag_tower_cleared) { await typeMessage("【若者】\n天空の 塔まで 登ったとは すごい！\nボクには とても 無理だ……\nでも あなたなら 魔王も 倒せるよ！"); }
-                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【若者】\n試練の 洞窟を 突破したんだって？！\nじゃあ 次は 東の 天空の 塔に\n挑戦するんですか！？\nすごい なあ……！"); }
+                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【若者】\n試練の 洞窟を 突破したんだって？！\n船で 各地の 島へ 渡れるはずです！\n東の 島には 天空の 塔が、\n南の 島には 祠が あるって 聞きました！"); }
                 else { await typeMessage("【若者】\n試練の 洞窟……\nボクは 入口で 逃げ帰りました。\n本当に 怖くて。\nでも あなたなら 大丈夫そうですね！"); }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -5921,7 +5920,7 @@ async function checkAction() {
             if (npc.id === "npc_bar_fisherman_01") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【海の男】\n魔王の 島にも 近づけるように なったな。\nあの 辺りは 海流が 複雑だが……\n探索しがいは あるぞ。"); }
                 else if (partyData.flags.has_ship) { await typeMessage("【海の男】\nおう、船乗りか！\n南東の 海を 渡ると\n巨大な 黒い 城が 浮かぶ 島があるぞ。\nあの 辺りの 海は 荒れてる……\nくれぐれも 気をつけろよ。"); }
-                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【海の男】\n塔まで 登ったのか。\nなら 洞窟の 船も あるんだろ？\nそれで 南の 海を 渡れ。\n魔王の 島は 覚悟して 行けよ。"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【海の男】\n塔まで 登ったのか。\n南の 祠島には まだ 行ったか？\nそれが 終わったら 南東の 海を 突き進め。\n魔王島は 一番 遠い……覚悟して 行けよ。"); }
                 else { await typeMessage("【海の男】\n俺は 昔 船乗りだった。\n南の ポートピアに行って 船を 借りれば\n海の 向こうまで 行けるぞ。\nまあ 今は 魔物が 多くて\n無理だろうがな……。"); }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -6104,23 +6103,7 @@ async function checkAction() {
                             await typeMessage("【元・王宮騎士の英霊】\n最後に……ひとつだけ。\nあの城には……近づきすぎるな。\n国王と呼ばれる 者の 影を……よく 見ろ。");
                             await typeMessage("【元・王宮騎士の英霊】\n……ひとつ、礼を させてくれ。\nこの洞窟の 西、浜辺に\nわしの 主君が 百年 前から 遺した 船がある。\n浜辺へ 行けば 船が 見つかるはずじゃ……\n海を 渡り、真実を 確かめるのだ。");
                             await typeMessage("守護霊は 静かに 光に 包まれ……\n風の如く 消えていった。");
-                            // 洞窟の西岸に船NPCを1度だけ配置
-                            (function(){
-                                for(const _smId of ['map_field_0_3','map_field_0_4']){
-                                    const _sm=externalMapData&&externalMapData[_smId]; if(!_sm) continue;
-                                    // すでに配置済みならスキップ
-                                    if(Object.values(_sm.npcs||{}).some(n=>n.id==='obj_ship_waiting')) return;
-                                    // 西側から走査: 陸地で西隣が海のタイルを探す
-                                    for(let _x=2;_x<20;_x++) for(let _y=5;_y<_sm.height-5;_y++){
-                                        const _t=_sm.tiles[_y*_sm.width+_x];
-                                        const _wt=_x>0?_sm.tiles[_y*_sm.width+(_x-1)]:5;
-                                        if(_t!==5&&_t!==1&&_t!==4&&_t!==15&&_t!==16&&_t!==17&&_t!==18&&_t!==19&&_t!==20&&_wt===5&&!_sm.exits[`${_x},${_y}`]&&!_sm.npcs[`${_x},${_y}`]){
-                                            _sm.npcs[`${_x},${_y}`]={id:'obj_ship_waiting',name:'停泊中の船'};
-                                            return;
-                                        }
-                                    }
-                                }
-                            })();
+
                         } else if (npc.id === 'boss_sky') {
                             partyData.flags.flag_tower_cleared = true;
                             partyData.flags.flag_sky_truth_known = true;
