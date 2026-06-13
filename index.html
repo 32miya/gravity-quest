@@ -7171,14 +7171,21 @@ ${act.actor.name}の ちからが すいとられた！`); }
             if(m.hp <= 0) continue; m.exp += totalExp;
             if (masterData.growth && masterData.growth[m.job]) {
                 let growthTable = masterData.growth[m.job]; let nextLevelData = growthTable.find(g => g.level === m.lv + 1);
+                let didLevelUp = false; let cumDHp = 0, cumDMp = 0, cumDAtk = 0, cumDDef = 0, cumDSpd = 0; let learnedSpells = [];
                 while(nextLevelData && m.exp >= nextLevelData.reqExp) {
-                    m.lv++; let old_hp = m.max_hp; let old_mp = m.max_mp; let old_atk = m.atk; let old_def = m.def; let old_spd = m.spd;
-                    m.max_hp = nextLevelData.hp; m.max_mp = nextLevelData.mp; m.atk = nextLevelData.atk; m.def = nextLevelData.def; m.spd = nextLevelData.spd; m.hp = m.max_hp; m.mp = m.max_mp;
-                    AudioManager.playSE('level_up'); await typeMessage(`チャララチャッチャッチャー♪\n${m.name}は レベル${m.lv} になった！`);
-                    let dHp = m.max_hp - old_hp; let dMp = m.max_mp - old_mp; let dAtk = m.atk - old_atk; let dDef = m.def - old_def; let dSpd = m.spd - old_spd;
-                    let sMsg = ""; if(dHp > 0) sMsg += `さいだいHPが ${dHp} あがった！\n`; if(dMp > 0) sMsg += `さいだいMPが ${dMp} あがった！\n`; if(dAtk > 0) sMsg += `ちからが ${dAtk} あがった！\n`; if(dDef > 0) sMsg += `みのまもりが ${dDef} あがった！\n`; if(dSpd > 0) sMsg += `すばやさが ${dSpd} あがった！\n`; if(sMsg !== "") await typeMessage(sMsg.trim());
-                    if (nextLevelData.learnMagic && nextLevelData.learnMagic.length > 0) { for(let magicName of nextLevelData.learnMagic) { const found = Object.values(masterData.spells).find(s => s.name === magicName); if (found && !m.spells.includes(found.id)) { m.spells.push(found.id); await typeMessage(`${m.name}は ${found.name} のじゅもんを\nおぼえた！`); } } }
+                    didLevelUp = true;
+                    let old_hp = m.max_hp, old_mp = m.max_mp, old_atk = m.atk, old_def = m.def, old_spd = m.spd;
+                    m.lv++; m.max_hp = nextLevelData.hp; m.max_mp = nextLevelData.mp; m.atk = nextLevelData.atk; m.def = nextLevelData.def; m.spd = nextLevelData.spd; m.hp = m.max_hp; m.mp = m.max_mp;
+                    cumDHp += m.max_hp - old_hp; cumDMp += m.max_mp - old_mp; cumDAtk += m.atk - old_atk; cumDDef += m.def - old_def; cumDSpd += m.spd - old_spd;
+                    if (nextLevelData.learnMagic && nextLevelData.learnMagic.length > 0) { for(let magicName of nextLevelData.learnMagic) { const found = Object.values(masterData.spells).find(s => s.name === magicName); if (found && !m.spells.includes(found.id)) { m.spells.push(found.id); learnedSpells.push(found.name); } } }
                     nextLevelData = growthTable.find(g => g.level === m.lv + 1);
+                }
+                if (didLevelUp) {
+                    AudioManager.playSE('level_up');
+                    let msg = `チャララチャッチャッチャー♪\n${m.name}は レベル${m.lv} になった！`;
+                    if(cumDHp > 0) msg += `\nさいだいHPが ${cumDHp} あがった！`; if(cumDMp > 0) msg += `\nさいだいMPが ${cumDMp} あがった！`; if(cumDAtk > 0) msg += `\nちからが ${cumDAtk} あがった！`; if(cumDDef > 0) msg += `\nみのまもりが ${cumDDef} あがった！`; if(cumDSpd > 0) msg += `\nすばやさが ${cumDSpd} あがった！`;
+                    await typeMessage(msg);
+                    if(learnedSpells.length > 0) await typeMessage(`${m.name}は ${learnedSpells.join('、')} のじゅもんを おぼえた！`);
                 }
             }
         }
