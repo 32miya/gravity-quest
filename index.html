@@ -776,10 +776,29 @@ const _GQ_KANA64 = 'あいうえおかきくけこさしすせそたちつてと
 const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','格闘家','忍者','道化師'];
 // マップIDテーブル（6ビット=64種）
 const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4'];
-// 武器/防具コンパクトIDテーブル（6ビット=64種、0=なし）
-const _GQ_EQUIP = ['','w01','w02','w03','w04','w05','w06','w07','w08','w09','w10','w11','w12','w13','w14','w15','w16','w17','w18','w19','w20','w21','w_star_sword','w_dark_edge','w_sea_lance','w_haguremetal_sword','w_staff_12','a01','a02','a03','a04','a05','a06','a07','a08','a09','a10','a11','a12','a13','a14','a_sea_armor','a_2nd_01','a_2nd_02','a_2nd_03','s01','s02','s03','s04','h01','h02','h03','h04','acc_sea_ring','meteorite_fragment','i_star_frag'];
-// フラグリスト（29ビット固定順）
-const _GQ_FLAGS = ['last_boss_defeated','is_second_loop','is_second_loop_unlocked','has_ship','flag_dungeon_cleared','flag_tower_cleared','flag_sky_truth_known','flag_2nd_maou_cleared','flag_king_met','flag_pirate_king_cleared','flag_weapon_forged','flag_has_star_fragment','flag_saved_richman','flag_mage_trial_cleared','flag_dragon_spirit_cleared','flag_beaten_secret_boss','2nd_mem_maou','2nd_mem_shrine','2nd_mem_village','2nd_mem_tower','2nd_mem_dungeon','2nd_mem_town','2nd_final_spawned','shrine_healed','flag_dungeon_b1f_cleared','flag_wedding','flag_casino_won','flag_rsv1','flag_rsv2'];
+// アイテム/装備コンパクトIDテーブル（7ビット=128種、0=なし）
+// 消耗品(i*)・武器(w*)・防具(a*)・盾(s*)・兜(h*)・アクセ(acc*)・特殊品を網羅
+const _GQ_EQUIP = [
+    '','i01','i02','i03','i04','i05','i06','i07','i08','i09','i10',
+    'i11','i12','i13','i14','i15','i16','i17','i_star_frag','meteorite_fragment',
+    'w01','w02','w03','w04','w05','w06','w07','w08','w09','w10',
+    'w11','w12','w13','w14','w15','w16','w17','w18','w19','w20',
+    'w21','w22','w23','w24','w25','w26','w27','w28','w29','w30',
+    'w_star_sword','w_dark_edge','w_sea_lance','w_haguremetal_sword','w_trident',
+    'w_2nd_01','w_2nd_02','w_2nd_03','w_2nd_04','w_2nd_05','w_2nd_06','w_2nd_07',
+    'w_staff_12','w_spear_01','w_spear_06','w_spear_12','w_grav_01',
+    'a01','a02','a03','a04','a05','a06','a07','a08','a09','a10',
+    'a11','a12','a13','a14','a15','a16','a17','a18','a19','a20',
+    'a_sea_armor','a_2nd_01','a_2nd_02','a_2nd_03','a_2nd_04','a_grav_01',
+    's01','s02','s03','s04','s05','s06','s07','s08',
+    's_2nd_01','s_2nd_02','s_grav_01',
+    'h01','h02','h03','h04','h05','h06','h07','h08',
+    'h_2nd_01','h_2nd_02','h_grav_01',
+    'acc_sea_ring','acc_star_bracelet',
+    'w_staff_01','w_staff_06','a21','s09','h09','a22',
+];
+// フラグリスト（27ビット固定順）
+const _GQ_FLAGS = ['last_boss_defeated','is_second_loop','is_second_loop_unlocked','has_ship','flag_dungeon_cleared','flag_tower_cleared','flag_sky_truth_known','flag_2nd_maou_cleared','flag_king_met','flag_pirate_king_cleared','flag_weapon_forged','flag_has_star_fragment','flag_saved_richman','flag_mage_trial_cleared','flag_dragon_spirit_cleared','flag_beaten_secret_boss','2nd_mem_maou','2nd_mem_shrine','2nd_mem_village','2nd_mem_tower','2nd_mem_dungeon','2nd_mem_town','2nd_final_spawned','shrine_healed','flag_wedding','flag_casino_won','flag_rsv1'];
 
 // ビット書き込み: 6ビット単位でbytes配列に積む
 function _gqBitPack(fields) {
@@ -819,15 +838,15 @@ function _gqEncodeName(name) {
 function _gqDecodeName(read) {
     return [0,1,2,3].map(()=>_GQ_KANA64[read(6)]||'　').join('').trimEnd();
 }
-// DQ2スタイル 4文字区切り表示（51文字 → 12グループ+3文字）
+// DQ2スタイル 5文字区切り表示（104文字 → 20グループ+4文字）
 function _gqFormatPwd(kana) {
-    let out=''; for(let i=0;i<kana.length;i+=4){ if(i>0)out+=' '; out+=kana.slice(i,i+4); } return out;
+    let out=''; for(let i=0;i<kana.length;i+=5){ if(i>0)out+=' '; out+=kana.slice(i,i+5); } return out;
 }
 
 function packSaveData(pData) {
     const f = pData.flags||{};
     const fields = [];
-    // タイプビット(1)＋Gold(18)＋Map(6)＋X(6)＋Y(6)＋Flags(29) = 66ビット
+    // ヘッダー: タイプ(1)+Gold(18)+Map(6)+X(6)+Y(6)+Flags(27) = 64ビット
     const isClr = (f.last_boss_defeated && f.is_second_loop_unlocked) ? 1 : 0;
     fields.push([isClr, 1]);
     fields.push([Math.min(Math.floor((pData.gold||0)/4),(1<<18)-1), 18]);
@@ -836,23 +855,25 @@ function packSaveData(pData) {
     fields.push([Math.min((pData.pos||{}).x||0,63), 6]);
     fields.push([Math.min((pData.pos||{}).y||0,63), 6]);
     for (const k of _GQ_FLAGS) fields.push([f[k]?1:0, 1]);
-    // メンバー×4: 名前(24)+職業(3)+Lv(6)+EXP(13)+武器(6)+鎧(6) = 58ビット×4=232ビット
+    // メンバー×4: 名前(24)+職業(3)+Lv(6)+EXP(14)+装備5本(7bit×5=35)+所持8個(7bit×8=56) = 138ビット×4=552ビット
+    // 合計: 64+552=616ビット → ceil(616/6)=103文字 + チェックサム1文字 = 104文字
     for (let i=0;i<4;i++) {
         const m=(pData.members||[])[i];
-        if (!m) { for(let j=0;j<58;j++) fields.push([0,1]); continue; }
+        const _slot = (id) => { const idx=_GQ_EQUIP.indexOf(id||''); return idx>=0?idx:0; };
+        if (!m) { for(let j=0;j<138;j++) fields.push([0,1]); continue; }
         fields.push(..._gqEncodeName(m.name));
         const ji=_GQ_JOBS.indexOf(m.job||'勇者'); fields.push([ji>=0?ji:0,3]);
         fields.push([Math.min(m.lv||1,63),6]);
-        fields.push([Math.min(Math.floor((m.exp||0)/100),(1<<13)-1),13]);
-        const wi=_GQ_EQUIP.indexOf(m.equipment&&m.equipment.weapon||''); fields.push([wi>=0?wi:0,6]);
-        const ai=_GQ_EQUIP.indexOf(m.equipment&&m.equipment.armor||''); fields.push([ai>=0?ai:0,6]);
+        fields.push([Math.min(Math.floor((m.exp||0)/100),(1<<14)-1),14]);
+        // 装備5スロット（weapon/armor/shield/helmet/accessory）各7ビット
+        for (const sl of ['weapon','armor','shield','helmet','accessory'])
+            fields.push([_slot((m.equipment||{})[sl]),7]);
+        // 所持品8スロット 各7ビット
+        for (let s=0;s<8;s++) fields.push([_slot((m.inventory||[])[s]),7]);
     }
-    // 合計: 66+232=298ビット → 50文字(300ビット、2ビットパディング)
-    const payload = _gqBitPack(fields);      // 50文字分
-    const cs = payload.reduce((a,b)=>a+b,0)%64; // チェックサム
-    // 先頭にチェックサム1文字＋ペイロード50文字 = 51文字
-    // DQ2スタイル表示: 4文字×12グループ＋残り3文字 → 51文字でOK
-    const bytes = [cs, ...payload.slice(0,50)];
+    const payload = _gqBitPack(fields);
+    const cs = payload.reduce((a,b)=>a+b,0)%64;
+    const bytes = [cs, ...payload.slice(0,103)]; // 1+103=104文字
     return bytes.map(b=>_GQ_KANA64[b%64]).join('');
 }
 
@@ -869,12 +890,10 @@ function unpackSaveData(pwd) {
 
     // ── かなパスワード判定: 先頭文字が_GQ_KANA64に含まれるか ──
     if (_GQ_KANA64.includes(pwd[0])) {
-        // 全文字が kana64 にあるか確認
-        if ([...pwd].every(c => _GQ_KANA64.includes(c)) && pwd.length >= 48) {
+        if ([...pwd].every(c => _GQ_KANA64.includes(c)) && pwd.length >= 100) {
             const bytes = [...pwd].map(c => _GQ_KANA64.indexOf(c));
             const cs = bytes[0];
             const payload = bytes.slice(1);
-            // チェックサム検証
             if (payload.reduce((a,b)=>a+b,0)%64 !== cs) return null;
             const read = _gqBitUnpack(payload);
             const isClr = read(1);
@@ -888,9 +907,16 @@ function unpackSaveData(pwd) {
                 const name = _gqDecodeName(read);
                 const job = _GQ_JOBS[read(3)]||'勇者';
                 const lv = read(6)||1;
-                const exp = read(13)*100;
-                const weapon = _GQ_EQUIP[read(6)]||'';
-                const armor  = _GQ_EQUIP[read(6)]||'';
+                const exp = read(14)*100;
+                // 装備5スロット（7ビット×5）
+                const weapon    = _GQ_EQUIP[read(7)]||null;
+                const armor     = _GQ_EQUIP[read(7)]||null;
+                const shield    = _GQ_EQUIP[read(7)]||null;
+                const helmet    = _GQ_EQUIP[read(7)]||null;
+                const accessory = _GQ_EQUIP[read(7)]||null;
+                // 所持品8スロット（7ビット×8）
+                const inventory = [];
+                for(let s=0;s<8;s++){const id=_GQ_EQUIP[read(7)];if(id)inventory.push(id);}
                 let bs={hp:50,max_hp:50,mp:0,max_mp:0,atk:10,def:8,spd:8};
                 if(masterData&&masterData.growth&&masterData.growth[job]){
                     const g=masterData.growth[job].find(r=>r.level===lv)||(masterData.growth[job]||[]).slice(-1)[0];
@@ -900,7 +926,7 @@ function unpackSaveData(pwd) {
                 if(masterData&&masterData.growth&&masterData.growth[job]){
                     for(let lvl=1;lvl<=lv;lvl++){const gd=masterData.growth[job].find(r=>r.level===lvl);if(gd&&gd.learnMagic)gd.learnMagic.forEach(n=>{const fd=Object.values(masterData.spells||{}).find(s=>s.name===n);if(fd&&!spells.includes(fd.id))spells.push(fd.id);});}
                 }
-                members.push({id:'p'+Math.random(),name,job,lv,exp,...bs,equipment:{weapon:weapon||null,armor:armor||null,shield:null,helmet:null,accessory:null},inventory:[],spells});
+                members.push({id:'p'+Math.random(),name,job,lv,exp,...bs,equipment:{weapon,armor,shield,helmet,accessory},inventory,spells});
             }
             const data={gold,steps_to_encounter:15,tohero_steps:0,tramana_steps:0,members,flags,pos:{map:mapId,x:px,y:py},dir:2};
             return {type: isClr?'clear':'normal', data};
