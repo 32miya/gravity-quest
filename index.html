@@ -6989,7 +6989,7 @@ async function eventShop(npcId) {
 }
 
 async function openMainMenu() {
-    state = 'MENU'; showWindow('party-status'); updatePartyStatus();
+    state = 'MENU'; showWindow('party-status'); updatePartyStatus(); showGoldWindow();
     while(true) {
         let cmd = await selectMenu(['はなす', 'じゅもん', 'どうぐ', 'つよさ', 'ちず'], 'cmd-window', 1, true); if(cmd === -1) break;
         if(cmd === 0) { hideAllWindows(); await checkAction(); if (state !== 'FIELD') break; showWindow('party-status'); updatePartyStatus(); state = 'MENU'; } 
@@ -7155,7 +7155,7 @@ async function openMainMenu() {
                 html += `</div>`;
                 html += `<div style="font-size:10px;color:#888;text-align:center;margin-top:3px;">${_stIdx+1}/${partyData.members.length}人目　◀▶で切り替え</div>`;
                 document.getElementById('status-window').innerHTML = html;
-                showWindow('status-window');
+                showWindow('status-window'); showGoldWindow();
                 const _stDir = await new Promise(resolve => {
                     inputCallback = (key) => {
                         if (key==='Enter'||key==='Escape'||key===' ') { AudioManager.playSE('decision'); inputCallback=null; resolve(0); }
