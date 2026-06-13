@@ -2978,13 +2978,14 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     externalMapData["map_field_3_0"].exits[_sfp.k]={map:'map_sage_shrine',x:5,y:8};
                 }
             }
-            // ===== 2周目開始地点: 北西の漁村「グラ港」(14×14) =====
+            // ===== 2周目開始地点: 試練の洞窟南の漁村「グラ港」(14×14) =====
+            // 洞窟(map_field_0_4 / (10,22))の南側陸地に配置。船なしで陸路アクセス可能
             if (!externalMapData['map_fishing_village_nw']) {
                 const _fvW=14,_fvH=14;
                 // 漁村レイアウト: 1=壁,0=草地,9=石畳,10=建物床,5=水,11=草花
-                // y0:上壁 y1-3:2棟(神父・道具屋) y4-10:広場・中央 y11-12:港(水+桟橋) y13:出口
+                // y0:上壁 y1-3:2棟(神父・道具屋) y4-10:広場・中央 y11-12:港(水+桟橋) y13:出口(北=フィールドへ)
                 const _fvLayout=[
-                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,0,0,1,1,1,1,1,1],  // y=0: 上壁(北出口あり)
                     [1,1,9,10,9,1,0,0,1,9,10,9,1,1],
                     [1,1,10,10,10,1,0,9,1,10,10,10,1,1],
                     [1,1,9,10,9,1,9,9,1,9,10,9,1,1],
@@ -2997,14 +2998,15 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     [1,0,0,0,0,9,9,9,9,9,0,0,0,1],
                     [1,5,5,5,5,9,9,9,9,5,5,5,5,1],
                     [1,5,5,5,5,9,0,0,9,5,5,5,5,1],
-                    [1,1,1,1,1,1,0,0,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // y=13: 下壁（南は海）
                 ];
                 const _fvT=_fvLayout.flat();
-                const _fvP=findLand('map_field_1_1',20,10);
-                const _fvRet=_fvP?{map:'map_field_1_1',x:_fvP.x,y:_fvP.y+1}:{map:'map_field_1_1',x:20,y:11};
+                // 試練の洞窟のある map_field_0_4 の南部陸地を探す
+                const _fvP=findLand('map_field_0_4',10,35)||findLand('map_field_0_4',10,30)||findLand('map_field_0_4',8,28);
+                const _fvRet=_fvP?{map:'map_field_0_4',x:_fvP.x,y:_fvP.y+1}:{map:'map_field_0_4',x:10,y:36};
                 externalMapData['map_fishing_village_nw']={
                     width:_fvW,height:_fvH,tiles:_fvT,encounters:[],
-                    exits:{'6,13':_fvRet,'7,13':_fvRet},
+                    exits:{'6,0':_fvRet,'7,0':_fvRet},  // 北出口→フィールドへ(洞窟方向)
                     npcs:{
                         '3,2':{id:'npc_priest',name:'神父'},
                         '10,2':{id:'npc_item_shop_village',name:'道具屋（漁師の嫁）'},
@@ -3015,10 +3017,10 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     },
                     name:'グラ港の漁村'
                 };
-                if(_fvP&&externalMapData['map_field_1_1']){
-                    const _fw=externalMapData['map_field_1_1'].width||45;
-                    externalMapData['map_field_1_1'].tiles[_fvP.y*_fw+_fvP.x]=21;
-                    externalMapData['map_field_1_1'].exits[_fvP.k]={map:'map_fishing_village_nw',x:6,y:12};
+                if(_fvP&&externalMapData['map_field_0_4']){
+                    const _fw=externalMapData['map_field_0_4'].width||45;
+                    externalMapData['map_field_0_4'].tiles[_fvP.y*_fw+_fvP.x]=22;  // 下り階段→村へ
+                    externalMapData['map_field_0_4'].exits[_fvP.k]={map:'map_fishing_village_nw',x:6,y:1};
                 }
             }
 
@@ -5926,8 +5928,13 @@ async function checkAction() {
                     const _memCount2=Object.keys(_2ND_MEMORY_MAP).filter(k=>partyData.flags[_2ND_MEMORY_MAP[k].flag]).length;
                     const _totalMem=Object.keys(_2ND_MEMORY_MAP).length;
                     await typeMessage("【アリア】\n気がつきましたか……！\nよかった……。\nわたしは アリア……天空の 龍の お使いです。\nグラ王様が あなたたちを 逃がして……\nショックで 記憶を 失ってしまったのですね。");
-                    if(_memCount2 === 0) {
-                        await typeMessage("【アリア】\n記憶を 取り戻すために\n歩んできた 道を 逆に 辿ってください。\nまずは 南東の 海の 果て……\n「魔王城」から 始めるのです。\n船は 港に 用意してあります！\n（記憶を 取り戻す旅が 始まります）");
+                    if (!partyData.flags.has_ship) {
+                        // 船なし: まず試練の洞窟へ
+                        await typeMessage("【アリア】\nまず この村の 北にある\n「試練の 洞窟」へ 向かってください。\nあの 洞窟の 奥に 守護霊の 老騎士がいます。\n彼が 船を 授けてくれるはずです……！");
+                        await typeMessage("【アリア】\n船を 手に入れたら\nダーマ神殿へ。\n転職して 力を 高めたら\nいよいよ 記憶の 旅が 始まります。\n逆回りで――魔王城から 辿っていくのです！");
+                    } else if(_memCount2 === 0) {
+                        await typeMessage("【アリア】\n船を 取り戻しましたね……！\nよかった……。\n次は ダーマ神殿で 転職してください。\n力を 高めてから 記憶の 旅へ！");
+                        await typeMessage("【アリア】\n全ての 記憶を 取り戻すには\n歩んできた 道を 逆に 辿る必要があります。\nまずは 南東の 海の 果て……\n「魔王城」から 始めるのです！");
                     } else if(_memCount2 < _totalMem) {
                         await typeMessage(`【アリア】\n記憶が ${_memCount2}/${_totalMem} 戻ってきましたね！\n引き続き 歩んできた 道を 逆に 辿ってください。\n龍も あなたたちを 応援しています！`);
                     } else {
@@ -6057,7 +6064,11 @@ async function checkAction() {
                     await typeMessage("【傷ついた旅人】\nお前たちは もっと 先まで 行って\n魔王まで 倒したんだろ？\n傷も 癒えた。もう 一度 歩き出すよ。");
                 } else if (partyData.flags.is_second_loop) {
                     await typeMessage("【傷ついた旅人】\nあなたたち……！\n以前 ここを 通った 勇者たちでは……？\n確か 先の 洞窟を 制覇して 船を 手に入れた……！");
-                    await typeMessage("【傷ついた旅人】\n記憶が ないのですか……。\n以前 あなたたちが ワシを 助けてくれたのですよ！\n洞窟の 方向は 南西……\n守護霊の 老騎士が いるはず。\n行ってみれば 思い出せるかも……！");
+                    if (!partyData.flags.has_ship) {
+                        await typeMessage("【傷ついた旅人】\n記憶が ないのですか……。\n以前 あなたたちが ワシを 助けてくれたのですよ！\n洞窟の 方向は 南西……\n守護霊の 老騎士が いるはず。\nまず 船を 手に入れてきてください！");
+                    } else {
+                        await typeMessage("【傷ついた旅人】\n記憶が ないのですか……。\n以前 あなたたちが ワシを 助けてくれたのですよ！\n洞窟の 方向は 南西……\n守護霊の 老騎士が いるはず。\n行ってみれば 思い出せるかも……！");
+                    }
                 } else {
                     await typeMessage("【傷ついた旅人】\nぐ……っ！ここで 一息ついて……");
                     await typeMessage("【傷ついた旅人】\nすぐ 北の あの 洞窟には\n気をつけろ……！\n奥に いる ボスは……普通じゃない……\n仲間たちは みな やられてしまった……！");
@@ -6169,8 +6180,10 @@ async function checkAction() {
             if (npc.id === "npc_guide_north") {
                 const _is2N=partyData.flags.is_second_loop&&!partyData.flags.last_boss_defeated;
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王を 倒したとは！\nあなたたちが 世界の 英雄ですね！"); }
-                else if (_is2N && !partyData.flags['2nd_mem_maou']) {
-                    await typeMessage("【案内人】\n……あなたたち、見覚えが あります。\n以前 ここを 通った 勇者様では……？\nまず 南東の 魔王城へ 向かって みてください。\nきっと 何かを 思い出せるはずです。");
+                else if (_is2N && !partyData.flags.has_ship) {
+                    await typeMessage("【案内人】\n……あなたたち、見覚えが あります。\n以前 ここを 通った 勇者様では……？\nまず 南西の 試練の 洞窟へ 行ってください。\n守護霊の 老騎士が 船を 授けてくれるはずです。");
+                } else if (_is2N && !partyData.flags['2nd_mem_maou']) {
+                    await typeMessage("【案内人】\n船を 手に入れましたね！\nダーマ神殿で 転職を 済ませたら\n南東の 魔王城へ 向かってください。\nきっと 何かを 思い出せるはずです。");
                 } else if (_is2N && partyData.flags['2nd_mem_maou'] && !partyData.flags['2nd_mem_dungeon']) {
                     await typeMessage("【案内人】\n記憶が 戻りつつあるようですね……！\n試練の 洞窟は 南西の 半島の 先です。\nあの 洞窟で 何かを 受け取ったはず……");
                 } else if (_is2N) {
@@ -6182,7 +6195,9 @@ async function checkAction() {
             if (npc.id === "npc_guide_east_tower") {
                 const _is2E=partyData.flags.is_second_loop&&!partyData.flags.last_boss_defeated;
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n世界に 平和が 戻りました。\nあなたたちの おかげです！"); }
-                else if (_is2E && !partyData.flags['2nd_mem_shrine']) {
+                else if (_is2E && !partyData.flags.has_ship) {
+                    await typeMessage("【案内人】\nここは 賢者の 祠。\n船が ないと 先へは 進めませんよ……\n試練の 洞窟を 制覇すると 船が 手に入ります。\n南西の 半島を 目指してください！");
+                } else if (_is2E && !partyData.flags['2nd_mem_shrine']) {
                     await typeMessage("【案内人】\nここは 賢者の 祠。\n南に 「南の 祠島」があります。\nまずは そちらへ……\n記憶の 手がかりが 見つかるはずです。");
                 } else if (_is2E && partyData.flags['2nd_mem_shrine']) {
                     await typeMessage("【案内人】\n天空の 塔は 東の 島の 北側にあります。\n記憶を たどって 登ってみてください……！\n龍の 力が あなたを 待っています。");
@@ -6193,7 +6208,9 @@ async function checkAction() {
             if (npc.id === "npc_guide_south") {
                 const _is2S=partyData.flags.is_second_loop&&!partyData.flags.last_boss_defeated;
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\nお疲れ様でした！\n世界が 救われましたね！"); }
-                else if (_is2S && !partyData.flags['2nd_mem_maou']) {
+                else if (_is2S && !partyData.flags.has_ship) {
+                    await typeMessage("【案内人】\n記憶を 失っているのですか……。\n南西の 試練の 洞窟に\n守護霊の 老騎士が います。\n彼に 会えば 船が 手に入るでしょう。");
+                } else if (_is2S && !partyData.flags['2nd_mem_maou']) {
                     await typeMessage("【案内人】\n南東の 海の 果てに\n漆黒の 魔王城があります……\n記憶が なくても 行って みてください。\nきっと 何かが 戻るはずです。");
                 } else if (_is2S) {
                     await typeMessage("【案内人】\n船が ありますね！\n逆回りで 記憶を たどっているのですね？\n次は 南西の 村島へ……\nあの 村の 人たちが あなたを 知っているはずです！");
@@ -6204,7 +6221,9 @@ async function checkAction() {
             if (npc.id === "npc_guide_demon") {
                 const _is2D=partyData.flags.is_second_loop&&!partyData.flags.last_boss_defeated;
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王が 倒れた！\nこれで やっと 平和が 戻ります……！"); }
-                else if (_is2D && !partyData.flags['2nd_mem_maou']) {
+                else if (_is2D && !partyData.flags.has_ship) {
+                    await typeMessage("【案内人】\n記憶を 失っているのですか……！\nまずは 試練の 洞窟で 船を 手に入れてください。\n船なしでは 魔王城には 渡れません！");
+                } else if (_is2D && !partyData.flags['2nd_mem_maou']) {
                     await typeMessage("【案内人】\n記憶を 失っているのですか……！\n魔王城は 南東の 海の 果てにあります。\nまずは そこへ 向かってみてください。\nきっと 記憶の 鍵が あります……！");
                 } else if (_is2D) {
                     await typeMessage("【案内人】\n魔王城からの 記憶が 戻りましたか！\n次は 南の 祠島です。\n船で 南へ 渡ってみてください。");
@@ -6399,9 +6418,11 @@ async function checkAction() {
                     await typeMessage("【老漁師】\n……世界に 平和が 戻ったか。\nアリアが 嬉しそうに 飛び跳ねておったよ。\nわしも なんだか 目頭が 熱くなってしまった。");
                 } else if (_is2F) {
                     const _memCount = Object.keys(_2ND_MEMORY_MAP).filter(k => partyData.flags[_2ND_MEMORY_MAP[k].flag]).length;
-                    if (_memCount === 0) {
+                    if (!partyData.flags.has_ship) {
                         await typeMessage("【老漁師】\nアリアから 話は 聞いておる……。\nお前たちが 命をかけて 戦った 勇者だとな。\n記憶が なくとも……体が 覚えているはずじゃ。");
-                        await typeMessage("【老漁師】\n南東の 海の 果て……\n魔王城へ 向かうとよい。\nあの 場所に 立てば きっと 何かが 戻る。\n船は 港に 用意してある。");
+                        await typeMessage("【老漁師】\nまずは 村の 北にある\n試練の 洞窟へ 向かうのじゃ。\n奥に 眠る 守護霊が\n船を 授けてくれるはずじゃ。");
+                    } else if (_memCount === 0) {
+                        await typeMessage("【老漁師】\n船を 手に入れたか！よかった。\nダーマ神殿で 転職してから\n南東の 魔王城を 目指すのじゃ。\nまずは 記憶の 手がかりが そこにある。");
                     } else if (_memCount < 6) {
                         await typeMessage(`【老漁師】\n少しずつ 思い出してきたか……！\n記憶が ${_memCount}/6 戻ってきたな。\n歩んできた 道を 逆に たどれ。\nアリアが 信じておる。`);
                     } else {
@@ -6419,7 +6440,11 @@ async function checkAction() {
                     await typeMessage("【漁師の妻】\nまあ……本当に 平和が 来たんですね！\nこれで 主人も 安心して 漁に 出られます。\n本当に ありがとうございました……！");
                 } else if (_is2W) {
                     await typeMessage("【漁師の妻】\nグラ王様が あなたたちを 逃がすために……\nご自分を 犠牲に して……。\nアリアが 全部 話してくれました……。");
-                    await typeMessage("【漁師の妻】\n記憶が なくても 大丈夫よ。\nあなたたちの 体には\nグラ王様の 想いが 宿っているはずです。\n必ず 思い出せます。");
+                    if (!partyData.flags.has_ship) {
+                        await typeMessage("【漁師の妻】\n北の 洞窟に 守護霊の 老騎士が います。\n以前 あなたたちに 船を 渡してくれた方です。\nもう一度 会いに 行ってみては……？");
+                    } else {
+                        await typeMessage("【漁師の妻】\n記憶が なくても 大丈夫よ。\nあなたたちの 体には\nグラ王様の 想いが 宿っているはずです。\n必ず 思い出せます。");
+                    }
                 } else {
                     await typeMessage("【漁師の妻】\nいらっしゃい 旅人さん。\nこの村の 魚は とても 美味しいですよ。\n道具屋では 漁師の嫁の 手作り 薬草も 売っています。");
                 }
@@ -6430,7 +6455,11 @@ async function checkAction() {
                 if (partyData.flags.last_boss_defeated) {
                     await typeMessage("【漁師の子】\nやった！ 魔王 やっつけたんだって！\nアリアお姉ちゃんが 泣きながら 笑ってたよ！\nぼくも 大きくなったら 勇者に なる！！");
                 } else if (_is2C) {
-                    await typeMessage("【漁師の子】\nアリアお姉ちゃんが ずっと 待ってたよ！\nお姉ちゃん すごく 心配してたんだから！\nお姉ちゃんに 話しかけてあげてね！");
+                    if (!partyData.flags.has_ship) {
+                        await typeMessage("【漁師の子】\nアリアお姉ちゃんが 待ってるよ！\nあとね、村の 北に 洞窟があるんだよ。\nなんか 怖そうだけど……\nお兄ちゃんたちなら 大丈夫だよね！");
+                    } else {
+                        await typeMessage("【漁師の子】\nアリアお姉ちゃんが ずっと 待ってたよ！\nお姉ちゃん すごく 心配してたんだから！\nお姉ちゃんに 話しかけてあげてね！");
+                    }
                 } else {
                     await typeMessage("【漁師の子】\nねえ 旅人さん！\nアリアお姉ちゃん 知ってる？\n龍のことを いっぱい 知ってるんだよ！\n南の 海から 来たって 言ってた！");
                 }
@@ -7826,8 +7855,9 @@ async function startSecondLoop(parsedOldData) {
             m.inventory.forEach(itemId => { let it = masterData.items[itemId]; if(it && it.type === 'weapon' && it.power > maxPwr) { maxPwr = it.power; bestWeaponId = it.id; } });
         });
     }
-    partyData = await loadExternalData('party'); partyData.flags = { is_second_loop: true, has_ship: true };
-    // 2周目スタート: グラ港の漁村（北西）から逆回りで始まる
+    partyData = await loadExternalData('party'); partyData.flags = { is_second_loop: true };
+    // 2周目スタート: 試練の洞窟南の漁村「グラ港」から始まる
+    // 船なし→洞窟クリアで船入手→ダーマ神殿転職→魔王城から逆回りルート
     const _2ndStart = externalMapData['map_fishing_village_nw'] ? 'map_fishing_village_nw' : (externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData||{})[0]);
     partyData.pos.map = _2ndStart; partyData.pos.x = 6; partyData.pos.y = 7;
     applyGrowthDataToParty(true);
@@ -7837,7 +7867,7 @@ async function startSecondLoop(parsedOldData) {
         let input = await showCustomDialog('prompt', `${m.job} の名前を決めてください\n（最大4文字）\n空白で「${defaultName}」`, defaultName);
         m.name = (input !== null && input.trim() !== "") ? input.trim().substring(0, 4) : defaultName;
     }
-    const _2ndMsg = `【2周目・過去改変ルート】\n「ふっかつのじゅもん」の力で\nグラ王が 逃がしてくれた 直後の\n過去へ 時間を 跳び越えた……！\n\n北西の 漁村「グラ港」に 身を 潜める\nアリア（天空の龍の使い）が\n船を 用意して 待っている……！\n\n今度こそ 真実を 暴き\n偽の王を 打ち倒せ！\n（※敵の強さが2倍になります）`;
+    const _2ndMsg = `【2周目・過去改変ルート】\n「ふっかつのじゅもん」の力で\nグラ王が 逃がしてくれた 直後の\n過去へ 時間を 跳び越えた……！\n\n試練の 洞窟南の 漁村「グラ港」に\n記憶を 失った 状態で 目覚めた……。\nアリア（天空の龍の使い）が 村にいる。\n\n【2周目の 動線】\n①漁村 → 試練の洞窟（船入手）\n②ダーマ神殿（転職）\n③魔王城から 逆回りで 記憶を 取り戻せ！\n\n（※敵の強さが2倍になります）`;
     if(bestWeaponId) { partyData.members[0].equipment.weapon = bestWeaponId; await showCustomDialog('alert', _2ndMsg + `\n\n前世の記憶：「${masterData.items[bestWeaponId]?.name}」を引き継いだ！`); }
     else { await showCustomDialog('alert', _2ndMsg); }
 }
