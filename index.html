@@ -5665,7 +5665,16 @@ async function checkAction() {
     let tx = partyData.pos.x, ty = partyData.pos.y;
     if(partyData.dir === 0) ty--; if(partyData.dir === 1) tx++; if(partyData.dir === 2) ty++; if(partyData.dir === 3) tx--;
     const key = `${tx},${ty}`;
-    
+    // フィールドマップではexternalMapDataにNPCが追加されてもcurrentMapのスナップショットに反映されない場合がある
+    // → externalMapDataにあるNPCをcurrentMapに同期する（船・宝箱など動的追加NPCのため）
+    const _isField = partyData.pos.map && /^map_field_/.test(partyData.pos.map);
+    if (_isField && externalMapData && externalMapData[partyData.pos.map]) {
+        const _extNpc = externalMapData[partyData.pos.map].npcs;
+        if (_extNpc && _extNpc[key] && currentMap.npcs && !currentMap.npcs[key]) {
+            currentMap.npcs[key] = _extNpc[key];
+        }
+    }
+
     if(currentMap.npcs && currentMap.npcs[key]) {
         const npc = currentMap.npcs[key]; const extDef = externalEntitiesData[npc.id];
         showGoldWindow();
