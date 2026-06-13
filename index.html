@@ -970,132 +970,137 @@ function getMapRandom(x, y, mapId) { const _k = x + '|' + y + '|' + (mapId||'');
 function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return mapObj.name; if (!mapId) return "フィールド"; if (mapId.includes('town_01')) return "城下町グラマニア"; if (mapId.includes('castle_01')) return "グラマニア城"; if (mapId.includes('dungeon_1f')) return "試練の洞窟 1F"; if (mapId.includes('dungeon_b1f')) return "試練の洞窟 B1F"; if (mapId.includes('dungeon_b2f')) return "試練の洞窟 B2F"; if (mapId.includes('dungeon_b3f')) return "試練の洞窟 B3F"; if (mapId.includes('tower_1f')) return "天空の塔 1F"; if (mapId.includes('tower_2f')) return "天空の塔 2F"; if (mapId.includes('tower_3f')) return "天空の塔 3F"; if (mapId.includes('demon_castle_1f')) return "魔王城 1F"; if (mapId.includes('demon_castle_2f')) return "魔王城 2F"; if (mapId.includes('demon_castle_3f')) return "魔王城 3F"; if (mapId.includes('demon_castle_4f')) return "魔王城 4F"; if (mapId.includes('shrine')) return "ほこら"; if (mapId.includes('town') || mapId.includes('village') || mapId.includes('market')) return "街・村"; if (mapId.includes('dungeon') || mapId.includes('cave')) return "ダンジョン"; if (mapId.includes('field')) return "フィールド"; return "未知の場所"; }
 function getCurrentWorldPos() { let m = partyData.pos.map; let wx = -1, wy = -1; if (m.startsWith('map_field_') && m.split('_').length >= 4) { wx = parseInt(m.split('_')[2]); wy = parseInt(m.split('_')[3]); } else if (m.includes('town') || m.includes('castle')) { wx = 2; wy = 2; } else if (m.includes('dungeon') || m.includes('cave')) { wx = 2; wy = 0; } else if (m.includes('shrine')) { wx = 2; wy = 3; } else if (m.includes('north')) { wx = 2; wy = 0; } else if (m.includes('south')) { wx = 2; wy = 4; } else if (m.includes('east')) { wx = 4; wy = 2; } else if (m.includes('west')) { wx = 0; wy = 2; } if (wx === -1 || wy === -1) { wx = 2; wy = 2; } return {x: wx, y: wy}; }
 async function showWorldMap() {
-    const SCALE = 2, MW = 15, MG = 5;
     if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {};
-    // Starting castle area always visible
     partyData.flags.visited_maps['map_field_2_2'] = true;
-    const vm = partyData.flags.visited_maps;
 
+    // サンプリング設定: 45x45マップから3タイルおきに15点サンプル → 4pxで表示 → 300x300px
+    const STEP=3, SPM=15, SPIX=4, NM=5, CW=NM*SPM*SPIX;
+    const cv = document.createElement('canvas');
+    cv.width = CW; cv.height = CW;
+    const ctx2 = cv.getContext('2d');
+    ctx2.fillStyle = '#0c1830'; ctx2.fillRect(0,0,CW,CW);
+
+    // DQ4風地形カラー
     const tC = t => {
-        if(t===5) return '#1a5c9a';
-        if(t===11||t===12) return '#3e9a22';
-        if(t===19) return '#1e6010';
-        if(t===20) return '#7a6838';
-        if(t===0) return '#b8ae68';
-        if(t===1||t===4||t===15||t===16||t===17||t===18) return '#4a4a4a';
-        if(t===21||t===22) return '#ffe880';
-        if(t===9||t===10) return '#8a5010';
-        return '#2a2a2a';
+        if(t===5)  return '#0e4a8a'; // 深海
+        if(t===11) return '#48b028'; // 草地
+        if(t===12) return '#3a9820'; // 背の高い草
+        if(t===19) return '#164a08'; // 森
+        if(t===20) return '#887860'; // 山
+        if(t===0)  return '#c8a840'; // 砂漠
+        if(t===1||t===4||t===15||t===16) return '#484848';
+        if(t===21||t===22) return '#e8c840';
+        if(t===9||t===10) return '#907040';
+        return '#1c2030';
     };
 
-    const FOG = '#0c0e18';
-    const cv = document.createElement('canvas');
-    cv.width = MW*MG*SCALE; cv.height = MW*MG*SCALE;
-    const ctx2 = cv.getContext('2d');
-    ctx2.fillStyle = FOG; ctx2.fillRect(0,0,cv.width,cv.height);
+    // 地形描画
+    for(let gy=0;gy<NM;gy++) for(let gx=0;gx<NM;gx++) {
+        const mapId=`map_field_${gx}_${gy}`, m=externalMapData[mapId];
+        const ox=gx*SPM*SPIX, oy=gy*SPM*SPIX;
+        if(!m){ ctx2.fillStyle='#0a3068'; ctx2.fillRect(ox,oy,SPM*SPIX,SPM*SPIX); continue; }
+        for(let sy=0;sy<SPM;sy++) for(let sx=0;sx<SPM;sx++){
+            const tx=Math.min(sx*STEP+1,m.width-1), ty=Math.min(sy*STEP+1,m.height-1);
+            ctx2.fillStyle=tC(m.tiles[ty*m.width+tx]);
+            ctx2.fillRect(ox+sx*SPIX, oy+sy*SPIX, SPIX, SPIX);
+        }
+    }
 
-    for (let gy = 0; gy < MG; gy++) {
-        for (let gx = 0; gx < MG; gx++) {
-            const mapId = `map_field_${gx}_${gy}`;
-            const m = externalMapData[mapId];
-            if (!m) continue;
-
-            // 全景表示: 未訪問でも地形を描画
-            for (let ty = 0; ty < MW; ty++) for (let tx = 0; tx < MW; tx++) {
-                ctx2.fillStyle = tC(m.tiles[ty*MW+tx]);
-                ctx2.fillRect((gx*MW+tx)*SCALE, (gy*MW+ty)*SCALE, SCALE, SCALE);
-            }
-            // Building/landmark dots at exit positions
-            if (m.exits) {
-                for (const [ek, ed] of Object.entries(m.exits)) {
-                    if (!ed || !ed.map) continue;
-                    const [ex2, ey2] = ek.split(',').map(Number);
-                    const dm = ed.map;
-                    let dc = null;
-                    if (dm.includes('town')||dm.includes('village')||dm.includes('market')) dc='#ffe566';
-                    else if (dm.includes('castle')&&!dm.includes('demon')&&!dm.includes('death')) dc='#aaccff';
-                    else if (dm.includes('dharma')) dc='#ffd080';
-                    else if (dm.includes('shrine')) dc='#aaffcc';
-                    else if (dm.includes('tower')&&!dm.includes('demon')) dc='#88aaff';
-                    else if (dm.includes('dungeon')||dm.includes('cave')) dc='#ff9966';
-                    else if (dm.includes('demon')||dm.includes('maou')||dm.includes('death')) dc='#ff3333';
-                    if (dc) {
-                        ctx2.fillStyle = dc;
-                        const bx=(gx*MW+ex2)*SCALE-1, by=(gy*MW+ey2)*SCALE-1;
-                        ctx2.fillRect(bx,by,5,5);
-                        ctx2.fillStyle='rgba(255,255,255,0.7)';
-                        ctx2.fillRect(bx+1,by+1,2,2);
-                    }
-                }
+    // 海の光沢ライン
+    ctx2.strokeStyle='rgba(80,160,255,0.12)'; ctx2.lineWidth=1;
+    for(let gy=0;gy<NM;gy++) for(let gx=0;gx<NM;gx++){
+        const m=externalMapData[`map_field_${gx}_${gy}`]; if(!m) continue;
+        for(let sy=0;sy<SPM;sy++) for(let sx=0;sx<SPM;sx++){
+            const t=m.tiles[Math.min(sy*STEP,m.height-1)*m.width+Math.min(sx*STEP,m.width-1)];
+            if(t===5&&sy>0){
+                const nt=m.tiles[Math.min((sy-1)*STEP,m.height-1)*m.width+Math.min(sx*STEP,m.width-1)];
+                if(nt!==5){ctx2.strokeStyle='rgba(120,200,255,0.4)';ctx2.beginPath();ctx2.moveTo(gx*SPM*SPIX+sx*SPIX,gy*SPM*SPIX+sy*SPIX);ctx2.lineTo(gx*SPM*SPIX+(sx+1)*SPIX,gy*SPM*SPIX+sy*SPIX);ctx2.stroke();}
             }
         }
     }
 
-    // Grid lines (subtle)
-    ctx2.strokeStyle = 'rgba(60,80,120,0.35)'; ctx2.lineWidth = 0.5;
-    for (let i = 1; i < MG; i++) {
-        ctx2.beginPath(); ctx2.moveTo(i*MW*SCALE,0); ctx2.lineTo(i*MW*SCALE,MG*MW*SCALE); ctx2.stroke();
-        ctx2.beginPath(); ctx2.moveTo(0,i*MW*SCALE); ctx2.lineTo(MG*MW*SCALE,i*MW*SCALE); ctx2.stroke();
+    // マップグリッド線
+    ctx2.strokeStyle='rgba(60,100,160,0.4)'; ctx2.lineWidth=1;
+    for(let i=1;i<NM;i++){
+        ctx2.beginPath();ctx2.moveTo(i*SPM*SPIX,0);ctx2.lineTo(i*SPM*SPIX,CW);ctx2.stroke();
+        ctx2.beginPath();ctx2.moveTo(0,i*SPM*SPIX);ctx2.lineTo(CW,i*SPM*SPIX);ctx2.stroke();
     }
 
-    // Current position dot
-    const pMapId = partyData.pos.map;
-    let pgx = -1, pgy = -1, ppx = -1, ppy = -1;
-    if (pMapId && /^map_field_(\d)_(\d)$/.test(pMapId)) {
-        const parts = pMapId.split('_');
-        pgx = parseInt(parts[2]); pgy = parseInt(parts[3]);
-    } else {
-        // Non-field map: approximate from getCurrentWorldPos
-        const wp = getCurrentWorldPos(); pgx = wp.x; pgy = wp.y;
-    }
-    if (pgx >= 0 && pgy >= 0) {
-        const _px = pMapId && /^map_field_/.test(pMapId) ? partyData.pos.x : MW/2;
-        const _py = pMapId && /^map_field_/.test(pMapId) ? partyData.pos.y : MW/2;
-        ppx = (pgx*MW+_px)*SCALE; ppy = (pgy*MW+_py)*SCALE;
-        // Pulsing dot
-        ctx2.fillStyle = '#ff2222'; ctx2.fillRect(ppx-2,ppy-2,6,6);
-        ctx2.fillStyle = '#ff8888'; ctx2.fillRect(ppx-1,ppy-1,4,4);
-        ctx2.fillStyle = '#ffffff'; ctx2.fillRect(ppx,ppy,2,2);
+    // 建物アイコン（大きめ・ラベル付き）
+    const iconDefs = {
+        'town':   {c:'#f8e040',sc:'#c09010',sym:'🏘',label:'町'},
+        'market': {c:'#f8e040',sc:'#c09010',sym:'🏘',label:'市場'},
+        'village':{c:'#d8c030',sc:'#a07010',sym:'🏡',label:'村'},
+        'castle': {c:'#a0c8ff',sc:'#4080c0',sym:'🏰',label:'城'},
+        'dungeon':{c:'#ff9040',sc:'#c04010',sym:'⚔',label:'洞窟'},
+        'cave':   {c:'#ff9040',sc:'#c04010',sym:'⚔',label:'洞窟'},
+        'tower':  {c:'#8088ff',sc:'#2030c0',sym:'🗼',label:'塔'},
+        'shrine': {c:'#60ffb8',sc:'#009050',sym:'⛩',label:'祠'},
+        'dharma': {c:'#ffb040',sc:'#c06010',sym:'🕌',label:'神殿'},
+        'demon':  {c:'#ff2828',sc:'#880000',sym:'💀',label:'魔王城'},
+        'death':  {c:'#ff2828',sc:'#880000',sym:'💀',label:'魔王城'},
+        'maou':   {c:'#ff2828',sc:'#880000',sym:'💀',label:'魔王城'},
+    };
+    ctx2.font='bold 8px sans-serif'; ctx2.textAlign='center'; ctx2.textBaseline='middle';
+    for(let gy=0;gy<NM;gy++) for(let gx=0;gx<NM;gx++){
+        const m=externalMapData[`map_field_${gx}_${gy}`]; if(!m||!m.exits) continue;
+        for(const[ek,ed] of Object.entries(m.exits)){
+            if(!ed||!ed.map) continue;
+            const dm=ed.map.toLowerCase();
+            let iKey=null;
+            for(const k of Object.keys(iconDefs)){if(dm.includes(k)){iKey=k;break;}}
+            if(!iKey) continue;
+            const[ex2,ey2]=ek.split(',').map(Number);
+            const bx=gx*SPM*SPIX+Math.floor(ex2/STEP)*SPIX;
+            const by=gy*SPM*SPIX+Math.floor(ey2/STEP)*SPIX;
+            const ico=iconDefs[iKey];
+            // 外枠
+            ctx2.fillStyle=ico.sc; ctx2.fillRect(bx-5,by-5,12,12);
+            // 内側
+            ctx2.fillStyle=ico.c; ctx2.fillRect(bx-4,by-4,10,10);
+            // 中央マーク
+            ctx2.fillStyle='#111'; ctx2.fillText(ico.sym,bx+1,by+1);
+        }
     }
 
-    const imgSrc = cv.toDataURL();
+    // 現在地（赤点滅）
+    const pMapId=partyData.pos.map;
+    let pgx=-1,pgy=-1,ppx=-1,ppy=-1;
+    if(pMapId&&/^map_field_(\d)_(\d)$/.test(pMapId)){
+        const pts=pMapId.split('_'); pgx=parseInt(pts[2]); pgy=parseInt(pts[3]);
+    } else { const wp=getCurrentWorldPos(); pgx=wp.x; pgy=wp.y; }
+    if(pgx>=0&&pgy>=0){
+        const m=externalMapData[`map_field_${pgx}_${pgy}`];
+        const rpx=pMapId&&/^map_field_/.test(pMapId)?partyData.pos.x:22;
+        const rpy=pMapId&&/^map_field_/.test(pMapId)?partyData.pos.y:22;
+        ppx=pgx*SPM*SPIX+Math.floor(rpx/STEP)*SPIX;
+        ppy=pgy*SPM*SPIX+Math.floor(rpy/STEP)*SPIX;
+        ctx2.fillStyle='#ff2222'; ctx2.fillRect(ppx-3,ppy-3,8,8);
+        ctx2.fillStyle='#ff8888'; ctx2.fillRect(ppx-2,ppy-2,6,6);
+        ctx2.fillStyle='#ffffff'; ctx2.fillRect(ppx-1,ppy-1,4,4);
+        // ▼ マーカー
+        ctx2.fillStyle='#ff4444'; ctx2.beginPath();
+        ctx2.moveTo(ppx+2,ppy-5); ctx2.lineTo(ppx+2,ppy-10); ctx2.stroke();
+    }
 
-    // Legend
-    const legendItems = [
-        { color:'#ffe566', label:'町・村' },
-        { color:'#aaccff', label:'城' },
-        { color:'#ff9966', label:'洞窟' },
-        { color:'#88aaff', label:'塔' },
-        { color:'#aaffcc', label:'神殿/祠' },
-        { color:'#ff3333', label:'魔王城' },
+    const imgSrc=cv.toDataURL();
+    // 凡例
+    const lgItems=[
+        {c:'#48b028',t:'草原'},{c:'#164a08',t:'森'},{c:'#887860',t:'山'},
+        {c:'#c8a840',t:'砂漠'},{c:'#0e4a8a',t:'海'},
+        {c:'#f8e040',t:'町・村'},{c:'#a0c8ff',t:'城'},{c:'#ff9040',t:'洞窟'},
+        {c:'#8088ff',t:'塔'},{c:'#60ffb8',t:'祠'},{c:'#ff2828',t:'魔王城'},
+        {c:'#ff2222',t:'現在地'},
     ];
-    const lgHtml = legendItems.map(l =>
-        `<span style="display:inline-flex;align-items:center;gap:3px;margin:2px 4px;font-size:9px;">` +
-        `<span style="width:8px;height:8px;background:${l.color};border:1px solid rgba(255,255,255,0.4);display:inline-block;"></span>${l.label}</span>`
-    ).join('');
+    const lgHtml=lgItems.map(l=>`<span style="display:inline-flex;align-items:center;gap:2px;margin:1px 3px;font-size:10px;"><span style="width:9px;height:9px;background:${l.c};border:1px solid rgba(255,255,255,0.3);display:inline-block;border-radius:1px;"></span>${l.t}</span>`).join('');
 
-    // Region names (visited only)
-    const regionDefs = [
-        {gx:2,gy:2,name:"グラマニア"},{gx:2,gy:0,name:"北の島"},
-        {gx:4,gy:0,name:"天空の塔"},{gx:4,gy:4,name:"魔王の島"},
-        {gx:0,gy:4,name:"鍛冶の森"},{gx:2,gy:4,name:"砂漠の島"},
-        {gx:2,gy:3,name:"ほこら"},{gx:0,gy:2,name:"西の大地"},
-        {gx:4,gy:2,name:"東の大地"}
-    ];
-    const rHtml = regionDefs.map(r =>
-        `<span style="display:inline-block;background:rgba(20,40,80,0.75);color:#cce4ff;font-size:9px;padding:1px 4px;margin:1px;border-radius:2px;border:1px solid rgba(100,160,255,0.3);">${r.name}</span>`
-    ).join('');
-
-    let html = `<div style="font-size:15px;border-bottom:1px solid #446;margin-bottom:6px;padding-bottom:4px;text-align:center;letter-spacing:2px;color:#cce4ff;">せ か い ち ず</div>`;
-    html += `<div style="text-align:center;">` +
-            `<img src="${imgSrc}" style="image-rendering:pixelated;image-rendering:crisp-edges;width:160px;height:160px;border:2px solid #446;display:block;margin:0 auto;"/>` +
-            `</div>`;
-    if (rHtml) html += `<div style="margin-top:5px;text-align:center;line-height:1.6;">${rHtml}</div>`;
-    html += `<div style="margin-top:5px;text-align:center;line-height:1.8;">${lgHtml}</div>`;
-    html += `<div style="margin-top:6px;text-align:right;font-size:13px;" class="blink">▼とじる</div>`;
-    document.getElementById('status-window').innerHTML = html;
+    let html=`<div style="font-size:14px;border-bottom:1px solid #446;margin-bottom:6px;padding-bottom:3px;text-align:center;letter-spacing:3px;color:#d0e8ff;font-weight:bold;">せ か い ち ず</div>`;
+    html+=`<div style="text-align:center;"><img src="${imgSrc}" style="image-rendering:pixelated;image-rendering:crisp-edges;width:240px;height:240px;border:2px solid #446;display:block;margin:0 auto;box-shadow:0 0 12px rgba(0,80,200,0.5);"/></div>`;
+    html+=`<div style="margin-top:5px;text-align:center;line-height:1.7;">${lgHtml}</div>`;
+    html+=`<div style="margin-top:6px;text-align:right;font-size:12px;" class="blink">▼とじる</div>`;
+    document.getElementById('status-window').innerHTML=html;
     showWindow('status-window');
-    await new Promise(resolve => { inputCallback = (key) => { if(key==='Enter'||key==='Escape'||key===' ') { AudioManager.playSE('decision'); inputCallback=null; resolve(); } }; });
+    await new Promise(resolve=>{ inputCallback=(key)=>{ if(key==='Enter'||key==='Escape'||key===' '){ AudioManager.playSE('decision'); inputCallback=null; resolve(); } }; });
     hideWindow('status-window');
 }
 function resizeCanvas() { const canvas = document.getElementById('screen'); const container = document.getElementById('game-container'); if(!container) return; const cw = container.clientWidth; const ch = container.clientHeight; const baseWidth = 480; canvas.width = baseWidth; const ratio = ch / cw; canvas.height = Math.floor(baseWidth * ratio); if(state === 'FIELD' || state === 'MSG') drawMap(); }
@@ -2084,18 +2089,41 @@ function generateFieldMapsForGravityQuest() {
     fillEll(110, 30,  10,  8, 11); // 北方前哨島 (2_0 北部)
     fillEll(165, 35,  10,  8, 11); // 北東前哨島 (3_0)
 
-    // --- 地形オーバーレイ（森・山）---
-    fillEllCond( 90,  90, 15, 10, 19); // 中央大陸 西森
-    fillEllCond(130,  80, 12,  8, 19); // 中央大陸 北東森
-    fillEllCond( 55,  75, 10,  7, 19); // 西海岸 森
-    fillEllCond(190,  70,  8,  6, 19); // 東大陸 森
-    fillEllCond( 60, 165, 10,  6, 19); // SW島 森
-    fillEllCond(112, 162,  8,  5, 12); // 祠の島 背の高い草
-    fillEllCond(100, 100, 18, 12, 20); // グラマニア山脈（中央）
-    fillEllCond(145, 110, 12,  8, 20); // 東方山岳
-    fillEllCond( 35,  90, 10,  7, 20); // 西方山岳
-    fillEllCond(200,  60,  8,  5, 20); // 東大陸 山
-    fillEllCond(198, 162,  8,  5, 20); // 魔王島 山
+    // --- 地形オーバーレイ DQ4スタイル（森・山・砂漠・草地） ---
+    // 森林地帯（tile 19）
+    fillEllCond( 88,  88, 18, 12, 19); // グラマニア西方大森林
+    fillEllCond( 58,  68, 14,  9, 19); // 西部海岸林
+    fillEllCond( 42,  72, 10,  7, 19); // 西端林
+    fillEllCond(130,  75, 15, 10, 19); // 北東の森
+    fillEllCond( 80, 125, 10,  7, 19); // 南西部の森
+    fillEllCond(135, 125, 12,  8, 19); // 東南の森
+    fillEllCond(190,  72, 10,  7, 19); // 東大陸の森
+    fillEllCond( 58, 162, 12,  8, 19); // SW島の森
+    fillEllCond( 25, 175, 10,  7, 19); // 洞窟島の林
+    fillEllCond(200, 175,  8,  6, 19); // 魔王島の黒き森
+    fillEllCond( 80,  48, 10,  7, 19); // 北の森
+    fillEllCond(155,  95, 10,  7, 19); // 東方の森
+    // 山岳地帯（tile 20）
+    fillEllCond( 98, 102, 20, 14, 20); // グラマニア山脈（メイン）
+    fillEllCond(140, 108, 14,  9, 20); // 東方山岳
+    fillEllCond( 38,  88, 12,  8, 20); // 西方山岳
+    fillEllCond(200,  62, 10,  7, 20); // 東大陸の峰
+    fillEllCond(200, 168,  9,  6, 20); // 魔王島の山
+    fillEllCond( 35,  52, 10,  6, 20); // 北西の山
+    fillEllCond(158,  52, 10,  6, 20); // 北東の山
+    fillEllCond( 22, 195, 10,  7, 20); // 洞窟島の崖
+    fillEllCond(112, 197, 10,  7, 20); // 南島の山
+    // 砂漠地帯（tile 0）
+    fillEllCond(115, 205, 14,  9, 0);  // 南砂漠（砂漠の島）
+    fillEllCond(132, 195, 10,  7, 0);  // 砂漠東部
+    fillEllCond(162, 162, 10,  6, 0);  // 東南の砂地
+    fillEllCond( 50, 200, 10,  7, 0);  // SW島の砂浜
+    // 背の高い草地（tile 12）- 草原と森の境界
+    fillEllCond(112, 162, 10,  7, 12); // 祠の島
+    fillEllCond( 72, 108, 10,  7, 12); // 西平原の草地
+    fillEllCond(152, 105, 10,  7, 12); // 東平原の草地
+    fillEllCond( 68, 165, 10,  6, 12); // SW島草地
+    fillEllCond(200, 115, 10,  7, 12); // 東海岸草地
 
     // === 海路必須エリアの陸路切断 ===
     // 西海岸(x<50)は切断しない → 徒歩で洞窟(0_4)に到達可能
@@ -4222,71 +4250,87 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
     const fr = (c, rx, ry, rw, rh) => { ctx.fillStyle = c; ctx.fillRect(px + rx, py + ry, rw, rh); };
     const ln = (c, lw, x1, y1, x2, y2) => { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(px + x1, py + y1); ctx.lineTo(px + x2, py + y2); ctx.stroke(); };
 
-    if (tile === 11) { // 草 / 町ではDQスタイル草地
+    if (tile === 11) { // 草原 DQ4スタイル
         if (town) {
-            // DQスタイル: 緑ドット草地 + 丸い木
             let gc = rand < 0.3 ? '#2e6428' : rand > 0.7 ? '#3a7030' : '#346830';
             fr(gc, 0, 0, T, T);
-            // 小ドットテクスチャ（DQらしい）
-            ctx.fillStyle = 'rgba(20,70,10,0.55)';
-            for (let di = 0; di < 14; di++) {
-                ctx.fillRect(px + fl((rand * 11.3 + di * 3.7) % (T - 1)) + 0, py + fl((rand * 9.1 + di * 2.9) % (T - 1)) + 0, 1, 1);
-            }
-            ctx.fillStyle = 'rgba(80,140,40,0.3)';
-            for (let di = 0; di < 6; di++) {
-                ctx.fillRect(px + fl((rand * 7.8 + di * 5.2) % (T - 2)) + 1, py + fl((rand * 6.4 + di * 4.1) % (T - 2)) + 1, 2, 2);
-            }
-            // 丸い木（確率で描画）
-            if (rand < 0.30) {
-                fr('#5a3010', T/2 - 2, T - 10, 4, 8); // 幹
-                ctx.fillStyle = '#1a4e0e'; ctx.beginPath(); ctx.arc(px + T/2, py + T/2, 11, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#266018'; ctx.beginPath(); ctx.arc(px + T/2 - 3, py + T/2 - 3, 8, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#307020'; ctx.beginPath(); ctx.arc(px + T/2 + 2, py + T/2 - 4, 7, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#3a7828'; ctx.beginPath(); ctx.arc(px + T/2, py + T/2 - 7, 5, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = 'rgba(10,40,5,0.45)';
-                for (let di = 0; di < 9; di++) {
-                    ctx.fillRect(px + fl((rand * 8.3 + di * 3.1) % 18) + T/2 - 9, py + fl((rand * 7.1 + di * 2.8) % 16) + T/2 - 12, 1, 1);
-                }
+            ctx.fillStyle='rgba(20,70,10,0.55)';
+            for(let di=0;di<14;di++) ctx.fillRect(px+fl((rand*11.3+di*3.7)%(T-1)),py+fl((rand*9.1+di*2.9)%(T-1)),1,1);
+            if(rand<0.30){
+                fr('#5a3010',T/2-2,T-10,4,8);
+                ctx.fillStyle='#1a4e0e';ctx.beginPath();ctx.arc(px+T/2,py+T/2,11,0,Math.PI*2);ctx.fill();
+                ctx.fillStyle='#266018';ctx.beginPath();ctx.arc(px+T/2-3,py+T/2-3,8,0,Math.PI*2);ctx.fill();
+                ctx.fillStyle='#307020';ctx.beginPath();ctx.arc(px+T/2+2,py+T/2-4,7,0,Math.PI*2);ctx.fill();
             }
         } else {
-            // DQ3スタイル鮮やか草地
-            let gc = rand < 0.33 ? '#4caa28' : rand > 0.67 ? '#58bc34' : '#54b430';
-            fr(gc, 0, 0, T, T);
-            ctx.fillStyle = 'rgba(20,110,5,0.5)';
-            for (let di = 0; di < 18; di++) ctx.fillRect(px + fl((rand * 13.7 + di * 3.3) % T), py + fl((rand * 11.3 + di * 2.7) % T), 1, 1);
-            ctx.fillStyle = 'rgba(120,220,60,0.3)';
-            for (let di = 0; di < 8; di++) ctx.fillRect(px + fl((rand * 8.9 + di * 5.1) % (T - 1)), py + fl((rand * 7.3 + di * 4.2) % (T - 1)), 2, 2);
-            if (rand < 0.06) { fr('#f8ee80', fl(rand * 20) + 3, fl(rand * 20) + 3, 4, 4); fr('#ffe030', fl(rand * 20) + 4, fl(rand * 20) + 4, 2, 2); }
+            // DQ4スタイル: 3段階の草色 + 細かいテクスチャ
+            const _gc = rand<0.33 ? '#50b830' : rand>0.67 ? '#5ccc3c' : '#58c434';
+            fr(_gc,0,0,T,T);
+            // 暗いドット（影）
+            ctx.fillStyle='rgba(10,80,0,0.45)';
+            for(let di=0;di<20;di++) ctx.fillRect(px+fl((rand*12.8+di*3.1)%T),py+fl((rand*10.4+di*2.6)%T),1,1);
+            // 明るいハイライト
+            ctx.fillStyle='rgba(130,240,60,0.3)';
+            for(let di=0;di<8;di++) ctx.fillRect(px+fl((rand*9.2+di*4.8)%(T-2))+1,py+fl((rand*7.6+di*3.9)%(T-2))+1,2,2);
+            // 花（低確率）
+            if(rand<0.04){ ctx.fillStyle='#fff8b0';ctx.fillRect(px+fl(rand*18)+3,py+fl(rand*18)+3,3,3); }
+            if(rand>0.96){ ctx.fillStyle='#ffb8c8';ctx.fillRect(px+fl(rand*16)+4,py+fl(rand*16)+4,2,2); }
         }
-    } else if (tile === 12) { // 背の高い草（DQ3スタイル）
-        let gc2 = rand < 0.4 ? '#3a9820' : '#42a828';
-        fr(gc2, 0, 0, T, T);
-        ctx.fillStyle = 'rgba(15,100,5,0.55)';
-        for (let di = 0; di < 16; di++) ctx.fillRect(px + fl((rand * 12.1 + di * 3.5) % T), py + fl((rand * 9.7 + di * 2.8) % T), 1, 1);
-        ctx.fillStyle = '#4ab830';
-        for (let i = 0; i < 7; i++) { let gx = fl((rand * 5.8 + i * 4.1) % (T - 3)) + 1; ctx.fillRect(px + gx, py + fl(rand * 3) + 3, 2, fl(rand * 4) + 9); }
-    } else if (tile === 19) { // 森（DQ3スタイル丸い木）
-        let gcf = rand < 0.4 ? '#4caa28' : '#54b430';
-        fr(gcf, 0, 0, T, T);
-        ctx.fillStyle = 'rgba(20,110,5,0.4)';
-        for (let di = 0; di < 10; di++) ctx.fillRect(px + fl((rand * 11 + di * 4.1) % T), py + fl((rand * 9 + di * 3.3) % T), 1, 1);
-        let treePairs = rand < 0.5 ? [[9, 19, 9], [22, 17, 8]] : [[7, 17, 8], [22, 20, 9]];
-        treePairs.forEach(([tx2, ty2, tr]) => {
-            ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.arc(px + tx2 + 1, py + ty2 + 2, tr, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#1a5a08'; ctx.beginPath(); ctx.arc(px + tx2, py + ty2, tr, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#246c10'; ctx.beginPath(); ctx.arc(px + tx2 - 1, py + ty2 - 2, tr - 2, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = 'rgba(80,180,30,0.25)'; ctx.beginPath(); ctx.arc(px + tx2 - 2, py + ty2 - 3, tr - 4, 0, Math.PI*2); ctx.fill();
+    } else if (tile === 12) { // 林道・背の高い草 DQ4スタイル
+        const _gc2 = rand<0.4 ? '#3aaa20' : '#44b828';
+        fr(_gc2,0,0,T,T);
+        ctx.fillStyle='rgba(10,90,0,0.5)';
+        for(let di=0;di<14;di++) ctx.fillRect(px+fl((rand*11.3+di*3.3)%T),py+fl((rand*9.1+di*2.8)%T),1,1);
+        // 草の穂（縦線）
+        ctx.fillStyle='#58cc38';
+        for(let i=0;i<8;i++){const gx2=fl((rand*5.4+i*3.8)%(T-3))+1;ctx.fillRect(px+gx2,py+fl(rand*4)+2,2,fl(rand*5)+8);}
+        ctx.fillStyle='rgba(150,240,80,0.4)';
+        for(let i=0;i<5;i++){const gx2=fl((rand*6.2+i*5.1)%(T-3))+1;ctx.fillRect(px+gx2,py+fl(rand*3)+1,1,5);}
+    } else if (tile === 19) { // 森 DQ4スタイル（密集した丸い木）
+        // 地面（暗い緑）
+        fr('#1c5c0c',0,0,T,T);
+        ctx.fillStyle='rgba(5,60,0,0.5)';
+        for(let di=0;di<12;di++) ctx.fillRect(px+fl((rand*10+di*4)%T),py+fl((rand*8+di*3.2)%T),1,1);
+        // DQ4風: 3〜4本の密集した丸い木
+        const _trees = rand<0.33 ? [[6,18,9],[20,17,10],[12,22,8]] :
+                       rand<0.66 ? [[4,20,8],[16,16,10],[24,20,7],[13,22,6]] :
+                                   [[8,18,10],[22,18,9],[15,23,7]];
+        _trees.forEach(([_tx,_ty,_tr])=>{
+            // 影
+            ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.arc(px+_tx+2,py+_ty+3,_tr,0,Math.PI*2);ctx.fill();
+            // 木の幹
+            ctx.fillStyle='#4a2a08';ctx.fillRect(px+_tx-1,py+_ty+_tr-3,3,5);
+            // 外側葉（濃い）
+            ctx.fillStyle='#155208';ctx.beginPath();ctx.arc(px+_tx,py+_ty,_tr,0,Math.PI*2);ctx.fill();
+            // 中層葉
+            ctx.fillStyle='#1e6a0c';ctx.beginPath();ctx.arc(px+_tx-1,py+_ty-2,_tr-2,0,Math.PI*2);ctx.fill();
+            // ハイライト
+            ctx.fillStyle='#287a12';ctx.beginPath();ctx.arc(px+_tx-2,py+_ty-3,_tr-4,0,Math.PI*2);ctx.fill();
+            // 頂点の明るい点
+            ctx.fillStyle='rgba(80,180,30,0.5)';ctx.beginPath();ctx.arc(px+_tx-2,py+_ty-4,_tr-6,0,Math.PI*2);ctx.fill();
         });
-    } else if (tile === 20) { // 山（DQ3スタイル小さな丘）
-        let gcm = rand < 0.4 ? '#4caa28' : '#54b430';
-        fr(gcm, 0, 0, T, T);
-        ctx.fillStyle = 'rgba(20,110,5,0.4)';
-        for (let di = 0; di < 10; di++) ctx.fillRect(px + fl((rand * 11 + di * 3.9) % T), py + fl((rand * 9 + di * 3.1) % T), 1, 1);
-        let mts = rand < 0.5 ? [[6, 26, 7, 6], [18, 24, 8, 7], [27, 27, 5, 4]] : [[4, 25, 6, 5], [15, 23, 9, 7], [25, 26, 6, 5]];
-        mts.forEach(([mx, my, mw, mh]) => {
-            ctx.fillStyle = '#8a7848'; ctx.beginPath(); ctx.moveTo(px+mx-mw, py+my); ctx.lineTo(px+mx, py+my-mh); ctx.lineTo(px+mx+mw, py+my); ctx.closePath(); ctx.fill();
-            ctx.fillStyle = '#a08c5a'; ctx.beginPath(); ctx.moveTo(px+mx-mw+2, py+my-1); ctx.lineTo(px+mx, py+my-mh+2); ctx.lineTo(px+mx+mw-2, py+my-1); ctx.closePath(); ctx.fill();
-            ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(px+mx-1, py+my-mh+1); ctx.lineTo(px+mx, py+my-mh); ctx.lineTo(px+mx+2, py+my-mh+2); ctx.closePath(); ctx.fill();
+    } else if (tile === 20) { // 山 DQ4スタイル（大きな三角山 + 雪）
+        // 地面（草）
+        const _gcm = rand<0.4 ? '#48aa28' : '#52b830';
+        fr(_gcm,0,0,T,T);
+        // DQ4風: 大きめの山を2座
+        const _mts = rand<0.5 ? [[8,T-2,10,T-3],[22,T-4,8,T*0.82]] : [[5,T-2,9,T-2.5],[20,T-3,10,T-2]];
+        _mts.forEach(([_mx,_my,_mw,_mh])=>{
+            // 山体（岩色）
+            ctx.fillStyle='#8a8068';
+            ctx.beginPath();ctx.moveTo(px+_mx-_mw,py+_my);ctx.lineTo(px+_mx,py+T-_mh);ctx.lineTo(px+_mx+_mw,py+_my);ctx.closePath();ctx.fill();
+            // 山体（右側：明るい面）
+            ctx.fillStyle='#9a907a';
+            ctx.beginPath();ctx.moveTo(px+_mx,py+T-_mh);ctx.lineTo(px+_mx+_mw,py+_my);ctx.lineTo(px+_mx+_mw*0.3,py+_my);ctx.closePath();ctx.fill();
+            // 岩のライン
+            ctx.strokeStyle='rgba(60,50,30,0.3)';ctx.lineWidth=0.7;
+            ctx.beginPath();ctx.moveTo(px+_mx-_mw*0.5,py+_my-(_mh-T)*0.4);ctx.lineTo(px+_mx+_mw*0.1,py+_my-(_mh-T)*0.7);ctx.stroke();
+            // 雪（頂上）
+            const _snh=Math.min((_mh-T)*0.35,7);
+            ctx.fillStyle='#f0eeea';
+            ctx.beginPath();ctx.moveTo(px+_mx-_snh*0.8,py+T-_mh+_snh*1.2);ctx.lineTo(px+_mx,py+T-_mh);ctx.lineTo(px+_mx+_snh*0.8,py+T-_mh+_snh*1.2);ctx.closePath();ctx.fill();
+            ctx.fillStyle='rgba(255,255,255,0.7)';
+            ctx.beginPath();ctx.moveTo(px+_mx,py+T-_mh);ctx.lineTo(px+_mx+_snh*0.5,py+T-_mh+_snh*0.8);ctx.closePath();ctx.fill();
         });
     } else if (tile === 5) { // 水（DQ3スタイル明るい青）
         let w1 = Math.sin(now / 700 + rand * 3.1) * 2, w2 = Math.sin(now / 950 + rand * 5.3 + 1) * 2;
@@ -4294,7 +4338,24 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
         fr('rgba(255,255,255,0.55)', fl(2 + rand * 8), fl(5 + w1), 10, 2); fr('rgba(255,255,255,0.38)', fl(14 + rand * 9), fl(15 + w2), 8, 2);
         fr('rgba(255,255,255,0.2)', fl(8 + rand * 6), fl(24 + w1), 7, 1);
     } else if (tile === 0 || tile === 23) {
-        if (tile === 23) {
+        if (tile === 0 && !town && !castle && !cave && !demon && !tower && !shrine) {
+            // フィールド砂漠 DQ4スタイル
+            const _dg = rand<0.4 ? '#c8a030' : rand>0.7 ? '#d4ac3c' : '#cca838';
+            fr(_dg,0,0,T,T);
+            // 砂の波紋（横ライン）
+            ctx.fillStyle='rgba(180,140,20,0.35)';
+            for(let _di=0;_di<5;_di++){
+                const _dy=fl((rand*8+_di*5.8)%T);
+                ctx.fillRect(px,py+_dy,T,1);
+                ctx.fillRect(px,py+_dy+2,T,1);
+            }
+            // 明るいハイライト（砂粒）
+            ctx.fillStyle='rgba(240,200,80,0.4)';
+            for(let _di=0;_di<10;_di++) ctx.fillRect(px+fl((rand*10+_di*3.7)%T),py+fl((rand*8+_di*2.9)%T),2,1);
+            // 暗い影（砂丘）
+            ctx.fillStyle='rgba(120,80,0,0.2)';
+            for(let _di=0;_di<6;_di++) ctx.fillRect(px+fl((rand*9+_di*5)%T),py+fl((rand*7+_di*3.8)%T),3,2);
+        } else if (tile === 23) {
             // 七色の水の渦巻きアニメーション
             const _vc = px + T/2, _vcy = py + T/2, _vr = T/2 - 0.5;
             ctx.save();
