@@ -768,35 +768,147 @@ window.SOUND_DATABASE = {
 <script>
 window.isGuraKingBattle = false;
 
+// ===== DQ2スタイル ふっかつのじゅもん（51文字かなパスワード）=====
+// 64文字ひらがなテーブル（6ビット/文字）
+// ※をと だ行を省いてば行を収録（だ行文字は た行に近似変換）
+const _GQ_KANA64 = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわんっゃゅょがぎぐげござじずぜぞばびぶべぼ';
+// 職業テーブル（3ビット=8種）
+const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','格闘家','忍者','道化師'];
+// マップIDテーブル（6ビット=64種）
+const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4'];
+// 武器/防具コンパクトIDテーブル（6ビット=64種、0=なし）
+const _GQ_EQUIP = ['','w01','w02','w03','w04','w05','w06','w07','w08','w09','w10','w11','w12','w13','w14','w15','w16','w17','w18','w19','w20','w21','w_star_sword','w_dark_edge','w_sea_lance','w_haguremetal_sword','w_staff_12','a01','a02','a03','a04','a05','a06','a07','a08','a09','a10','a11','a12','a13','a14','a_sea_armor','a_2nd_01','a_2nd_02','a_2nd_03','s01','s02','s03','s04','h01','h02','h03','h04','acc_sea_ring','meteorite_fragment','i_star_frag'];
+// フラグリスト（29ビット固定順）
+const _GQ_FLAGS = ['last_boss_defeated','is_second_loop','is_second_loop_unlocked','has_ship','flag_dungeon_cleared','flag_tower_cleared','flag_sky_truth_known','flag_2nd_maou_cleared','flag_king_met','flag_pirate_king_cleared','flag_weapon_forged','flag_has_star_fragment','flag_saved_richman','flag_mage_trial_cleared','flag_dragon_spirit_cleared','flag_beaten_secret_boss','2nd_mem_maou','2nd_mem_shrine','2nd_mem_village','2nd_mem_tower','2nd_mem_dungeon','2nd_mem_town','2nd_final_spawned','shrine_healed','flag_dungeon_b1f_cleared','flag_wedding','flag_casino_won','flag_rsv1','flag_rsv2'];
+
+// ビット書き込み: 6ビット単位でbytes配列に積む
+function _gqBitPack(fields) {
+    const bits = [];
+    for (const [val, n] of fields)
+        for (let i=n-1;i>=0;i--) bits.push((Math.floor(val)>>i)&1);
+    const bytes = [];
+    for (let i=0;i<bits.length;i+=6) {
+        let b=0; for(let j=0;j<6;j++) b=(b<<1)|(bits[i+j]||0);
+        bytes.push(b);
+    }
+    return bytes;
+}
+// ビット読み出し: bytes配列から順にnビット取り出す
+function _gqBitUnpack(bytes) {
+    const bits = [];
+    for (const b of bytes) for (let i=5;i>=0;i--) bits.push((b>>i)&1);
+    let pos = 0;
+    return (n) => { let v=0; for(let i=0;i<n;i++) v=(v<<1)|(bits[pos++]||0); return v; };
+}
+
+// 名前の正規化: カタカナ→ひらがな変換、テーブル外文字を近似変換
+function _gqNormName(name) {
+    const _approx = {'を':'わ','だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と','ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ'};
+    return [...(name||'')].map(c => {
+        const cp = c.codePointAt(0);
+        if (cp >= 0x30A1 && cp <= 0x30F6) c = String.fromCodePoint(cp - 0x60); // カタカナ→ひらがな
+        return _approx[c] ?? c;
+    }).join('');
+}
+// かな名前のエンコード: 4文字×6ビット
+function _gqEncodeName(name) {
+    const s = _gqNormName(name).padEnd(4,'あ').slice(0,4);
+    return [...s].map(c=>{ const i=_GQ_KANA64.indexOf(c); return [i>=0?i:0,6]; });
+}
+// かな名前のデコード
+function _gqDecodeName(read) {
+    return [0,1,2,3].map(()=>_GQ_KANA64[read(6)]||'　').join('').trimEnd();
+}
+// DQ2スタイル 4文字区切り表示（51文字 → 12グループ+3文字）
+function _gqFormatPwd(kana) {
+    let out=''; for(let i=0;i<kana.length;i+=4){ if(i>0)out+=' '; out+=kana.slice(i,i+4); } return out;
+}
+
 function packSaveData(pData) {
-    // ① unescape trick: 日本語名がBase64で膨張しない
-    // ③ v:2マーカー + 装備5スロットを|結合で圧縮
-    const minObj = {
-        v: 2,
-        g: pData.gold,
-        p: [pData.pos.map.replace(/^map_/, ''), pData.pos.x, pData.pos.y],
-        f: Object.keys(pData.flags || {}).filter(k => pData.flags[k] === true),
-        c: pData.members.map(mb => [
-            mb.name, mb.job, mb.lv, mb.exp,
-            [mb.equipment.weapon||'', mb.equipment.armor||'', mb.equipment.shield||'', mb.equipment.helmet||'', mb.equipment.accessory||''].join('|'),
-            mb.inventory.join('|'),
-            mb.spells.join('|')
-        ])
-    };
-    return btoa(unescape(encodeURIComponent(JSON.stringify(minObj))));
+    const f = pData.flags||{};
+    const fields = [];
+    // タイプビット(1)＋Gold(18)＋Map(6)＋X(6)＋Y(6)＋Flags(29) = 66ビット
+    const isClr = (f.last_boss_defeated && f.is_second_loop_unlocked) ? 1 : 0;
+    fields.push([isClr, 1]);
+    fields.push([Math.min(Math.floor((pData.gold||0)/4),(1<<18)-1), 18]);
+    const mapId = (pData.pos||{}).map||'map_field_2_2';
+    const mi = _GQ_MAPS.indexOf(mapId); fields.push([mi>=0?mi:32, 6]);
+    fields.push([Math.min((pData.pos||{}).x||0,63), 6]);
+    fields.push([Math.min((pData.pos||{}).y||0,63), 6]);
+    for (const k of _GQ_FLAGS) fields.push([f[k]?1:0, 1]);
+    // メンバー×4: 名前(24)+職業(3)+Lv(6)+EXP(13)+武器(6)+鎧(6) = 58ビット×4=232ビット
+    for (let i=0;i<4;i++) {
+        const m=(pData.members||[])[i];
+        if (!m) { for(let j=0;j<58;j++) fields.push([0,1]); continue; }
+        fields.push(..._gqEncodeName(m.name));
+        const ji=_GQ_JOBS.indexOf(m.job||'勇者'); fields.push([ji>=0?ji:0,3]);
+        fields.push([Math.min(m.lv||1,63),6]);
+        fields.push([Math.min(Math.floor((m.exp||0)/100),(1<<13)-1),13]);
+        const wi=_GQ_EQUIP.indexOf(m.equipment&&m.equipment.weapon||''); fields.push([wi>=0?wi:0,6]);
+        const ai=_GQ_EQUIP.indexOf(m.equipment&&m.equipment.armor||''); fields.push([ai>=0?ai:0,6]);
+    }
+    // 合計: 66+232=298ビット → 50文字(300ビット、2ビットパディング)
+    const payload = _gqBitPack(fields);      // 50文字分
+    const cs = payload.reduce((a,b)=>a+b,0)%64; // チェックサム
+    // 先頭にチェックサム1文字＋ペイロード50文字 = 51文字
+    // DQ2スタイル表示: 4文字×12グループ＋残り3文字 → 51文字でOK
+    const bytes = [cs, ...payload.slice(0,50)];
+    return bytes.map(b=>_GQ_KANA64[b%64]).join('');
 }
 
 function unpackSaveData(pwd) {
-    pwd = pwd.replace(/\s+/g, '');
+    pwd = pwd.replace(/\s+/g, '').replace(/[　・ー]/g,'');
     if (!pwd) return null;
 
-    // CLEAR_プレフィックス: 後続のbase64部分を再帰デコードしてtype:'clear'で返す
+    // CLEAR_プレフィックス（旧形式互換）
     if (pwd.startsWith('CLEAR_')) {
         const _r = unpackSaveData(pwd.slice(6));
         if (_r && _r.type === 'normal') return { type: 'clear', data: _r.data };
         return _r;
     }
 
+    // ── かなパスワード判定: 先頭文字が_GQ_KANA64に含まれるか ──
+    if (_GQ_KANA64.includes(pwd[0])) {
+        // 全文字が kana64 にあるか確認
+        if ([...pwd].every(c => _GQ_KANA64.includes(c)) && pwd.length >= 48) {
+            const bytes = [...pwd].map(c => _GQ_KANA64.indexOf(c));
+            const cs = bytes[0];
+            const payload = bytes.slice(1);
+            // チェックサム検証
+            if (payload.reduce((a,b)=>a+b,0)%64 !== cs) return null;
+            const read = _gqBitUnpack(payload);
+            const isClr = read(1);
+            const gold = read(18)*4;
+            const mapIdx = read(6); const mapId = _GQ_MAPS[mapIdx]||'map_field_2_2';
+            const px=read(6), py=read(6);
+            const flags = {};
+            for (const k of _GQ_FLAGS) { if(read(1)) flags[k]=true; }
+            const members = [];
+            for (let i=0;i<4;i++) {
+                const name = _gqDecodeName(read);
+                const job = _GQ_JOBS[read(3)]||'勇者';
+                const lv = read(6)||1;
+                const exp = read(13)*100;
+                const weapon = _GQ_EQUIP[read(6)]||'';
+                const armor  = _GQ_EQUIP[read(6)]||'';
+                let bs={hp:50,max_hp:50,mp:0,max_mp:0,atk:10,def:8,spd:8};
+                if(masterData&&masterData.growth&&masterData.growth[job]){
+                    const g=masterData.growth[job].find(r=>r.level===lv)||(masterData.growth[job]||[]).slice(-1)[0];
+                    if(g)bs={hp:g.hp,max_hp:g.hp,mp:g.mp||0,max_mp:g.mp||0,atk:g.atk||10,def:g.def||8,spd:g.spd||8};
+                }
+                const spells=[];
+                if(masterData&&masterData.growth&&masterData.growth[job]){
+                    for(let lvl=1;lvl<=lv;lvl++){const gd=masterData.growth[job].find(r=>r.level===lvl);if(gd&&gd.learnMagic)gd.learnMagic.forEach(n=>{const fd=Object.values(masterData.spells||{}).find(s=>s.name===n);if(fd&&!spells.includes(fd.id))spells.push(fd.id);});}
+                }
+                members.push({id:'p'+Math.random(),name,job,lv,exp,...bs,equipment:{weapon:weapon||null,armor:armor||null,shield:null,helmet:null,accessory:null},inventory:[],spells});
+            }
+            const data={gold,steps_to_encounter:15,tohero_steps:0,tramana_steps:0,members,flags,pos:{map:mapId,x:px,y:py},dir:2};
+            return {type: isClr?'clear':'normal', data};
+        }
+        return null;
+    }
+
+    // ── 旧形式（Base64）デコード ──
     // デコード: 新形式(unescape trick)→旧形式の順で試みる
     const _tryDec = (b64) => {
         try { return decodeURIComponent(escape(atob(b64))); } catch(e) {}
@@ -6706,7 +6818,7 @@ async function checkAction() {
                             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
                             let clearCode = 'CLEAR_' + packSaveData(partyData);
                             await typeMessage("とくべつな じゅもんを おおしえしましょう。\nこれが 2周目を 始めるための\n「ふっかつのじゅもん」です。\nメモするか コピーして おいてください。");
-                            await showCustomDialog('copy', "ふっかつのじゅもん（1周目クリア）\n\n入力方法：\n・タイトル →「ふっかつのじゅもん」\n  または\n・タイトル →「つづきから（2周目）」\n\n※枠内を長押しでコピーできます", clearCode);
+                            await showCustomDialog('copy', "ふっかつのじゅもん（1周目クリア）\n\n入力方法：\n・タイトル →「ふっかつのじゅもん」\n  または\n・タイトル →「つづきから（2周目）」\n\n4文字ずつスペース区切りで表示しています\n※枠内を長押しでコピー", _gqFormatPwd(clearCode));
                             await typeMessage("タイトル画面に もどります。\nAボタン または Enterキーを 押してください。");
                             location.reload(); return;
                         } else { await typeMessage(`${_bn}を たおした！\nみちが ひらけた！`); }
@@ -6899,13 +7011,13 @@ async function eventPriest() {
             const _rulaMapName = (currentMap && currentMap.name) ? currentMap.name : getMapDisplayName(partyData.pos.map, currentMap);
             partyData.flags.rura_destinations[partyData.pos.map] = { x: partyData.pos.x, y: partyData.pos.y, name: _rulaMapName };
             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData)); await typeMessage("スマホに データーを きろくしました。\n（※ブラウザ履歴を消すと消える場合があります）");
-            let encoded = packSaveData(partyData); 
-            await showCustomDialog('copy', "念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。", encoded);
+            let encoded = packSaveData(partyData);
+            await showCustomDialog('copy', "念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（4文字区切り・51文字）", _gqFormatPwd(encoded));
             if (partyData.flags && partyData.flags.is_second_loop) { await typeMessage("しかし まだ せかいのどこかに\nふおんな けはいが のこっております...\nきをつけて おすすみください。"); }
         } else if (choice === 1) {
             AudioManager.playSE('inn'); 
             let encoded = packSaveData(partyData);
-            await typeMessage("あなたの これまでの ぼうけんを\n短い じゅもんに して おしえましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん（短縮版）\n（枠の中を長押ししてコピーしてください）", encoded); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
+            await typeMessage("あなたの これまでの ぼうけんを\nひらがなの じゅもんに して おしえましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん\n（4文字区切り・51文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
         } else if (choice === 2) {
             let deadMembers = partyData.members.filter(m => m.hp <= 0);
             if(deadMembers.length === 0) await typeMessage("しんでいる なかまは いませんよ。");
