@@ -5619,6 +5619,10 @@ async function _check2ndMemory() {
         if(_memCount===Object.keys(_2ND_MEMORY_MAP).length) {
             await typeMessage("────── 全ての 記憶が 戻った！！\n真の 戦いへ── 偽の 王を 倒せ！ ──────");
         }
+        // メッセージウィンドウを閉じてフィールドに戻す
+        hideAllWindows();
+        state = 'FIELD';
+        drawMap();
         break;
     }
 }
