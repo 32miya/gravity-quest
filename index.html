@@ -900,8 +900,10 @@ const AudioManager = {
     },
     stopBGM() { if (this.bgmAudio) { this.bgmAudio.pause(); this.bgmAudio.removeAttribute('src'); this.bgmAudio.load(); try { if(this.bgmSourceNode) this.bgmSourceNode.disconnect(); } catch(e){} this.bgmAudio = null; this.bgmSourceNode = null; } this.currentBgmKey = null; },
     playSE(key) { if(this.isMuted) return; this.init(); const url = this.db.se[key]; if (!url || url === "ここにURLを貼る") { this.playSynthSE(key); return; } const seAudio = new Audio(url); seAudio.crossOrigin = "anonymous"; seAudio.volume = 1.0; try { const source = this.ctx.createMediaElementSource(seAudio); source.connect(this.masterGainNode); seAudio.onended = () => { source.disconnect(); seAudio.removeAttribute('src'); }; } catch(e){ seAudio.volume = this.masterVolume; } seAudio.play().catch(e => console.warn("SE blocked")); },
-    playTone(freq, type, duration, vol=0.5, slideFreq=null) { if(this.isMuted || !this.ctx) return; this.init(); const osc = this.ctx.createOscillator(); const gainNode = this.ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime); if (slideFreq) osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration); gainNode.gain.setValueAtTime(vol, this.ctx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration); osc.connect(gainNode); gainNode.connect(this.masterGainNode); osc.start(); osc.stop(this.ctx.currentTime + duration); },
-    playNoise(duration, vol=0.5) { if(this.isMuted || !this.ctx) return; this.init(); const bufferSize = this.ctx.sampleRate * duration; const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1; const noise = this.ctx.createBufferSource(); noise.buffer = buffer; const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1000; const gainNode = this.ctx.createGain(); gainNode.gain.setValueAtTime(vol, this.ctx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration); noise.connect(filter); filter.connect(gainNode); gainNode.connect(this.masterGainNode); noise.start(); },
+    playTone(freq, type, duration, vol=0.5, slideFreq=null) { if(this.isMuted || !this.ctx) return; this.init(); const osc = this.ctx.createOscillator(); const gainNode = this.ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime); if (slideFreq) osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration); gainNode.gain.setValueAtTime(vol, this.ctx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration); osc.connect(gainNode); gainNode.connect(this.masterGainNode); osc.onended = () => { try { osc.disconnect(); gainNode.disconnect(); } catch(e) {} }; osc.start(); osc.stop(this.ctx.currentTime + duration); },
+    playNoise(duration, vol=0.5) { if(this.isMuted || !this.ctx) return; this.init(); const bufferSize = this.ctx.sampleRate * duration; const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1; const noise = this.ctx.createBufferSource(); noise.buffer = buffer; const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1000; const gainNode = this.ctx.createGain(); gainNode.gain.setValueAtTime(vol, this.ctx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration); noise.connect(filter); filter.connect(gainNode); gainNode.connect(this.masterGainNode); noise.onended = () => { try { noise.disconnect(); filter.disconnect(); gainNode.disconnect(); } catch(e) {} }; noise.start(); },
+    // 音声エンジンをリセットしてゾンビノードを一掃
+    gcAudio() { const _bgmKey = this.currentBgmKey; this.stopBGM(); if(this.masterGainNode){try{this.masterGainNode.disconnect();}catch(e){} this.masterGainNode=null;} if(this.ctx){try{this.ctx.close();}catch(e){} this.ctx=null;} setTimeout(()=>{ this.init(); if(_bgmKey) this.playBGM(_bgmKey); }, 150); },
     playSynthSE(key) { if(this.isMuted) return; switch(key) { case 'cursor': this.playTone(880, 'square', 0.05, 0.2); break; case 'decision': this.playTone(660, 'square', 0.1, 0.2); setTimeout(() => this.playTone(880, 'square', 0.15, 0.2), 100); break; case 'cancel': this.playTone(200, 'sawtooth', 0.2, 0.3); break; case 'attack_hit': this.playNoise(0.1, 0.5); this.playTone(150, 'square', 0.1, 0.3, 50); break; case 'attack_crit': this.playNoise(0.3, 0.8); this.playTone(200, 'sawtooth', 0.3, 0.5, 50); break; case 'damage_hero': this.playTone(100, 'square', 0.2, 0.4, 20); this.playNoise(0.15, 0.4); break; case 'magic_cast': this.playTone(400, 'sine', 0.4, 0.3, 1200); setTimeout(() => this.playTone(600, 'sine', 0.3, 0.2, 1600), 100); break; case 'poison': this.playTone(150, 'sawtooth', 0.1, 0.3, 80); setTimeout(() => this.playTone(120, 'sawtooth', 0.1, 0.3, 60), 150); break; case 'item_get': [440, 554, 659, 880].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', 0.15, 0.2), i * 120)); break; case 'save': this.playTone(440, 'square', 0.1, 0.2); setTimeout(() => this.playTone(880, 'square', 0.15, 0.2), 100); break; case 'inn': const notes = [{f: 440, d: 0.15}, {f: 554, d: 0.15}, {f: 659, d: 0.15}, {f: 880, d: 0.6}]; let delay = 0; notes.forEach(n => { setTimeout(() => this.playTone(n.f, 'square', n.d, 0.2), delay * 1000); delay += n.d; }); break; case 'level_up': [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', i===5?0.4:0.1, 0.2), i * 120)); break;
         case 'travel_gate':
             // DQ風旅の扉SE: 上昇する魔法的なアルペジオ
@@ -959,14 +961,44 @@ function startFieldLoop() {
     _fieldRafId = requestAnimationFrame(_loop);
 }
 // getMapRandom 結果キャッシュ（結果は時不変なので一度計算すれば十分）
-const _gmrCache = {};
+const _gmrCache = {}; let _gmrCacheSize = 0;
 const tilesetImg = new Image(); tilesetImg.crossOrigin = "Anonymous"; tilesetImg.src = "https://cdn.gravity.place/aiugc/game/material/2026-04-09/88e120ab-ee16-4c1a-bdfb-4ffad407b6ad.jpeg";
 const bunnyGirlImg = new Image(); bunnyGirlImg.crossOrigin = "Anonymous"; bunnyGirlImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/c1add1db1f1ce5ccad9e1b76fee60b9c_1776406373895474042.png"; externalImages['bunnyGirl'] = bunnyGirlImg;
 const bossKillerImg = new Image(); bossKillerImg.crossOrigin = "Anonymous"; bossKillerImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/6ff181fac171a736632e5c47176aac74_1776417245054740369.png"; externalImages['boss_desert_killer'] = bossKillerImg;
 const bossPhantomImg = new Image(); bossPhantomImg.crossOrigin = "Anonymous"; bossPhantomImg.src = "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/163550736f43d02b7c81a47fa8d51961_1776417304673228521.png"; externalImages['boss_trial_phantom'] = bossPhantomImg;
+// 海賊王バルゴ: 白背景をcanvasで除去してPNG化
+(function() {
+    const _src = new Image();
+    _src.onload = function() {
+        const _cv = document.createElement('canvas');
+        _cv.width = _src.naturalWidth; _cv.height = _src.naturalHeight;
+        const _cx = _cv.getContext('2d');
+        _cx.drawImage(_src, 0, 0);
+        try {
+            const _id = _cx.getImageData(0, 0, _cv.width, _cv.height);
+            const _d = _id.data;
+            for (let _i = 0; _i < _d.length; _i += 4) {
+                const _r = _d[_i], _g = _d[_i+1], _b = _d[_i+2];
+                const _max = Math.max(_r, _g, _b), _min = Math.min(_r, _g, _b);
+                const _sat = _max > 0 ? (_max - _min) / _max : 0;
+                // 白・近白かつ彩度が低いピクセルを透明化
+                if (_max > 215 && _sat < 0.18) {
+                    const _fade = Math.max(0, Math.min(255, (_max - 215) * 4));
+                    _d[_i+3] = Math.max(0, _d[_i+3] - _fade);
+                }
+            }
+            _cx.putImageData(_id, 0, 0);
+        } catch(e) { /* canvas tainted: フォールバックで元画像を使用 */ }
+        const _out = new Image();
+        _out.onload = function() { externalImages['boss_pirate_king'] = _out; };
+        _out.src = _cv.toDataURL('image/png');
+    };
+    _src.onerror = function() { /* 読み込み失敗: SVGグラフィックにフォールバック */ };
+    _src.src = './pirate_king.jpg';
+})();
 const SHEET_COLS = 30; const SHEET_ROWS = 16; const TILE_IMG_MAP = { 3: { cx: 23, cy: 0 }, 6: { cx: 5, cy: 5 }, 7: { cx: 7, cy: 1 }, 8: { cx: 22, cy: 4 } };
 
-function getMapRandom(x, y, mapId) { const _k = x + '|' + y + '|' + (mapId||''); if (_gmrCache[_k] !== undefined) return _gmrCache[_k]; let seed = 0; let mStr = mapId || ""; for(let i=0; i<mStr.length; i++) seed += mStr.charCodeAt(i); return (_gmrCache[_k] = Math.abs(Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453) % 1); }
+function getMapRandom(x, y, mapId) { const _k = x + '|' + y + '|' + (mapId||''); if (_gmrCache[_k] !== undefined) return _gmrCache[_k]; if (_gmrCacheSize > 8000) { const _ks = Object.keys(_gmrCache); for (let _i = 0; _i < 4000; _i++) delete _gmrCache[_ks[_i]]; _gmrCacheSize = Math.max(0, _gmrCacheSize - 4000); } let seed = 0; let mStr = mapId || ""; for(let i=0; i<mStr.length; i++) seed += mStr.charCodeAt(i); _gmrCacheSize++; return (_gmrCache[_k] = Math.abs(Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453) % 1); }
 function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return mapObj.name; if (!mapId) return "フィールド"; if (mapId.includes('town_01')) return "城下町グラマニア"; if (mapId.includes('castle_01')) return "グラマニア城"; if (mapId.includes('dungeon_1f')) return "試練の洞窟 1F"; if (mapId.includes('dungeon_b1f')) return "試練の洞窟 B1F"; if (mapId.includes('dungeon_b2f')) return "試練の洞窟 B2F"; if (mapId.includes('dungeon_b3f')) return "試練の洞窟 B3F"; if (mapId.includes('tower_1f')) return "天空の塔 1F"; if (mapId.includes('tower_2f')) return "天空の塔 2F"; if (mapId.includes('tower_3f')) return "天空の塔 3F"; if (mapId.includes('demon_castle_1f')) return "魔王城 1F"; if (mapId.includes('demon_castle_2f')) return "魔王城 2F"; if (mapId.includes('demon_castle_3f')) return "魔王城 3F"; if (mapId.includes('demon_castle_4f')) return "魔王城 4F"; if (mapId.includes('shrine')) return "ほこら"; if (mapId.includes('town') || mapId.includes('village') || mapId.includes('market')) return "街・村"; if (mapId.includes('dungeon') || mapId.includes('cave')) return "ダンジョン"; if (mapId.includes('field')) return "フィールド"; return "未知の場所"; }
 function getCurrentWorldPos() { let m = partyData.pos.map; let wx = -1, wy = -1; if (m.startsWith('map_field_') && m.split('_').length >= 4) { wx = parseInt(m.split('_')[2]); wy = parseInt(m.split('_')[3]); } else if (m.includes('town') || m.includes('castle')) { wx = 2; wy = 2; } else if (m.includes('dungeon') || m.includes('cave')) { wx = 2; wy = 0; } else if (m.includes('shrine')) { wx = 2; wy = 3; } else if (m.includes('north')) { wx = 2; wy = 0; } else if (m.includes('south')) { wx = 2; wy = 4; } else if (m.includes('east')) { wx = 4; wy = 2; } else if (m.includes('west')) { wx = 0; wy = 2; } if (wx === -1 || wy === -1) { wx = 2; wy = 2; } return {x: wx, y: wy}; }
 async function showWorldMap() {
@@ -987,6 +1019,7 @@ async function showWorldMap() {
         if(t===12) return '#3a9820'; // 背の高い草
         if(t===19) return '#164a08'; // 森
         if(t===20) return '#887860'; // 山
+        if(t===25) return '#4e4a68'; // 高山
         if(t===0)  return '#c8a840'; // 砂漠
         if(t===1||t===4||t===15||t===16) return '#484848';
         if(t===21||t===22) return '#e8c840';
@@ -1032,6 +1065,7 @@ async function showWorldMap() {
         'market': {c:'#f8e040',sc:'#c09010',sym:'🏘',label:'市場'},
         'village':{c:'#d8c030',sc:'#a07010',sym:'🏡',label:'村'},
         'castle': {c:'#a0c8ff',sc:'#4080c0',sym:'🏰',label:'城'},
+        'pirate': {c:'#223366',sc:'#111133',sym:'☠',label:'海賊'},
         'dungeon':{c:'#ff9040',sc:'#c04010',sym:'⚔',label:'洞窟'},
         'cave':   {c:'#ff9040',sc:'#c04010',sym:'⚔',label:'洞窟'},
         'tower':  {c:'#8088ff',sc:'#2030c0',sym:'🗼',label:'塔'},
@@ -1063,6 +1097,28 @@ async function showWorldMap() {
         }
     }
 
+    // 船の待機場所（洞窟クリア後・未入手時のみ表示）
+    if (partyData && partyData.flags && partyData.flags.flag_dungeon_cleared && !partyData.flags.has_ship) {
+        const _sm04 = externalMapData['map_field_0_4'];
+        let _shipMX = 3, _shipMY = 8;
+        if (_sm04) {
+            const _mW04 = _sm04.width || 45;
+            outer_sm: for (let _sy = 4; _sy <= 35; _sy++) {
+                for (let _sx = 0; _sx < 20; _sx++) {
+                    const _t = _sm04.tiles[_sy * _mW04 + _sx];
+                    const _tn = _sx + 1 < _mW04 ? _sm04.tiles[_sy * _mW04 + _sx + 1] : -1;
+                    if (_t === 5 && _tn !== 5 && _tn >= 0) { _shipMX = _sx; _shipMY = _sy; break outer_sm; }
+                }
+            }
+        }
+        const _sbx = 0 * SPM * SPIX + Math.floor(_shipMX / STEP) * SPIX;
+        const _sby = 4 * SPM * SPIX + Math.floor(_shipMY / STEP) * SPIX;
+        ctx2.fillStyle = '#80d0ff'; ctx2.fillRect(_sbx - 5, _sby - 5, 12, 12);
+        ctx2.fillStyle = '#2070aa'; ctx2.fillRect(_sbx - 4, _sby - 4, 10, 10);
+        ctx2.fillStyle = '#fff'; ctx2.font = 'bold 8px sans-serif'; ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+        ctx2.fillText('⛵', _sbx + 1, _sby + 1);
+    }
+
     // 現在地（赤点滅）
     const pMapId=partyData.pos.map;
     let pgx=-1,pgy=-1,ppx=-1,ppy=-1;
@@ -1086,10 +1142,11 @@ async function showWorldMap() {
     const imgSrc=cv.toDataURL();
     // 凡例
     const lgItems=[
-        {c:'#48b028',t:'草原'},{c:'#164a08',t:'森'},{c:'#887860',t:'山'},
+        {c:'#48b028',t:'草原'},{c:'#164a08',t:'森'},{c:'#887860',t:'山'},{c:'#4e4a68',t:'高山'},
         {c:'#c8a840',t:'砂漠'},{c:'#0e4a8a',t:'海'},
         {c:'#f8e040',t:'町・村'},{c:'#a0c8ff',t:'城'},{c:'#ff9040',t:'洞窟'},
-        {c:'#8088ff',t:'塔'},{c:'#60ffb8',t:'祠'},{c:'#ff2828',t:'魔王城'},
+        {c:'#223366',t:'海賊島'},{c:'#8088ff',t:'塔'},{c:'#60ffb8',t:'祠'},{c:'#ff2828',t:'魔王城'},
+        {c:'#80d0ff',t:'⛵船'},
         {c:'#ff2222',t:'現在地'},
     ];
     const lgHtml=lgItems.map(l=>`<span style="display:inline-flex;align-items:center;gap:2px;margin:1px 3px;font-size:10px;"><span style="width:9px;height:9px;background:${l.c};border:1px solid rgba(255,255,255,0.3);display:inline-block;border-radius:1px;"></span>${l.t}</span>`).join('');
@@ -1110,7 +1167,11 @@ function showCustomDialog(type, message, defaultText = "") { return new Promise(
 function injectSafeScript(code, debugName) { let safeCode = code; safeCode = safeCode.replace(/document\.getElementById/g, '(()=>({ style:{}, appendChild:()=>{}, innerHTML:"", querySelectorAll:()=>[], classList:{add:()=>{}, remove:()=>{}} }))'); safeCode = safeCode.replace(/document\.createElement/g, '(()=>({ style:{}, appendChild:()=>{}, className:"", innerHTML:"" }))'); safeCode = safeCode.replace(/document\.querySelector/g, '(()=>({ scrollTop:0 }))'); safeCode = safeCode.replace(/const\s+screenHeight/g, 'var dummy_sh'); safeCode = safeCode.replace(/const\s+topExclusionHeight/g, 'var dummy_teh'); const newScript = document.createElement('script'); newScript.textContent = `(() => { try { \n${safeCode}\n } catch(e) { console.error('${debugName} error:', e); } })();`; document.body.appendChild(newScript); }
 
 async function loadExternalAudioDatabase(url) { try { let targetUrl = url; if (url.includes('id=37967')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260416/game_1776339312498957168.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); let scriptFound = false; doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('window.SOUND_DATABASE')) { injectSafeScript(s.textContent, 'Audio DB'); scriptFound = true; } }); if (scriptFound) { await new Promise(r => setTimeout(r, 100)); if (window.SOUND_DATABASE) { AudioManager.db = window.SOUND_DATABASE; AudioManager.preloadAllBGMs(); } } } catch(e) { console.error(e); } }
-function updateBGM() { let mapId = partyData.pos.map; if(!mapId) return; if (partyData.flags && partyData.flags.last_boss_defeated) { AudioManager.playBGM('ending'); return; } if (mapId.includes('castle')) { if(mapId.includes('demon') || mapId.includes('death')) AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); else if(mapId.includes('sky')) AudioManager.playBGM(AudioManager.db.bgm['sky_castle'] ? 'sky_castle' : 'castle'); else AudioManager.playBGM('castle'); } else if (mapId.includes('town') || mapId.includes('village')) { AudioManager.playBGM('town'); } else if (mapId.includes('market') || mapId.includes('bazaar')) { AudioManager.playBGM('market'); } else if (mapId.includes('shrine')) { AudioManager.playBGM('shrine'); } else if (mapId.includes('dungeon') || mapId.includes('cave')) { AudioManager.playBGM('dungeon'); } else if (mapId.includes('tower')) { AudioManager.playBGM('tower'); } else { if (mapId.includes('death') || mapId.includes('demon')) AudioManager.playBGM('field_late'); else AudioManager.playBGM('field_early'); } }
+function updateBGM() { let mapId = partyData.pos.map; if(!mapId) return; if (partyData.flags && partyData.flags.last_boss_defeated) { AudioManager.playBGM('ending'); return; }
+    // 2周目: 城下町・グラマニア城は魔王城BGM（暗黒化）
+    const _is2nd = partyData.flags && partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated;
+    if (_is2nd && !mapId.includes('demon') && !mapId.includes('tower') && !mapId.includes('dungeon') && !mapId.includes('fishing_village') && (mapId.includes('castle_01') || mapId.includes('town_01'))) { AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); return; }
+    if (mapId.includes('castle')) { if(mapId.includes('demon') || mapId.includes('death')) AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); else if(mapId.includes('sky')) AudioManager.playBGM(AudioManager.db.bgm['sky_castle'] ? 'sky_castle' : 'castle'); else AudioManager.playBGM('castle'); } else if (mapId.includes('town') || mapId.includes('village')) { AudioManager.playBGM('town'); } else if (mapId.includes('market') || mapId.includes('bazaar')) { AudioManager.playBGM('market'); } else if (mapId.includes('shrine')) { AudioManager.playBGM('shrine'); } else if (mapId.includes('dungeon') || mapId.includes('cave')) { AudioManager.playBGM('dungeon'); } else if (mapId.includes('tower')) { AudioManager.playBGM('tower'); } else { if (mapId.includes('death') || mapId.includes('demon')) AudioManager.playBGM('field_late'); else AudioManager.playBGM('field_early'); } }
 
 async function playSpellEffect(spellData, targetObj, screenPos) {
     const layer = document.getElementById('global-effect-layer');
@@ -2139,6 +2200,13 @@ function generateFieldMapsForGravityQuest() {
     fillEllCond( 18, 200, 10,  7, 20); // 試練半島の崖
     fillEllCond(112, 197, 10,  7, 20); // 南島の山
     fillEllCond( 38,  58, 10,  6, 20); // 北西の山
+    // 高山（大山脈の核・絶対侵入不可 DQ4大山脈スタイル）
+    fillEllCond( 98, 100, 13,  8, 25); // グラマニア大山脈・核峰
+    fillEllCond(136, 104,  9,  6, 25); // 東方高峰
+    fillEllCond( 38,  87,  7,  5, 25); // 西方高峰
+    fillEllCond(205,  61,  7,  5, 25); // 東の島・北部高峰
+    fillEllCond(210,  99,  6,  4, 25); // 東の島・内陸高峰
+    fillEllCond(200, 169,  5,  3, 25); // 魔王島の高峰
     // 砂漠・草地
     fillEllCond(115, 205, 14,  9, 0);
     fillEllCond(132, 195, 10,  7, 0);
@@ -2156,18 +2224,21 @@ function generateFieldMapsForGravityQuest() {
         // 山以外の通行可能タイルで最大連結成分を特定
         for(let ty=0;ty<45;ty++) for(let tx=0;tx<45;tx++){
             const wx=x0+tx, wy=y0+ty, k=`${wx},${wy}`;
-            if(world[wy*GW+wx]===5||world[wy*GW+wx]===20||seen.has(k)) continue;
+            if(world[wy*GW+wx]===5||world[wy*GW+wx]===25||seen.has(k)) continue;
             const comp=new Set([k]); const bq=[[wx,wy]]; seen.add(k);
-            while(bq.length){const[cx,cy]=bq.shift();for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy,nk=`${nx},${ny}`;if(seen.has(nk)||nx<x0||ny<y0||nx>=x0+45||ny>=y0+45||world[ny*GW+nx]===5||world[ny*GW+nx]===20)continue;seen.add(nk);comp.add(nk);bq.push([nx,ny]);}}
+            while(bq.length){const[cx,cy]=bq.shift();for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy,nk=`${nx},${ny}`;if(seen.has(nk)||nx<x0||ny<y0||nx>=x0+45||ny>=y0+45||world[ny*GW+nx]===5||world[ny*GW+nx]===25)continue;seen.add(nk);comp.add(nk);bq.push([nx,ny]);}}
             if(comp.size>bestSz){bestSz=comp.size;mainComp=comp;}
         }
         if(!mainComp) continue;
         for(let ty=0;ty<45;ty++) for(let tx=0;tx<45;tx++){
             const wx=x0+tx, wy=y0+ty, k=`${wx},${wy}`;
-            if(world[wy*GW+wx]===5||world[wy*GW+wx]===20||mainComp.has(k)) continue;
+            if(world[wy*GW+wx]===5||world[wy*GW+wx]===25||mainComp.has(k)) continue;
             const par=new Map([[k,null]]); const pq=[[wx,wy]]; let tgt=null;
             pfl:while(pq.length&&par.size<900){const[cx,cy]=pq.shift();for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy,nk=`${nx},${ny}`;if(par.has(nk)||nx<x0||ny<y0||nx>=x0+45||ny>=y0+45)continue;par.set(nk,`${cx},${cy}`);if(mainComp.has(nk)){tgt=nk;break pfl;}pq.push([nx,ny]);}}
-            if(tgt){let c=par.get(tgt);while(c){const[px,py]=c.split(',').map(Number);if(world[py*GW+px]===5){world[py*GW+px]=11;mainComp.add(`${px},${py}`);}c=par.get(c);}}
+            if(tgt){let c=par.get(tgt);while(c){const[_bpx,_bpy]=c.split(',').map(Number);if(world[_bpy*GW+_bpx]===5){world[_bpy*GW+_bpx]=12;mainComp.add(`${_bpx},${_bpy}`);// 両隣も埋めて3タイル幅にする（一本道を防ぐ）
+if(_bpx-1>=x0&&world[_bpy*GW+_bpx-1]===5){world[_bpy*GW+_bpx-1]=12;mainComp.add(`${_bpx-1},${_bpy}`);}
+if(_bpx+1<x0+45&&world[_bpy*GW+_bpx+1]===5){world[_bpy*GW+_bpx+1]=12;mainComp.add(`${_bpx+1},${_bpy}`);}
+}c=par.get(c);}}
         }
     }
 
@@ -2178,19 +2249,24 @@ function generateFieldMapsForGravityQuest() {
         const tiles1D = [], exits = {};
         for(let ty=0;ty<45;ty++) for(let tx=0;tx<45;tx++)
             tiles1D.push(world[(gy*45+ty)*GW+(gx*45+tx)]);
-        if(gy>0) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45)*GW+wx]!==5&&world[(gy*45)*GW+wx]!==20&&world[((gy-1)*45+44)*GW+wx]!==5&&world[((gy-1)*45+44)*GW+wx]!==20)exits[`${tx},0`]={map:`map_field_${gx}_${gy-1}`,x:tx,y:43};}
-        if(gy<4) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45+44)*GW+wx]!==5&&world[(gy*45+44)*GW+wx]!==20&&world[((gy+1)*45)*GW+wx]!==5&&world[((gy+1)*45)*GW+wx]!==20)exits[`${tx},44`]={map:`map_field_${gx}_${gy+1}`,x:tx,y:1};}
-        if(gx>0) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45]!==5&&world[wy*GW+gx*45]!==20&&world[wy*GW+(gx-1)*45+44]!==5&&world[wy*GW+(gx-1)*45+44]!==20)exits[`0,${ty}`]={map:`map_field_${gx-1}_${gy}`,x:43,y:ty};}
-        if(gx<4) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45+44]!==5&&world[wy*GW+gx*45+44]!==20&&world[wy*GW+(gx+1)*45]!==5&&world[wy*GW+(gx+1)*45]!==20)exits[`44,${ty}`]={map:`map_field_${gx+1}_${gy}`,x:1,y:ty};}
+        if(gy>0) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45)*GW+wx]!==5&&world[(gy*45)*GW+wx]!==25&&world[((gy-1)*45+44)*GW+wx]!==5&&world[((gy-1)*45+44)*GW+wx]!==25)exits[`${tx},0`]={map:`map_field_${gx}_${gy-1}`,x:tx,y:43};}
+        if(gy<4) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45+44)*GW+wx]!==5&&world[(gy*45+44)*GW+wx]!==25&&world[((gy+1)*45)*GW+wx]!==5&&world[((gy+1)*45)*GW+wx]!==25)exits[`${tx},44`]={map:`map_field_${gx}_${gy+1}`,x:tx,y:1};}
+        if(gx>0) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45]!==5&&world[wy*GW+gx*45]!==25&&world[wy*GW+(gx-1)*45+44]!==5&&world[wy*GW+(gx-1)*45+44]!==25)exits[`0,${ty}`]={map:`map_field_${gx-1}_${gy}`,x:43,y:ty};}
+        if(gx<4) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45+44]!==5&&world[wy*GW+gx*45+44]!==25&&world[wy*GW+(gx+1)*45]!==5&&world[wy*GW+(gx+1)*45]!==25)exits[`44,${ty}`]={map:`map_field_${gx+1}_${gy}`,x:1,y:ty};}
         const dist=Math.abs(gx-2)+Math.abs(gy-2);
+        // 試練の半島・西海岸(gx=0,gy>=2): 船入手前の序盤エリア → earlyMid固定
+        const isWestSouth = (gx===0 && gy>=2);
+        // 魔王島周辺(南東): 終盤
         const isLate=(gx===4&&gy>=3)||(gx>=3&&gy===4);
-        const isMid=!isLate&&((gx===4)||(gy>=3&&gx>=2)||(dist>=3));
-        const isEarlyMid=!isLate&&!isMid&&dist===2;
+        // 中盤: 船で渡る島々・東の島・南の孤島など（西南半島を除く）
+        const isMid=!isLate&&!isWestSouth&&((gx===4)||(gy>=3&&gx>=1)||(dist>=3));
+        // 序盤中期: 中心から少し離れた陸続きエリア + 西南半島
+        const isEarlyMid=!isLate&&!isMid&&(dist===2||isWestSouth);
         let enc;
         if(isLate) enc=["ancient_dragon","cyclops","vampire_lord","death_knight","behemoth","lich","archdemon","bahamut","hagure_gura"].filter(_ef);
         else if(isMid) enc=["killer_mantis","dark_mage","minotaur","troll","chimera","dullahan","cockatrice","flame_elemental","gargoyle","hagure_gura"].filter(_ef);
-        else if(isEarlyMid) enc=["ghost","skeleton","orc","ghost_mushroom","golem","red_dragon","dark_mage","wild_wolf"].filter(_ef);
-        else enc=["slime","goblin","wild_wolf","giant_bat","ghost_mushroom","orc","m01","m02"].filter(_ef);
+        else if(isEarlyMid) enc=["ghost","skeleton","orc","ghost_mushroom","golem","wild_wolf","giant_bat","dark_mage"].filter(_ef);
+        else enc=["slime","goblin","wild_wolf","giant_bat","ghost_mushroom","m01","m02"].filter(_ef);
         if(!enc.length) enc=["m01"];
         externalMapData[mapId]={width:45,height:45,tiles:tiles1D,encounters:enc,exits:exits,npcs:{},name:"フィールド"};
     }
@@ -2351,7 +2427,7 @@ function fixExternalMapConnections() {
 }
 function fixMapExits() {
     if(!externalMapData) return;
-    const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
+    const _solid = [1, 2, 4, 5, 15, 16, 17, 18, 19, 20, 25];
     // 出口タイル(tx,ty)の近傍でBFSし、通行可能・非出口・非NPCの最近接タイルを返す
     function _inwardTile(map, tx, ty) {
         const exitSet = new Set(Object.keys(map.exits || {}));
@@ -2736,8 +2812,40 @@ function generateDQStyleMaps() {
             {'8,12':{map:'map_field_0_1',x:7,y:8},'7,12':{map:'map_field_0_1',x:7,y:8}},
             {'8,2':{id:'boss_pirate_king',name:'海賊王バルゴ'},'3,10':{id:'obj_chest_pirate_a',name:'宝箱'},'12,10':{id:'obj_chest_pirate_b',name:'宝箱'},'3,3':{id:'npc_pirate_sailor',name:'海賊の部下'},'12,3':{id:'npc_pirate_sailor',name:'海賊の部下'}},
             [],'海賊の洞窟');
-        let pirateP = findLand('map_field_0_1', 7, 5);
-        if (pirateP) { externalMapData['map_field_0_1'].tiles[pirateP.y*(externalMapData['map_field_0_1'].width||45)+pirateP.x]=22; externalMapData['map_field_0_1'].exits[pirateP.k]={map:'map_pirate_cave',x:8,y:11}; }
+        // 海賊の孤島を map_field_0_0（北西の孤立小島）に作成
+        const _pirIsl = externalMapData['map_field_0_0'];
+        if (_pirIsl) {
+            const _piW = _pirIsl.width || 45;
+            // 中心(22,22)に半径10×8の楕円形の孤立島を作成
+            for (let _py = 14; _py <= 30; _py++) {
+                for (let _px = 12; _px <= 32; _px++) {
+                    const _dx = (_px-22)/10, _dy = (_py-22)/8;
+                    if (_dx*_dx+_dy*_dy <= 1.0 && _px>=2 && _py>=2 && _px<=42 && _py<=42) {
+                        if (_pirIsl.tiles[_py*_piW+_px] === 5) _pirIsl.tiles[_py*_piW+_px] = 11;
+                    }
+                }
+            }
+            // 洞窟入口を孤島に配置
+            let pirateP = findLand('map_field_0_0', 22, 22);
+            if (pirateP) {
+                _pirIsl.tiles[pirateP.y*_piW+pirateP.x] = 22;
+                _pirIsl.exits[pirateP.k] = { map:'map_pirate_cave', x:8, y:11 };
+            }
+            // 海賊洞窟の出口を孤島へ更新
+            externalMapData['map_pirate_cave'].exits['8,12'] = { map:'map_field_0_0', x:22, y:25 };
+            externalMapData['map_pirate_cave'].exits['7,12'] = { map:'map_field_0_0', x:22, y:25 };
+        }
+        // 旧 map_field_0_1 の海賊入口を削除
+        const _f01p = externalMapData['map_field_0_1'];
+        if (_f01p) {
+            for (const [_fek, _fev] of Object.entries(_f01p.exits || {})) {
+                if (_fev && _fev.map === 'map_pirate_cave') {
+                    const [_fpx, _fpy] = _fek.split(',').map(Number);
+                    if (_f01p.tiles[_fpy*(_f01p.width||45)+_fpx]===22) _f01p.tiles[_fpy*(_f01p.width||45)+_fpx]=11;
+                    delete _f01p.exits[_fek];
+                }
+            }
+        }
     }
 
     // ===== 南西の村 ガルド (map_town_02 / 20x20) =====
@@ -2824,8 +2932,8 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 for(let y=0;y<_vh;y++) for(let x=0;x<_vw;x++){
                     _vt.push((y===0||y===_vh-1||x===0||x===_vw-1)&&!(y===_vh-1&&x===6)?1:0);
                 }
-                const _vfp=findLand("map_field_2_1",7,7);
-                const _vret=_vfp?{map:'map_field_2_1',x:_vfp.x,y:_vfp.y+1}:{map:'map_field_2_1',x:7,y:8};
+                const _vfp=findLand("map_field_2_1",22,30);
+                const _vret=_vfp?{map:'map_field_2_1',x:_vfp.x,y:_vfp.y+1}:{map:'map_field_2_1',x:22,y:31};
                 externalMapData['map_waypoint_village']={
                     width:_vw,height:_vh,tiles:_vt,encounters:[],
                     exits:{'6,11':_vret},
@@ -2842,6 +2950,8 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 if(_vfp&&externalMapData["map_field_2_1"]){
                     externalMapData["map_field_2_1"].tiles[_vfp.y*(externalMapData["map_field_2_1"].width||45)+_vfp.x]=21;
                     externalMapData["map_field_2_1"].exits[_vfp.k]={map:'map_waypoint_village',x:6,y:10};
+                    // 旅人の里の出口座標も更新（脱出時に村入口の1マス前に戻る）
+                    externalMapData['map_waypoint_village'].exits['6,11']={map:'map_field_2_1',x:_vfp.x,y:_vfp.y+1};
                 }
             }
             // ===== 新マップ: 賢者の祠 (10×10) — 旅の僧侶・案内人・野の賢者 =====
@@ -2866,6 +2976,49 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 if(_sfp&&externalMapData["map_field_3_0"]){
                     externalMapData["map_field_3_0"].tiles[_sfp.y*(externalMapData["map_field_3_0"].width||45)+_sfp.x]=21;
                     externalMapData["map_field_3_0"].exits[_sfp.k]={map:'map_sage_shrine',x:5,y:8};
+                }
+            }
+            // ===== 2周目開始地点: 北西の漁村「グラ港」(14×14) =====
+            if (!externalMapData['map_fishing_village_nw']) {
+                const _fvW=14,_fvH=14;
+                // 漁村レイアウト: 1=壁,0=草地,9=石畳,10=建物床,5=水,11=草花
+                // y0:上壁 y1-3:2棟(神父・道具屋) y4-10:広場・中央 y11-12:港(水+桟橋) y13:出口
+                const _fvLayout=[
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,1,9,10,9,1,0,0,1,9,10,9,1,1],
+                    [1,1,10,10,10,1,0,9,1,10,10,10,1,1],
+                    [1,1,9,10,9,1,9,9,1,9,10,9,1,1],
+                    [1,0,0,0,0,9,9,9,9,9,0,0,0,1],
+                    [1,0,0,9,9,9,0,0,9,9,9,0,0,1],
+                    [1,0,0,9,0,0,0,0,0,0,9,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,9,9,9,9,9,0,0,0,1],
+                    [1,5,5,5,5,9,9,9,9,5,5,5,5,1],
+                    [1,5,5,5,5,9,0,0,9,5,5,5,5,1],
+                    [1,1,1,1,1,1,0,0,1,1,1,1,1,1],
+                ];
+                const _fvT=_fvLayout.flat();
+                const _fvP=findLand('map_field_1_1',20,10);
+                const _fvRet=_fvP?{map:'map_field_1_1',x:_fvP.x,y:_fvP.y+1}:{map:'map_field_1_1',x:20,y:11};
+                externalMapData['map_fishing_village_nw']={
+                    width:_fvW,height:_fvH,tiles:_fvT,encounters:[],
+                    exits:{'6,13':_fvRet,'7,13':_fvRet},
+                    npcs:{
+                        '3,2':{id:'npc_priest',name:'神父'},
+                        '10,2':{id:'npc_item_shop_village',name:'道具屋（漁師の嫁）'},
+                        '6,5':{id:'npc_sky_dragon_girl',name:'アリア'},
+                        '2,8':{id:'npc_fisher_old',name:'老漁師'},
+                        '11,8':{id:'npc_fisher_wife',name:'漁師の妻'},
+                        '6,9':{id:'npc_fisher_child',name:'漁師の子'},
+                    },
+                    name:'グラ港の漁村'
+                };
+                if(_fvP&&externalMapData['map_field_1_1']){
+                    const _fw=externalMapData['map_field_1_1'].width||45;
+                    externalMapData['map_field_1_1'].tiles[_fvP.y*_fw+_fvP.x]=21;
+                    externalMapData['map_field_1_1'].exits[_fvP.k]={map:'map_fishing_village_nw',x:6,y:12};
                 }
             }
 
@@ -2954,7 +3107,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 const _hasNorthExit = Object.values(_f42.exits || {}).some(e => e && /field_4_1/.test(e.map));
                 if (!_hasNorthExit) {
                     // 中央付近（y=1 行）で歩けるタイルを探す
-                    const _solidB = [1,2,4,5,15,16,17,18,19,20];
+                    const _solidB = [1,2,4,5,15,16,17,18,19,20,25];
                     let _placed = false;
                     for (let _tx = 5; _tx <= 9 && !_placed; _tx++) {
                         if (!_solidB.includes(_f42.tiles[1*_f42.width+_tx]) && !_f42.exits[`${_tx},0`]) {
@@ -3039,6 +3192,47 @@ async function loadExternalData(id) {
                 if(partyData.flags.flag_mage_trial_cleared) { let mKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_mage"); if(mKey) delete mapCopy.npcs[mKey]; }
                 if(partyData.flags.flag_weapon_forged) { let smKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_smith"); if(smKey) delete mapCopy.npcs[smKey]; }
                 if(partyData.flags.flag_has_star_fragment) { let sKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "obj_chest_star_frag"); if(sKey) delete mapCopy.npcs[sKey]; }
+                // 船入手済みなら係留船NPCを非表示
+                if(partyData.flags.has_ship) { Object.keys(mapCopy.npcs).forEach(k => { if(mapCopy.npcs[k]?.id === 'obj_ship_waiting') delete mapCopy.npcs[k]; }); }
+                // 2周目ラスボス撃破後: 城下町・城の暗黒兵士フラグを除去して通常状態に戻す
+                if(partyData.flags.is_second_loop && partyData.flags.last_boss_defeated) {
+                    const _is2ndDark=rawId.includes('town_01')||(rawId.includes('castle_01')&&!rawId.includes('demon'));
+                    if(_is2ndDark) {
+                        Object.keys(partyData.flags).filter(k=>k.startsWith('2nd_guard_'+rawId)).forEach(k=>delete partyData.flags[k]);
+                    }
+                }
+
+                // 洞窟クリア後: 試練の洞窟最寄りの西海岸 (map_field_0_4) に船NPCを配置
+                if (rawId === 'map_field_0_4' && partyData.flags.flag_dungeon_cleared && !partyData.flags.has_ship) {
+                    const _mW4 = mapCopy.width || 45;
+                    let _shipSet = Object.values(mapCopy.npcs).some(n => n && n.id === 'obj_ship_waiting');
+                    // y=4〜35 の範囲で西側から「海(5)→陸地」境界の最初の海タイルを探す
+                    for (let _sy = 4; _sy <= 35 && !_shipSet; _sy++) {
+                        for (let _sx = 0; _sx < 20 && !_shipSet; _sx++) {
+                            const _t = mapCopy.tiles[_sy * _mW4 + _sx];
+                            const _tn = _sx + 1 < _mW4 ? mapCopy.tiles[_sy * _mW4 + _sx + 1] : -1;
+                            if (_t === 5 && _tn !== 5 && _tn >= 0) {
+                                mapCopy.npcs[`${_sx},${_sy}`] = { id: 'obj_ship_waiting', name: '停泊中の船' };
+                                _shipSet = true;
+                            }
+                        }
+                    }
+                }
+
+                // 神父がいる安全マップへの訪問時にルーラ目的地を自動登録
+                const _isRuraDest = !rawId.includes('dungeon') && !rawId.includes('tower') && !rawId.includes('demon')
+                    && !rawId.includes('cave') && !rawId.includes('shrine') && !rawId.includes('pirate')
+                    && !/^map_field_/.test(rawId);
+                if (_isRuraDest) {
+                    const _hasPr = Object.values(mapCopy.npcs || {}).some(n => n && n.id && n.id.includes('priest'));
+                    if (_hasPr && !(partyData.flags.rura_destinations || {})[rawId]) {
+                        if (!partyData.flags.rura_destinations) partyData.flags.rura_destinations = {};
+                        const _prK = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k]?.id?.includes('priest'));
+                        let _rx = 10, _ry = 18;
+                        if (_prK) { const [_px2, _py2] = _prK.split(',').map(Number); _rx = _px2; _ry = Math.min(_py2 + 1, (mapCopy.height || 20) - 1); }
+                        partyData.flags.rura_destinations[rawId] = { x: _rx, y: _ry, name: mapCopy.name || getMapDisplayName(rawId, mapCopy) };
+                    }
+                }
 
                 // ★修正: 異世界の旅人を (9,6) に配置（秘密ボス撃破後は消す）
                 if(partyData.flags.is_second_loop && !partyData.flags.flag_beaten_secret_boss && (rawId.includes("town_01") || mapCopy.name === "城下町グラマニア")) {
@@ -3873,11 +4067,14 @@ function getEnemyImageHtml(enemyId) {
     let mData = masterData.monsters[enemyId];
     let isLarge = enemyId.includes('master_dragon') || enemyId.includes('hidden_boss') || enemyId.includes('dragon_god') ||
                   enemyId.includes('_final') || enemyId.includes('demon') || enemyId.includes('maou') ||
-                  enemyId === 'npc_boss_maou' || enemyId === 'boss_desert_killer' || enemyId === 'boss_trial_phantom' || enemyId === 'boss_secret_traveler' || enemyId === 'boss_sky' || enemyId === 'boss_dungeon';
+                  enemyId === 'npc_boss_maou' || enemyId === 'boss_desert_killer' || enemyId === 'boss_trial_phantom' || enemyId === 'boss_secret_traveler' || enemyId === 'boss_sky' || enemyId === 'boss_dungeon' || enemyId === 'boss_pirate_king';
     if (mData && (mData.name.includes('グラ王') || mData.name.includes('最終形態'))) isLarge = true;
     if (isLarge) cls = "enemy-img enemy-img-large";
 
     
+
+    // 海賊王: canvas処理失敗時のCSS白背景除去バックアップ
+    if (enemyId === 'boss_pirate_king') extraStyle += 'mix-blend-mode: multiply;';
 
     let tk = 'enemy_' + enemyId;
     if (externalImages[tk]?.src) return `<img src="${externalImages[tk].src}" class="${cls}" style="${extraStyle}" />`;
@@ -4247,6 +4444,46 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
             ctx.fillStyle='rgba(255,255,255,0.7)';
             ctx.beginPath();ctx.moveTo(px+_mx,py+T-_mh);ctx.lineTo(px+_mx+_snh*0.5,py+T-_mh+_snh*0.8);ctx.closePath();ctx.fill();
         });
+    } else if (tile === 25) { // 高山（大山脈・絶対侵入不可 DQ4風）
+        // 暗い岩地面
+        fr('#3c3a50', 0, 0, T, T);
+        ctx.fillStyle = 'rgba(100,95,130,0.3)';
+        for(let di=0; di<12; di++) ctx.fillRect(px+fl((rand*11.5+di*3.7)%T), py+fl((rand*9.3+di*2.8)%T), 2, 1);
+        // 3座の峰: 左・右（後景）→ 中央（前景）
+        const _hmt = [
+            { cx: T*0.20, top: T*0.26, hw: T*0.24, bot: T*0.92 }, // 左峰
+            { cx: T*0.82, top: T*0.23, hw: T*0.24, bot: T*0.90 }, // 右峰
+            { cx: T*0.50, top: T*0.03, hw: T*0.47, bot: T },       // 中央峰（最高・最前面）
+        ];
+        _hmt.forEach(({ cx, top, hw, bot }) => {
+            // 山体（暗い左面）
+            ctx.fillStyle = '#58556c';
+            ctx.beginPath();
+            ctx.moveTo(px+cx-hw, py+bot); ctx.lineTo(px+cx, py+top); ctx.lineTo(px+cx, py+bot);
+            ctx.closePath(); ctx.fill();
+            // 山体（明るい右面）
+            ctx.fillStyle = '#726f88';
+            ctx.beginPath();
+            ctx.moveTo(px+cx, py+top); ctx.lineTo(px+cx+hw, py+bot); ctx.lineTo(px+cx, py+bot);
+            ctx.closePath(); ctx.fill();
+            // 岩肌の影ライン
+            ctx.strokeStyle = 'rgba(10,5,30,0.45)'; ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(px+cx-hw*0.55, py+bot-(bot-top)*0.4);
+            ctx.lineTo(px+cx+hw*0.05, py+top+(bot-top)*0.2);
+            ctx.stroke();
+            // 雪帽（大きめ）
+            const sh = (bot-top)*0.29;
+            ctx.fillStyle = '#dce0f0';
+            ctx.beginPath();
+            ctx.moveTo(px+cx-sh*1.05, py+top+sh*1.05); ctx.lineTo(px+cx, py+top); ctx.lineTo(px+cx+sh*1.05, py+top+sh*1.05);
+            ctx.closePath(); ctx.fill();
+            // 雪の白ハイライト
+            ctx.fillStyle = 'rgba(255,255,255,0.82)';
+            ctx.beginPath();
+            ctx.moveTo(px+cx, py+top); ctx.lineTo(px+cx+sh*0.6, py+top+sh*0.72); ctx.lineTo(px+cx+sh*0.15, py+top+sh*0.42);
+            ctx.closePath(); ctx.fill();
+        });
     } else if (tile === 5) { // 水（DQ3スタイル明るい青）
         let w1 = Math.sin(now / 700 + rand * 3.1) * 2, w2 = Math.sin(now / 950 + rand * 5.3 + 1) * 2;
         fr('#1878d8', 0, 0, T, T); fr('#2090e8', 0, fl(5 + w1), T, 7); fr('#28a8f8', 2, fl(13 + w2), T - 4, 6);
@@ -4489,8 +4726,10 @@ function drawMap() {
     const camX = partyData.pos.x * TILE_SIZE - cWidth/2 + TILE_SIZE/2; const camY = partyData.pos.y * TILE_SIZE - Math.floor(cHeight * 0.3) + TILE_SIZE/2;
     const _mapId = partyData.pos.map;
     const isCastle = _mapId.includes('castle'); const isTown = _mapId.includes('town') || _mapId.includes('market') || _mapId.includes('village'); const isCave = _mapId.includes('dungeon') || _mapId.includes('cave'); const isMountain = _mapId === 'map_field_north_2';
-    const _isDemon = _mapId.includes('demon'); const _isTower = _mapId.includes('tower'); const _isShrine = _mapId.includes('shrine');
-    const _mc = { castle: isCastle && !_isDemon, town: isTown, cave: isCave, demon: _isDemon, tower: _isTower, shrine: _isShrine };
+    // 2周目: 城下町・グラマニア城を魔王城スタイルで描画
+    const _is2ndDarkMap = partyData.flags && partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated && (_mapId.includes('town_01') || (_mapId.includes('castle_01') && !_mapId.includes('demon')));
+    const _isDemon = _mapId.includes('demon') || _is2ndDarkMap; const _isTower = _mapId.includes('tower'); const _isShrine = _mapId.includes('shrine');
+    const _mc = { castle: isCastle && !_isDemon, town: isTown && !_is2ndDarkMap, cave: isCave, demon: _isDemon, tower: _isTower, shrine: _isShrine };
     const _drawNow = Date.now();
     let lights = [];
     const _fieldMatch = _mapId && _mapId.match(/^map_field_(\d)_(\d)$/);
@@ -4557,8 +4796,9 @@ function drawMap() {
             } else if (tile === 17) { if(externalImages['tree']) fgImg = externalImages['tree']; 
             } else if (tile === 18) { if(externalImages['flowerBed']) fgImg = externalImages['flowerBed']; 
             } else if (tile === 19) { let k = externalImages['fieldForest'] ? 'fieldForest' : 'forest'; if(externalImages[k]) bgImg = externalImages[k]; else { bgImg = null; color = '#040'; } 
-            } else if (tile === 20) { let k = externalImages['fieldMountain'] ? 'fieldMountain' : 'mountain'; if(externalImages[k]) bgImg = externalImages[k]; else { bgImg = null; color = '#432'; } 
-            } else if (tile === 21) { // フィールド: 草地 / 非フィールド: drawProceduralTile に任せる（bgImg を必ずクリア）
+            } else if (tile === 20) { let k = externalImages['fieldMountain'] ? 'fieldMountain' : 'mountain'; if(externalImages[k]) bgImg = externalImages[k]; else { bgImg = null; color = '#432'; }
+            } else if (tile === 25) { bgImg = null; color = '#3c3a52'; }
+            else if (tile === 21) { // フィールド: 草地 / 非フィールド: drawProceduralTile に任せる（bgImg を必ずクリア）
                 if (_isFieldMap) { const _ftk = externalImages['fieldGrass'] ? 'fieldGrass' : (externalImages['grass'] ? 'grass' : null); if (_ftk) bgImg = externalImages[_ftk]; else { bgImg = null; color = '#3a823f'; } }
                 else { bgImg = null; color = ''; } // 階段グラフィックを手続き描画に委ねる
             } else if (tile === 22) { // フィールド: 草地 / 非フィールド: drawProceduralTile に任せる（bgImg を必ずクリア）
@@ -4628,6 +4868,15 @@ function drawMap() {
     // キャッシュ保存 → 静的レイヤーを main canvas に blit
     if (!_sCacheHit) { _cachedLights = lights.slice(); _staticCacheKey = _sCacheKey; }
     ctx.drawImage(_staticTileCache, 0, 0);
+    // 2周目: 城下町・城の暗黒化オーバーレイ（魔王城と同じ雰囲気に）
+    if (_is2ndDarkMap) {
+        ctx.fillStyle = 'rgba(50,0,30,0.38)';
+        ctx.fillRect(0, 0, cWidth, cHeight);
+        const _vg = ctx.createRadialGradient(cWidth/2, cHeight/2, cHeight*0.18, cWidth/2, cHeight/2, cHeight*0.9);
+        _vg.addColorStop(0, 'rgba(0,0,0,0)');
+        _vg.addColorStop(1, 'rgba(60,0,20,0.78)');
+        ctx.fillStyle = _vg; ctx.fillRect(0, 0, cWidth, cHeight);
+    }
     if (_sCacheHit) lights = _cachedLights.slice();
 
     // アニメーションタイル（水=5, ワープ=8, 旅の扉=23）は毎フレーム直接描画
@@ -4649,7 +4898,39 @@ function drawMap() {
             const _nBob = _noAnim ? 0 : Math.round(Math.sin(Date.now() / 900 + parseInt(nx) * 2.3 + parseInt(ny) * 1.7) * 1.5);
             const px = _basePx; const py = _basePy + _nBob;
             if (px < -TILE_SIZE*2 || px > cWidth || py < -TILE_SIZE*2 || py > cHeight) return;
-            if(npc.id === 'obj_ship_waiting') {
+            // 2周目: 暗黒化した兵士のダークエフェクト描画
+            const _is2ndPoss = partyData.flags && partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated
+                && (_rMapId.includes('town_01') || (_rMapId.includes('castle_01') && !_rMapId.includes('demon')))
+                && (npc.id.includes('guard') || npc.id.includes('soldier') || npc.id.includes('knight') || npc.id.includes('veteran') || npc.id === 'npc_story_citizen' || npc.id.includes('story_advisor'))
+                && !partyData.flags['2nd_guard_' + _rMapId + '_' + key];
+            if (_is2ndPoss) {
+                const _dNow = Date.now();
+                // 紫黒オーラ（外側から）
+                const _dp = 0.35 + Math.sin(_dNow / 280) * 0.18;
+                const _daura = ctx.createRadialGradient(px+TILE_SIZE/2, py+TILE_SIZE/2, 1, px+TILE_SIZE/2, py+TILE_SIZE/2, TILE_SIZE*1.15);
+                _daura.addColorStop(0, 'rgba(0,0,0,0)');
+                _daura.addColorStop(0.55, `rgba(110,0,65,${_dp})`);
+                _daura.addColorStop(1, `rgba(50,0,30,${_dp*0.5})`);
+                ctx.fillStyle = _daura; ctx.fillRect(px-TILE_SIZE*0.35, py-TILE_SIZE*0.35, TILE_SIZE*1.7, TILE_SIZE*1.7);
+                // スプライト（暗紫フィルター）
+                ctx.save();
+                ctx.filter = 'sepia(1) hue-rotate(255deg) brightness(0.5) saturate(3.5) drop-shadow(0 0 6px rgba(180,0,80,0.9))';
+                const _gImg2 = externalImages['guard'] || externalImages['oldMan'];
+                if (_gImg2) drawSpriteLocal(ctx, _gImg2, px, py, 48);
+                else { ctx.fillStyle='#440022'; ctx.fillRect(px+4,py+4,TILE_SIZE-8,TILE_SIZE-8); }
+                ctx.restore();
+                // 暗黒の炎パーティクル（揺らめく紫炎）
+                for(let _dfi=0; _dfi<4; _dfi++){
+                    const _dfx = px + TILE_SIZE/2 + Math.sin(_dNow/210+_dfi*1.7)*7;
+                    const _dfy = py + TILE_SIZE*0.65 - Math.abs(Math.sin(_dNow/310+_dfi*0.9))*9;
+                    const _dfa = 0.5 + Math.sin(_dNow/200+_dfi)*0.28;
+                    ctx.fillStyle = `rgba(180,0,90,${_dfa})`;
+                    ctx.beginPath(); ctx.arc(_dfx, _dfy, 1.8+Math.sin(_dNow/200+_dfi)*0.6, 0, Math.PI*2); ctx.fill();
+                }
+                // ⚠ 倒すべき敵マーカー
+                drawNpcSign(ctx, px+TILE_SIZE/2, py-4, '⚠', '暗黒', '#cc0044');
+                return;
+            } else if(npc.id === 'obj_ship_waiting') {
                 // 停泊中の船: 洞窟クリア後に西岸に出現、乗ると has_ship 取得
                 const _shipImg = externalImages['shipSprite'];
                 const _sw = Date.now();
@@ -5100,7 +5381,7 @@ async function moveParty(dx, dy) {
         const _onFieldB = /^map_field_/.test(_mapIdB);
         const _isTownLike = _mapIdB.includes('town') || _mapIdB.includes('village') || _mapIdB.includes('market');
         if (!_onFieldB && _isTownLike) {
-            const _solidB = [1,2,4,5,15,16,17,18,19,20];
+            const _solidB = [1,2,4,5,15,16,17,18,19,20,25];
             const _curTile = currentMap.tiles[partyData.pos.y * currentMap.width + partyData.pos.x];
             if (!_solidB.includes(_curTile)) {
                 let _autoExit = null;
@@ -5128,7 +5409,7 @@ async function moveParty(dx, dy) {
                     const _nFMap = externalMapData && externalMapData[_nFId];
                     if (_nFMap && _nlx >= 0 && _nly >= 0 && _nlx < _nFMap.width && _nly < _nFMap.height) {
                         const _nFTile = _nFMap.tiles[_nly * _nFMap.width + _nlx];
-                        if (![1,2,4,15,16,17,18].includes(_nFTile)) {
+                        if (![1,2,4,15,16,17,18,25].includes(_nFTile)) {
                             _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
                             partyData.pos = { map: _nFId, x: _nlx, y: _nly };
                             partyData.last_field_pos = { map: _nFId, x: _nlx, y: _nly };
@@ -5142,7 +5423,7 @@ async function moveParty(dx, dy) {
         }
         return;
     }
-    const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18, 20] : [1, 2, 4, 5, 15, 16, 17, 18, 20]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20]; // 山(20)は徒歩・船どちらも不可
+    const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && /^map_field_/.test(partyData.pos.map); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18, 25] : [1, 2, 4, 5, 15, 16, 17, 18, 25]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20, 25]; // 高山(25)のみ不可・山(20)はフィールドで通行可
     if(solidTiles.includes(tile)) return;
     const key = `${nx},${ny}`; if (currentMap.npcs && currentMap.npcs[key]) return;
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
@@ -5178,7 +5459,7 @@ async function moveParty(dx, dy) {
             if (!externalMapData[_normMap] && externalMapData['map_' + _normMap]) _normMap = 'map_' + _normMap;
             else if (!externalMapData[_normMap] && _normMap.startsWith('map_') && externalMapData[_normMap.substring(4)]) _normMap = _normMap.substring(4);
             let _lx = exit.x, _ly = exit.y;
-            const _solid = _toField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18] : [1, 2, 4, 5, 15, 16, 17, 18]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20];
+            const _solid = _toField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18, 25] : [1, 2, 4, 5, 15, 16, 17, 18, 25]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20, 25];
             const _isBlocked = (x, y) => {
                 if (x<0||y<0||x>=nextMap.width||y>=nextMap.height) return true;
                 const _t = nextMap.tiles[y*nextMap.width+x];
@@ -5279,7 +5560,10 @@ async function moveParty(dx, dy) {
             partyData.pos.map = _normMap;
             if (_toField) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[_normMap] = true; }
             partyData.pos.x = _lx; partyData.pos.y = _ly;
-            moveHistory = []; drawMap(); updateBGM(); if (_isTravelGate) await _tgFade(false); return;
+            moveHistory = []; drawMap(); updateBGM();
+            // 2周目: マップ入場時に記憶回復チェック
+            if (partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated) await _check2ndMemory();
+            if (_isTravelGate) await _tgFade(false); return;
         }
         else { partyData.pos.x = moveHistory[0].x; partyData.pos.y = moveHistory[0].y; partyData.dir = moveHistory[0].dir; drawMap(); return; }
     }
@@ -5287,6 +5571,87 @@ async function moveParty(dx, dy) {
         if (partyData.tohero_steps && partyData.tohero_steps > 0) { } 
         else { partyData.steps_to_encounter--; if(partyData.steps_to_encounter <= 0) { partyData.steps_to_encounter = Math.floor(Math.random()*10) + 10; executeBattle(); } }
     }
+}
+
+// ===== 2周目: 記憶回復システム =====
+// 逆回りの動線: 魔王城→南の祠→南西の村→天空の塔→試練の洞窟→城下町→グラマニア城
+const _2ND_MEMORY_MAP = {
+    'map_demon_castle_1f': { flag:'2nd_mem_maou',
+        flash:'（……！ この 漆黒の 城……！\nここで 戦った……！\nグラ王が……グラ王が\nわたしたちを 命がけで 逃がしてくれた……！）',
+        hint:'（南の 海の 祠島……\nあの 光の 場所に 行けば\nもっと 思い出せる 気がする……）' },
+    'map_shrine_warp': { flag:'2nd_mem_shrine',
+        flash:'（……！ この 光……！\nここで 聞いた……\n「城の 王は……偽物だ」という\n天空の 真実を……！）',
+        hint:'（南西の 村……あの 穏やかな 村人たちの\n顔が 浮かんでくる……）' },
+    'map_town_02': { flag:'2nd_mem_village',
+        flash:'（……！ 南西の 村！\nここの 人々を 助けた……\n海を 越えて……船で……！\nあの 試練の 洞窟で……船を 手に入れて……！）',
+        hint:'（天空の 塔……白い 龍……\nあの 力が 体の どこかに 残っている……）' },
+    'map_tower_1f': { flag:'2nd_mem_tower',
+        flash:'（……！！ 天空の 塔……！\nここで 白い 龍と 対峙した……！\n龍が 力を 授けてくれた……\n「城の 王は 偽物……本物の 敵は そこにいる……」！！）',
+        hint:'（試練の 洞窟……老騎士の 言葉……\n「城に 近づきすぎるな」……）' },
+    'map_dungeon_1f': { flag:'2nd_mem_dungeon',
+        flash:'（……！ 試練の 洞窟……！\n元・王宮騎士の 英霊……\n船を 授けてくれた……\nそして 警告していた……\n「城に いる 者の 影を よく 見ろ」と……！）',
+        hint:'（城下町 グラマニア……\n全ての 始まりの 場所へ……\n真の 戦いが 待っている……！）' },
+    'map_town_01': { flag:'2nd_mem_town',
+        flash:'（……！！ 思い出した……！！\nここから 全てが 始まった……！！\nグラ王は 本物の 初代国王……\n城に 座る 偽の 国王グラードこそが\n百年前の 初代魔王……！！\nあいつを 倒さなければ……！）',
+        hint:null },
+};
+
+async function _check2ndMemory() {
+    if(!partyData.flags.is_second_loop||partyData.flags.last_boss_defeated) return;
+    const _mapId=partyData.pos.map;
+    // rawMap ID で判定（map_プレフィックスあり/なし両対応）
+    for(const [_mk,_mv] of Object.entries(_2ND_MEMORY_MAP)) {
+        if(!_mapId.includes(_mk.replace('map_',''))&&!_mapId.includes(_mk)) continue;
+        if(partyData.flags[_mv.flag]) continue;
+        partyData.flags[_mv.flag]=true;
+        // 記憶フラッシュ演出（画面を一瞬白く）
+        const _gc=document.getElementById('game-container');
+        _gc.style.transition='filter 0.15s'; _gc.style.filter='brightness(3)';
+        AudioManager.playSE('magic_cast');
+        await new Promise(r=>setTimeout(r,180));
+        _gc.style.transition='filter 0.4s'; _gc.style.filter='';
+        await typeMessage(_mv.flash);
+        if(_mv.hint) await typeMessage(_mv.hint);
+        // 記憶回復数をカウント
+        const _memCount=Object.keys(_2ND_MEMORY_MAP).filter(k=>partyData.flags[_2ND_MEMORY_MAP[k].flag]).length;
+        if(_memCount===Object.keys(_2ND_MEMORY_MAP).length) {
+            await typeMessage("────── 全ての 記憶が 戻った！！\n真の 戦いへ── 偽の 王を 倒せ！ ──────");
+        }
+        break;
+    }
+}
+
+// 2周目: 城・城下町の残り暗黒兵士数をカウント
+function _countRemainingGuards() {
+    if(!externalMapData) return 0;
+    const _guardIds = ['guard','soldier','knight','veteran','npc_story_citizen'];
+    let count = 0;
+    for(const _mId of ['map_town_01','map_field_0_0']) {
+        const _actualKey = Object.keys(externalMapData).find(k=>k.includes('town_01')||k.includes('castle_01')&&!k.includes('demon'))||_mId;
+        for(const _mKey of Object.keys(externalMapData)) {
+            if(!_mKey.includes('town_01')&&!(_mKey.includes('castle_01')&&!_mKey.includes('demon'))) continue;
+            const _m=externalMapData[_mKey]; if(!_m||!_m.npcs) continue;
+            for(const[_k,_n] of Object.entries(_m.npcs)) {
+                if(!_n||!_n.id) continue;
+                if(_guardIds.some(g=>_n.id.includes(g))) {
+                    const _gf='2nd_guard_'+_mKey+'_'+_k;
+                    if(!partyData.flags[_gf]) count++;
+                }
+            }
+        }
+        break;
+    }
+    return count;
+}
+
+// 2周目: 全兵士解放後に最終決戦フラグを立てる（王様NPCはそのまま残す）
+function _checkAndSpawnGuraFinal() {
+    if(!partyData.flags.is_second_loop||partyData.flags['2nd_final_spawned']) return;
+    if(_countRemainingGuards() > 0) return;
+    // 全兵士解放済み → flag_2nd_maou_cleared を立てて王様NPC対話で真エンディングへ
+    // ※ 王様NPCを boss_maou に置き換えると line 5675 の 'king' チェックが通らなくなるため置き換えない
+    partyData.flags['2nd_final_spawned']=true;
+    partyData.flags.flag_2nd_maou_cleared=true;
 }
 
 async function checkAction() {
@@ -5457,6 +5822,13 @@ async function checkAction() {
                         AudioManager.playSE('item_get');
                         partyData.flags.has_ship = true;
                         delete currentMap.npcs[key];
+                        // フィールドマップはexternalMapDataで直接描画されるため同期削除
+                        const _curFId = partyData.pos.map;
+                        if (externalMapData && externalMapData[_curFId]) {
+                            for (const _snk of Object.keys(externalMapData[_curFId].npcs || {})) {
+                                if (externalMapData[_curFId].npcs[_snk]?.id === 'obj_ship_waiting') delete externalMapData[_curFId].npcs[_snk];
+                            }
+                        }
                         await typeMessage(`${partyData.members[0]?.name||'勇者'}たちは 船に 乗り込んだ！\n海の タイルを 自由に 移動できる！`);
                         await typeMessage("（……波音が 風に 乗って 聞こえてくる。\nいよいよ 大海原へ 漕ぎ出す 時だ……！）");
                     }
@@ -5542,6 +5914,56 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             
+            // ===== 天空の龍の使い アリア（漁村の少女）=====
+            if (npc.id === 'npc_sky_dragon_girl') {
+                const _aria2nd = partyData.flags.is_second_loop;
+                if (partyData.flags.last_boss_defeated && _aria2nd) {
+                    await typeMessage("【アリア】\n……本当に、本当に 平和が 戻ってきたんですね……！\nグラ王様も……ようやく 安らかに 眠れる……。");
+                    await typeMessage("【アリア】\n天空の 龍も 喜んでいます……！\nこれで 真の 意味で 世界が 救われました……。\nありがとう……本当に ありがとうございます！");
+                    await typeMessage("────── こうして グラマニア王国に\n真の 平和が 訪れた。\n偽りの 影は 消え去り\n大地に 再び 光が 満ちた。\nグラ王の 魂は 末裔たちを 静かに 見守りながら\n永遠の 安息へと 旅立っていった……\n─── fin ───");
+                } else if (_aria2nd) {
+                    const _guardsLeft = _countRemainingGuards();
+                    const _memCount2=Object.keys(_2ND_MEMORY_MAP).filter(k=>partyData.flags[_2ND_MEMORY_MAP[k].flag]).length;
+                    const _totalMem=Object.keys(_2ND_MEMORY_MAP).length;
+                    await typeMessage("【アリア】\n気がつきましたか……！\nよかった……。\nわたしは アリア……天空の 龍の お使いです。\nグラ王様が あなたたちを 逃がして……\nショックで 記憶を 失ってしまったのですね。");
+                    if(_memCount2 === 0) {
+                        await typeMessage("【アリア】\n記憶を 取り戻すために\n歩んできた 道を 逆に 辿ってください。\nまずは 南東の 海の 果て……\n「魔王城」から 始めるのです。\n船は 港に 用意してあります！\n（記憶を 取り戻す旅が 始まります）");
+                    } else if(_memCount2 < _totalMem) {
+                        await typeMessage(`【アリア】\n記憶が ${_memCount2}/${_totalMem} 戻ってきましたね！\n引き続き 歩んできた 道を 逆に 辿ってください。\n龍も あなたたちを 応援しています！`);
+                    } else {
+                        await typeMessage("【アリア】\n全ての 記憶が 戻りましたね……！\n城下町と グラマニア城の 兵士たちを 解放して\nグラ王様を 目覚めさせてください……！");
+                    }
+                    if(_guardsLeft > 0 && _memCount2 === _totalMem) await typeMessage(`【アリア】\nまだ ${_guardsLeft}人 の 兵士が 残っています……\n闇に 操られた 被害者なのです……\n解放してあげてください！`);
+                    else if(_guardsLeft === 0 && _memCount2 === _totalMem) await typeMessage("【アリア】\n全ての 兵士が 解放されました……！\nグラ王様が 目覚めているはずです……\n城へ 急いで！！");
+                } else {
+                    await typeMessage("【アリア】\n（不思議な 雰囲気を 持つ 少女が\n優しく 微笑んでいる……）\nこの 村には 海と 龍の 加護が あります。\n旅の 疲れを 癒やしてください。");
+                }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ===== 2周目: 城下町・城の兵士を倒すイベント =====
+            if (partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated) {
+                const _in2ndDark = partyData.pos.map.includes('town_01') || (partyData.pos.map.includes('castle') && !partyData.pos.map.includes('demon'));
+                if (_in2ndDark && (npc.id.includes('guard') || npc.id.includes('soldier') || npc.id.includes('knight') || npc.id.includes('veteran') || npc.id === 'npc_story_citizen')) {
+                    const _gFlag = '2nd_guard_' + partyData.pos.map + '_' + key;
+                    if (partyData.flags[_gFlag]) {
+                        await typeMessage("【解放された兵士】\n……（力なく 虚ろな 瞳で 立っている）\nわ……わしは 何を していたんだ……？");
+                    } else {
+                        await typeMessage("【暗黒化した兵士】\nガ……アアア……！！\n来るな……来るな！！！\n（漆黒の 炎が 体を 包んでいる……！）");
+                        const _gMId = 'possessed_guard_2nd';
+                        if(!masterData.monsters[_gMId]) masterData.monsters[_gMId]={name:'暗黒化した兵士',max_hp:250,atk:50,def:28,spd:22,exp:500,gold:250,traits:['undead']};
+                        hideGoldWindow(); const _gW = await executeBattle([_gMId]); showGoldWindow(); updateGoldWindow();
+                        if(_gW) {
+                            partyData.flags[_gFlag] = true; delete currentMap.npcs[key];
+                            await typeMessage("【兵士】\nは……？ 気が……ついたら……\nわ、わしは 何を……！\nすまない……体が 勝手に 動いて……！");
+                            // 全員解放チェック → グラ王最終形態召喚
+                            _checkAndSpawnGuraFinal();
+                        }
+                    }
+                    state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                }
+            }
+
             // ★異世界の旅人イベントのバグ修正
             if (npc.id === "npc_sub_2ndloop") {
                 if (!partyData.flags.flag_beaten_secret_boss) {
@@ -5633,6 +6055,9 @@ async function checkAction() {
                 if (partyData.flags.last_boss_defeated) {
                     await typeMessage("【傷ついた旅人】\n……あの 洞窟の ボスを 恐れていた ワシが\n恥ずかしい。");
                     await typeMessage("【傷ついた旅人】\nお前たちは もっと 先まで 行って\n魔王まで 倒したんだろ？\n傷も 癒えた。もう 一度 歩き出すよ。");
+                } else if (partyData.flags.is_second_loop) {
+                    await typeMessage("【傷ついた旅人】\nあなたたち……！\n以前 ここを 通った 勇者たちでは……？\n確か 先の 洞窟を 制覇して 船を 手に入れた……！");
+                    await typeMessage("【傷ついた旅人】\n記憶が ないのですか……。\n以前 あなたたちが ワシを 助けてくれたのですよ！\n洞窟の 方向は 南西……\n守護霊の 老騎士が いるはず。\n行ってみれば 思い出せるかも……！");
                 } else {
                     await typeMessage("【傷ついた旅人】\nぐ……っ！ここで 一息ついて……");
                     await typeMessage("【傷ついた旅人】\nすぐ 北の あの 洞窟には\n気をつけろ……！\n奥に いる ボスは……普通じゃない……\n仲間たちは みな やられてしまった……！");
@@ -5742,26 +6167,48 @@ async function checkAction() {
             }
             // ★ストーリー導線ガイドNPC
             if (npc.id === "npc_guide_north") {
+                const _is2N=partyData.flags.is_second_loop&&!partyData.flags.last_boss_defeated;
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王を 倒したとは！\nあなたたちが 世界の 英雄ですね！"); }
-                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n洞窟を 制覇しましたね！\n浜辺に 船が あるはずです。\nその 船で 各地の 孤島へ 渡れます。\n次は 東の 島、天空の 塔を 目指しましょう！"); }
+                else if (_is2N && !partyData.flags['2nd_mem_maou']) {
+                    await typeMessage("【案内人】\n……あなたたち、見覚えが あります。\n以前 ここを 通った 勇者様では……？\nまず 南東の 魔王城へ 向かって みてください。\nきっと 何かを 思い出せるはずです。");
+                } else if (_is2N && partyData.flags['2nd_mem_maou'] && !partyData.flags['2nd_mem_dungeon']) {
+                    await typeMessage("【案内人】\n記憶が 戻りつつあるようですね……！\n試練の 洞窟は 南西の 半島の 先です。\nあの 洞窟で 何かを 受け取ったはず……");
+                } else if (_is2N) {
+                    await typeMessage("【案内人】\n城下町に 向かってください……！\nそこに あなたたちの 戦いが 待っています！");
+                } else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n洞窟を 制覇しましたね！\n浜辺に 船が あるはずです。\nその 船で 各地の 孤島へ 渡れます。\n次は 東の 島、天空の 塔を 目指しましょう！"); }
                 else { await typeMessage("【案内人】\nこの 先 南西へ 進むと\n試練の 洞窟があります。\nまずは そこで 力を 試してみては？"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_east_tower") {
+                const _is2E=partyData.flags.is_second_loop&&!partyData.flags.last_boss_defeated;
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n世界に 平和が 戻りました。\nあなたたちの おかげです！"); }
-                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【案内人】\n天空の 塔を 制覇しましたか！\n南の 祠島へ 行き 真実を 知りましょう。\nそして 遥か 東南の 海の 果て……\nそこに 魔王の 城が あります！"); }
+                else if (_is2E && !partyData.flags['2nd_mem_shrine']) {
+                    await typeMessage("【案内人】\nここは 賢者の 祠。\n南に 「南の 祠島」があります。\nまずは そちらへ……\n記憶の 手がかりが 見つかるはずです。");
+                } else if (_is2E && partyData.flags['2nd_mem_shrine']) {
+                    await typeMessage("【案内人】\n天空の 塔は 東の 島の 北側にあります。\n記憶を たどって 登ってみてください……！\n龍の 力が あなたを 待っています。");
+                } else if (partyData.flags.flag_tower_cleared) { await typeMessage("【案内人】\n天空の 塔を 制覇しましたか！\n南の 祠島へ 行き 真実を 知りましょう。\nそして 遥か 東南の 海の 果て……\nそこに 魔王の 城が あります！"); }
                 else { await typeMessage("【案内人】\n東の 大陸の 北に\n天空の 塔が そびえています。\n塔の 頂には 伝説の 守護者が いるそうですよ。"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_south") {
+                const _is2S=partyData.flags.is_second_loop&&!partyData.flags.last_boss_defeated;
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\nお疲れ様でした！\n世界が 救われましたね！"); }
-                else if (partyData.flags.has_ship) { await typeMessage("【案内人】\n船が ありますね！\n4つの 孤島へ 渡れます：\n東の 塔島・南西の 村島・\n南の 祠島・遠く 魔王島……\nどれも 船が なければ 渡れません！"); }
+                else if (_is2S && !partyData.flags['2nd_mem_maou']) {
+                    await typeMessage("【案内人】\n南東の 海の 果てに\n漆黒の 魔王城があります……\n記憶が なくても 行って みてください。\nきっと 何かが 戻るはずです。");
+                } else if (_is2S) {
+                    await typeMessage("【案内人】\n船が ありますね！\n逆回りで 記憶を たどっているのですね？\n次は 南西の 村島へ……\nあの 村の 人たちが あなたを 知っているはずです！");
+                } else if (partyData.flags.has_ship) { await typeMessage("【案内人】\n船が ありますね！\n4つの 孤島へ 渡れます：\n東の 塔島・南西の 村島・\n南の 祠島・遠く 魔王島……\nどれも 船が なければ 渡れません！"); }
                 else { await typeMessage("【案内人】\n南の 海岸沿いを 歩けば\n試練の 洞窟に たどり 着けます。\n洞窟を 制覇すると 近くの 浜辺に\n船が 現れるという うわさがありますよ！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_demon") {
+                const _is2D=partyData.flags.is_second_loop&&!partyData.flags.last_boss_defeated;
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王が 倒れた！\nこれで やっと 平和が 戻ります……！"); }
-                else { await typeMessage("【案内人】\n近くに 感じる あの 暗黒の 気配……\n東の 海の 果てに 魔王の 城が あるのです。\n船で 渡り 最後の 戦いに 挑んでください！"); }
+                else if (_is2D && !partyData.flags['2nd_mem_maou']) {
+                    await typeMessage("【案内人】\n記憶を 失っているのですか……！\n魔王城は 南東の 海の 果てにあります。\nまずは そこへ 向かってみてください。\nきっと 記憶の 鍵が あります……！");
+                } else if (_is2D) {
+                    await typeMessage("【案内人】\n魔王城からの 記憶が 戻りましたか！\n次は 南の 祠島です。\n船で 南へ 渡ってみてください。");
+                } else { await typeMessage("【案内人】\n近くに 感じる あの 暗黒の 気配……\n東の 海の 果てに 魔王の 城が あるのです。\n船で 渡り 最後の 戦いに 挑んでください！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             // ★新規町NPCの会話
@@ -5844,7 +6291,14 @@ async function checkAction() {
             }
             if (npc.id === "npc_guide_02") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【村長】\n魔王が 倒れたと 聞きました！\nこの村にも やっと 平和が 訪れますね……！"); }
-                else if (partyData.flags.has_ship) { await typeMessage("【村長】\n船を 手に 入れたのですか！\n北の 海の むこうに グラマニア城が あります。\n気を つけて いってらっしゃい！"); }
+                else if (partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated) {
+                    if (!partyData.flags['2nd_mem_village']) {
+                        await typeMessage("【村長】\nあなたたち……！\n見覚えがある お顔……。\n以前 この村の 海賊の 被害を\n助けてくれた 方々では……？");
+                        await typeMessage("【村長】\n記憶を 失っているのですか……。\n船で 南の 祠島へ 向かえば\n何か 思い出せるかもしれません。\n龍の 力が そこに あると 聞きます。");
+                    } else {
+                        await typeMessage("【村長】\n記憶が 戻ってきましたか！\n次は 天空の 塔を 目指してください。\n東の 島の 北にあります。\n龍の 力を 思い出すはずです……！");
+                    }
+                } else if (partyData.flags.has_ship) { await typeMessage("【村長】\n船を 手に 入れたのですか！\n北の 海の むこうに グラマニア城が あります。\n気を つけて いってらっしゃい！"); }
                 else if (partyData.flags.flag_tower_cleared) { await typeMessage("【村長】\n天空の 塔まで 登ったとは！\n洞窟で 受け継いだ 船で\n南の 海を 渡れば\n魔王の 城が 見えるでしょう。"); }
                 else { await typeMessage("【村長】\nここは 南西の 村 ガルド。\n旅人よ、よくぞ 来てくれた。\n東へ 進めば 大きな 町や\n天空の 塔が あるらしい。\n腕を 磨いて 旅を 続けるがよい！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
@@ -5937,6 +6391,50 @@ async function checkAction() {
                 if (partyData.flags.has_ship) { await typeMessage("【行商人】\n船で 各地を 旅してます。\n南東の 海には 魔王の 島が あるそうです。\nくれぐれも 気をつけて！"); }
                 else { await typeMessage("【行商人】\n南の 港に 行けば\n大きな 船が あるそうですよ。\nレベルが 十分なら 旅立つ 準備を！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ===== グラ港の漁村（2周目開始地点）の住民 =====
+            if (npc.id === "npc_fisher_old") {
+                const _is2F = partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated;
+                if (partyData.flags.last_boss_defeated) {
+                    await typeMessage("【老漁師】\n……世界に 平和が 戻ったか。\nアリアが 嬉しそうに 飛び跳ねておったよ。\nわしも なんだか 目頭が 熱くなってしまった。");
+                } else if (_is2F) {
+                    const _memCount = Object.keys(_2ND_MEMORY_MAP).filter(k => partyData.flags[_2ND_MEMORY_MAP[k].flag]).length;
+                    if (_memCount === 0) {
+                        await typeMessage("【老漁師】\nアリアから 話は 聞いておる……。\nお前たちが 命をかけて 戦った 勇者だとな。\n記憶が なくとも……体が 覚えているはずじゃ。");
+                        await typeMessage("【老漁師】\n南東の 海の 果て……\n魔王城へ 向かうとよい。\nあの 場所に 立てば きっと 何かが 戻る。\n船は 港に 用意してある。");
+                    } else if (_memCount < 6) {
+                        await typeMessage(`【老漁師】\n少しずつ 思い出してきたか……！\n記憶が ${_memCount}/6 戻ってきたな。\n歩んできた 道を 逆に たどれ。\nアリアが 信じておる。`);
+                    } else {
+                        await typeMessage("【老漁師】\n全て 思い出したか……！\n偽の 王を 倒す 時が 来た。\nわしは ここで 祈っておる。\n必ず 戻って こいよ……！");
+                    }
+                } else {
+                    await typeMessage("【老漁師】\nここは グラ港の 漁村じゃ。\nわしは 何十年も ここで 漁をしてきた。\n龍の 加護で この海は 豊かだよ。");
+                    await typeMessage("【老漁師】\nアリアって 娘を 知っておるか？\nこの村で 育った 不思議な 子でな……\n天空の 龍に 選ばれた お使いなんじゃよ。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_fisher_wife") {
+                const _is2W = partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated;
+                if (partyData.flags.last_boss_defeated) {
+                    await typeMessage("【漁師の妻】\nまあ……本当に 平和が 来たんですね！\nこれで 主人も 安心して 漁に 出られます。\n本当に ありがとうございました……！");
+                } else if (_is2W) {
+                    await typeMessage("【漁師の妻】\nグラ王様が あなたたちを 逃がすために……\nご自分を 犠牲に して……。\nアリアが 全部 話してくれました……。");
+                    await typeMessage("【漁師の妻】\n記憶が なくても 大丈夫よ。\nあなたたちの 体には\nグラ王様の 想いが 宿っているはずです。\n必ず 思い出せます。");
+                } else {
+                    await typeMessage("【漁師の妻】\nいらっしゃい 旅人さん。\nこの村の 魚は とても 美味しいですよ。\n道具屋では 漁師の嫁の 手作り 薬草も 売っています。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_fisher_child") {
+                const _is2C = partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated;
+                if (partyData.flags.last_boss_defeated) {
+                    await typeMessage("【漁師の子】\nやった！ 魔王 やっつけたんだって！\nアリアお姉ちゃんが 泣きながら 笑ってたよ！\nぼくも 大きくなったら 勇者に なる！！");
+                } else if (_is2C) {
+                    await typeMessage("【漁師の子】\nアリアお姉ちゃんが ずっと 待ってたよ！\nお姉ちゃん すごく 心配してたんだから！\nお姉ちゃんに 話しかけてあげてね！");
+                } else {
+                    await typeMessage("【漁師の子】\nねえ 旅人さん！\nアリアお姉ちゃん 知ってる？\n龍のことを いっぱい 知ってるんだよ！\n南の 海から 来たって 言ってた！");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (extDef) {
                 if (extDef.name === "宝箱" || npc.id.includes('chest')) {
@@ -6108,6 +6606,19 @@ async function checkAction() {
                         partyData.flags.shrine_healed = false;
                         if (npc.id === 'boss_dungeon') {
                             partyData.flags.flag_dungeon_cleared = true;
+                            // 試練の洞窟最寄りの西海岸に船NPCをexternalMapDataへ即時追加
+                            const _f04d = externalMapData && externalMapData['map_field_0_4'];
+                            if (_f04d && !partyData.flags.has_ship && !Object.values(_f04d.npcs||{}).some(n=>n&&n.id==='obj_ship_waiting')) {
+                                const _mWd = _f04d.width || 45;
+                                let _pd = false;
+                                for (let _sy = 4; _sy <= 35 && !_pd; _sy++) {
+                                    for (let _sx = 0; _sx < 20 && !_pd; _sx++) {
+                                        const _t = _f04d.tiles[_sy*_mWd+_sx];
+                                        const _tn = _sx+1<_mWd ? _f04d.tiles[_sy*_mWd+_sx+1] : -1;
+                                        if (_t===5 && _tn!==5 && _tn>=0) { _f04d.npcs[`${_sx},${_sy}`]={id:'obj_ship_waiting',name:'停泊中の船'}; _pd=true; }
+                                    }
+                                }
+                            }
                             await typeMessage("【元・王宮騎士の英霊】\n……見事じゃ。\nその 剣の 軌跡……\nまぎれもなく あの御方の 流儀じゃ。");
                             await typeMessage("【元・王宮騎士の英霊】\n最後に……ひとつだけ。\nあの城には……近づきすぎるな。\n国王と呼ばれる 者の 影を……よく 見ろ。");
                             await typeMessage("【元・王宮騎士の英霊】\n……ひとつ、礼を させてくれ。\nこの洞窟の 西、浜辺に\nわしの 主君が 百年 前から 遺した 船がある。\n浜辺へ 行けば 船が 見つかるはずじゃ……\n海を 渡り、真実を 確かめるのだ。");
@@ -6165,7 +6676,23 @@ async function checkAction() {
                     if (_isT) {
                     await typeMessage("【天空の塔・入口】\nここは 伝説の 天空の塔。\n頂には 太古の 守護者が 眠るという……\nのぼって みるか？");
                 } else {
-                    if (partyData.flags.flag_sky_truth_known) {
+                    if (!partyData.flags.flag_tower_cleared) {
+                        // 天空の塔未クリア → 闇のバリアで侵入阻止
+                        const _dkC = document.getElementById('game-container');
+                        _dkC.style.transition = 'filter 0.35s';
+                        _dkC.style.filter = 'brightness(0)';
+                        AudioManager.playSE('attack_crit');
+                        await new Promise(r => setTimeout(r, 400));
+                        _dkC.style.transition = 'filter 0.5s';
+                        _dkC.style.filter = 'brightness(0.07) sepia(1) hue-rotate(255deg)';
+                        AudioManager.playSE('damage_hero');
+                        await new Promise(r => setTimeout(r, 600));
+                        _dkC.style.transition = 'filter 0.6s';
+                        _dkC.style.filter = '';
+                        await typeMessage("【闇のバリア】\n……！！\nおそるべき 闇の 力が\n城全体を 覆っている！！\n近づこうとすると 体が 弾かれる……！！");
+                        await typeMessage("（この 漆黒の 結界は\n天空の 力なしに 破ることは できない……！\n天空の 塔を 制覇し\n聖なる 力を 宿した 者だけが\nこの 門を くぐれると 言われている……）");
+                        state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                    } else if (partyData.flags.flag_sky_truth_known) {
                         await typeMessage("【魔王城の門】\n（天空の力で 魔族の 刻印が 読める……）\n「この城は……救いを 求める 聖域……\n偽の王に 滅ぼされぬよう……守り続けた……」\nここから 先、真実が 待っている……！");
                     } else {
                         await typeMessage("【魔王城の門】\nここは 大魔王の 居城——\n闇が 漂い 空気さえ 澱んでいる。\nここから 先に 足を 踏み入れれば\n生きては 帰れぬかもしれぬ……\nそれでも 進むか？");
@@ -6323,7 +6850,13 @@ async function eventPriest() {
     while(true) {
         let options = ["おいのり(セーブ)", "ふっかつのじゅもん", "いきかえらせる", "やめる"]; let choice = await selectMenu(options, 'cmd-window', 1, true);
         if(choice === 0) {
-            AudioManager.playSE('inn'); partyData.last_save_pos = { map: partyData.pos.map, x: partyData.pos.x, y: partyData.pos.y }; localStorage.setItem('gravity_quest_save', JSON.stringify(partyData)); await typeMessage("スマホに データーを きろくしました。\n（※ブラウザ履歴を消すと消える場合があります）");
+            AudioManager.playSE('inn');
+            partyData.last_save_pos = { map: partyData.pos.map, x: partyData.pos.x, y: partyData.pos.y };
+            // ルーラ目的地として登録（神父のいる町のみ）
+            if (!partyData.flags.rura_destinations) partyData.flags.rura_destinations = {};
+            const _rulaMapName = (currentMap && currentMap.name) ? currentMap.name : getMapDisplayName(partyData.pos.map, currentMap);
+            partyData.flags.rura_destinations[partyData.pos.map] = { x: partyData.pos.x, y: partyData.pos.y, name: _rulaMapName };
+            localStorage.setItem('gravity_quest_save', JSON.stringify(partyData)); await typeMessage("スマホに データーを きろくしました。\n（※ブラウザ履歴を消すと消える場合があります）");
             let encoded = packSaveData(partyData); 
             await showCustomDialog('copy', "念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。", encoded);
             if (partyData.flags && partyData.flags.is_second_loop) { await typeMessage("しかし まだ せかいのどこかに\nふおんな けはいが のこっております...\nきをつけて おすすみください。"); }
@@ -6466,8 +6999,37 @@ async function openMainMenu() {
             } else if(spellData.type === 'field' || spellData.id.includes('rula') || spellData.id.includes('remi') || spellData.id.includes('tohe') || spellData.id.includes('trama')) {
                 if(spellData.id.includes('rula')) {
                     let _rMapId = partyData.pos.map || '';
-                    if (_rMapId.includes('dungeon') || _rMapId.includes('tower') || _rMapId.includes('demon') || _rMapId.includes('castle') || _rMapId.includes('shrine')) { await typeMessage(`しかし ここでは つかえなかった。\nルーラは フィールドや まちで つかえます。`); }
-                    else { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playFieldWarpEffect(spellData.id); const _lsp1 = partyData.last_save_pos || { map: "map_town_01", x: 10, y: 18 }; partyData.pos.map = _lsp1.map; partyData.pos.x = _lsp1.x; partyData.pos.y = _lsp1.y; currentMap = await loadExternalData('map-' + _lsp1.map); await typeMessage(`セーブポイントへ もどってきた！`); moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; }
+                    if (_rMapId.includes('dungeon') || _rMapId.includes('tower') || _rMapId.includes('demon') || _rMapId.includes('shrine')) {
+                        await typeMessage(`しかし ここでは つかえなかった。\nルーラは フィールドや まちで つかえます。`);
+                    } else {
+                        // 城下町グラマニアは常に初期目的地として登録
+                        if (!partyData.flags.rura_destinations) partyData.flags.rura_destinations = {};
+                        const _t01k = Object.keys(externalMapData || {}).find(k => k.includes('town_01'));
+                        if (_t01k && !partyData.flags.rura_destinations[_t01k]) {
+                            const _t01m = externalMapData[_t01k];
+                            partyData.flags.rura_destinations[_t01k] = { x: 10, y: 18, name: (_t01m && _t01m.name) || '城下町グラマニア' };
+                        }
+                        const _rdAll = partyData.flags.rura_destinations;
+                        const _rdKeys = Object.keys(_rdAll);
+                        if (_rdKeys.length === 0) {
+                            await typeMessage(`行ける場所が まだ ありません。\n神父のいる町を 訪れると\nルーラで 飛べるように なります！`);
+                        } else {
+                            const _rdNames = _rdKeys.map(k => _rdAll[k].name || getMapDisplayName(k));
+                            await typeMessage(`${char.name}は ${spellData.name}を となえた！\nどこへ 飛びますか？`);
+                            const _rdChoice = await selectMenu(_rdNames, 'cmd-window', 1, true);
+                            if (_rdChoice < 0) { /* キャンセル */ } else {
+                                char.mp -= spellData.mp;
+                                const _rdMap = _rdKeys[_rdChoice];
+                                const _rdPos = _rdAll[_rdMap];
+                                AudioManager.playSE('magic_cast');
+                                await playFieldWarpEffect(spellData.id);
+                                partyData.pos.map = _rdMap; partyData.pos.x = _rdPos.x; partyData.pos.y = _rdPos.y;
+                                currentMap = await loadExternalData('map-' + _rdMap);
+                                await typeMessage(`${_rdPos.name || '目的地'}へ ワープした！`);
+                                moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return;
+                            }
+                        }
+                    }
                 }
                 else if(spellData.id.includes('remi')) { let _rMapId2 = partyData.pos.map || ''; if (_rMapId2.includes('dungeon') || _rMapId2.includes('cave') || _rMapId2.includes('tower') || _rMapId2.includes('demon') || _rMapId2.includes('shrine')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playFieldWarpEffect(spellData.id); const _lfp = partyData.last_field_pos; if (_lfp && externalMapData && externalMapData[_lfp.map]) { partyData.pos.map = _lfp.map; partyData.pos.x = _lfp.x; partyData.pos.y = _lfp.y; currentMap = await loadExternalData('map-' + _lfp.map); } else { partyData.pos.map = "map_field_2_2"; partyData.pos.x = 7; partyData.pos.y = 7; currentMap = await loadExternalData('map-map_field_2_2'); } await typeMessage(`ダンジョンから だしゅつした！`); moveHistory = []; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); return; } else { await typeMessage(`しかし ここでは つかえなかった。\nレミトは ダンジョンや たいせつな しせつの 中で つかえます。`); } } 
                 else if(spellData.id.includes('tohe')) { char.mp -= spellData.mp; await typeMessage(`${char.name}は ${spellData.name}を となえた！`); AudioManager.playSE('magic_cast'); await playSpellEffect(spellData, null); partyData.tohero_steps = 100; await typeMessage(`まものが ちかづかなくなった！`); }
@@ -7264,8 +7826,10 @@ async function startSecondLoop(parsedOldData) {
             m.inventory.forEach(itemId => { let it = masterData.items[itemId]; if(it && it.type === 'weapon' && it.power > maxPwr) { maxPwr = it.power; bestWeaponId = it.id; } });
         });
     }
-    partyData = await loadExternalData('party'); partyData.flags = { is_second_loop: true };
-    if(externalMapData) { partyData.pos.map = externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData)[0]; partyData.pos.x = 10; partyData.pos.y = 18; }
+    partyData = await loadExternalData('party'); partyData.flags = { is_second_loop: true, has_ship: true };
+    // 2周目スタート: グラ港の漁村（北西）から逆回りで始まる
+    const _2ndStart = externalMapData['map_fishing_village_nw'] ? 'map_fishing_village_nw' : (externalMapData['map_town_01'] ? 'map_town_01' : Object.keys(externalMapData||{})[0]);
+    partyData.pos.map = _2ndStart; partyData.pos.x = 6; partyData.pos.y = 7;
     applyGrowthDataToParty(true);
     for(let i=0; i<partyData.members.length; i++) {
         let m = partyData.members[i]; let oldM = (parsedOldData && parsedOldData.members) ? parsedOldData.members[i] : null;
@@ -7273,8 +7837,9 @@ async function startSecondLoop(parsedOldData) {
         let input = await showCustomDialog('prompt', `${m.job} の名前を決めてください\n（最大4文字）\n空白で「${defaultName}」`, defaultName);
         m.name = (input !== null && input.trim() !== "") ? input.trim().substring(0, 4) : defaultName;
     }
-    if(bestWeaponId) { partyData.members[0].equipment.weapon = bestWeaponId; await showCustomDialog('alert', `【2周目・過去改変ルート】\n「ふっかつのじゅもん」の力で\nプロローグ（魔王復活の直前）の\n過去へ 時間を 跳び越えた……！\n\n前世の 記憶と ともに\n最強の武器「${masterData.items[bestWeaponId].name}」を 引き継いだ！\n\n今度こそ 真実を 暴き\n偽の王を 打ち倒せ！\n（※敵の強さが2倍になります）`); }
-    else { await showCustomDialog('alert', `【2周目・過去改変ルート】\n「ふっかつのじゅもん」の力で\nプロローグ（魔王復活の直前）の\n過去へ 時間を 跳び越えた……！\n\n今度こそ 真実を 暴き\n偽の王を 打ち倒せ！\n（※敵の強さが2倍になります）`); }
+    const _2ndMsg = `【2周目・過去改変ルート】\n「ふっかつのじゅもん」の力で\nグラ王が 逃がしてくれた 直後の\n過去へ 時間を 跳び越えた……！\n\n北西の 漁村「グラ港」に 身を 潜める\nアリア（天空の龍の使い）が\n船を 用意して 待っている……！\n\n今度こそ 真実を 暴き\n偽の王を 打ち倒せ！\n（※敵の強さが2倍になります）`;
+    if(bestWeaponId) { partyData.members[0].equipment.weapon = bestWeaponId; await showCustomDialog('alert', _2ndMsg + `\n\n前世の記憶：「${masterData.items[bestWeaponId]?.name}」を引き継いだ！`); }
+    else { await showCustomDialog('alert', _2ndMsg); }
 }
 
 async function showTitleScreen() {
@@ -7381,8 +7946,21 @@ async function showTitleScreen() {
         }
     }
     document.getElementById('title-screen').style.display = 'none';
-    currentMap = await loadExternalData('map-' + partyData.pos.map);
-    state = 'FIELD'; drawMap(); updateBGM();
+    document.getElementById('screen').style.display = 'block';
+    document.getElementById('battle-screen').style.display = 'none';
+    // ふっかつのじゅもん / ぼうけんのしょ: マップが存在しない場合は城下町にフォールバック
+    const _startMapId = partyData.pos.map || 'map_town_01';
+    currentMap = await loadExternalData('map-' + _startMapId);
+    if (!currentMap && externalMapData) {
+        const _fb = ['map_town_01','map_field_2_2'].find(k => externalMapData[k]);
+        if (_fb) { partyData.pos.map = _fb; partyData.pos.x = 10; partyData.pos.y = 18; currentMap = externalMapData[_fb]; }
+    }
+    if (!partyData.flags) partyData.flags = {};
+    if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {};
+    moveHistory = [];
+    hideAllWindows();
+    showWindow('party-status'); updatePartyStatus(); updateGoldWindow();
+    state = 'FIELD'; drawMap(); updateBGM(); startFieldLoop();
 }
 
 setInterval(() => { if (state === 'FIELD' || state === 'MSG') drawMap(); }, 100);
