@@ -768,7 +768,7 @@ window.SOUND_DATABASE = {
 <script>
 window.isGuraKingBattle = false;
 
-// ===== DQ2スタイル ふっかつのじゅもん（51文字かなパスワード）=====
+// ===== DQ2スタイル ふっかつのじゅもん（104文字かなパスワード）=====
 // 64文字ひらがなテーブル（6ビット/文字）
 // ※をと だ行を省いてば行を収録（だ行文字は た行に近似変換）
 const _GQ_KANA64 = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわんっゃゅょがぎぐげござじずぜぞばびぶべぼ';
@@ -948,7 +948,7 @@ function unpackSaveData(pwd) {
     try { obj = JSON.parse(decoded); } catch(e) { return null; }
 
     // 旧形式: 生のpartyDataオブジェクト
-    if (obj.members && obj.pos) return { type: 'normal', data: obj };
+    if (obj.members && obj.pos) { obj.members.forEach(m => { if (!m.inventory) m.inventory = []; }); return { type: 'normal', data: obj }; }
 
     const _mapName = (s) => s.startsWith('map_') ? s : 'map_' + s;
     const _buildMember = (mb, isV2) => {
@@ -6842,9 +6842,9 @@ async function checkAction() {
                             partyData.flags.last_boss_defeated = true;
                             partyData.flags.is_second_loop_unlocked = true;
                             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
-                            let clearCode = 'CLEAR_' + packSaveData(partyData);
+                            let clearCode = packSaveData(partyData);
                             await typeMessage("とくべつな じゅもんを おおしえしましょう。\nこれが 2周目を 始めるための\n「ふっかつのじゅもん」です。\nメモするか コピーして おいてください。");
-                            await showCustomDialog('copy', "ふっかつのじゅもん（1周目クリア）\n\n入力方法：\n・タイトル →「ふっかつのじゅもん」\n  または\n・タイトル →「つづきから（2周目）」\n\n4文字ずつスペース区切りで表示しています\n※枠内を長押しでコピー", _gqFormatPwd(clearCode));
+                            await showCustomDialog('copy', "ふっかつのじゅもん（1周目クリア）\n\n入力方法：\n・タイトル →「ふっかつのじゅもん」\n  または\n・タイトル →「つづきから（2周目）」\n\n5文字ずつスペース区切りで表示しています\n※枠内を長押しでコピー", _gqFormatPwd(clearCode));
                             await typeMessage("タイトル画面に もどります。\nAボタン または Enterキーを 押してください。");
                             location.reload(); return;
                         } else { await typeMessage(`${_bn}を たおした！\nみちが ひらけた！`); }
@@ -7038,12 +7038,12 @@ async function eventPriest() {
             partyData.flags.rura_destinations[partyData.pos.map] = { x: partyData.pos.x, y: partyData.pos.y, name: _rulaMapName };
             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData)); await typeMessage("スマホに データーを きろくしました。\n（※ブラウザ履歴を消すと消える場合があります）");
             let encoded = packSaveData(partyData);
-            await showCustomDialog('copy', "念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（4文字区切り・51文字）", _gqFormatPwd(encoded));
+            await showCustomDialog('copy', "念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（5文字区切り・104文字）", _gqFormatPwd(encoded));
             if (partyData.flags && partyData.flags.is_second_loop) { await typeMessage("しかし まだ せかいのどこかに\nふおんな けはいが のこっております...\nきをつけて おすすみください。"); }
         } else if (choice === 1) {
             AudioManager.playSE('inn'); 
             let encoded = packSaveData(partyData);
-            await typeMessage("あなたの これまでの ぼうけんを\nひらがなの じゅもんに して おしえましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん\n（4文字区切り・51文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
+            await typeMessage("あなたの これまでの ぼうけんを\nひらがなの じゅもんに して おしえましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん\n（5文字区切り・104文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
         } else if (choice === 2) {
             let deadMembers = partyData.members.filter(m => m.hp <= 0);
             if(deadMembers.length === 0) await typeMessage("しんでいる なかまは いませんよ。");
@@ -8003,7 +8003,7 @@ async function startSecondLoop(parsedOldData) {
     if (parsedOldData && parsedOldData.members) {
         parsedOldData.members.forEach(m => {
             if(m.equipment.weapon) { let w = masterData.items[m.equipment.weapon]; if(w && w.power > maxPwr) { maxPwr = w.power; bestWeaponId = w.id; } }
-            m.inventory.forEach(itemId => { let it = masterData.items[itemId]; if(it && it.type === 'weapon' && it.power > maxPwr) { maxPwr = it.power; bestWeaponId = it.id; } });
+            (m.inventory||[]).forEach(itemId => { let it = masterData.items[itemId]; if(it && it.type === 'weapon' && it.power > maxPwr) { maxPwr = it.power; bestWeaponId = it.id; } });
         });
     }
     partyData = await loadExternalData('party'); partyData.flags = { is_second_loop: true };
@@ -8085,7 +8085,7 @@ async function showTitleScreen() {
             return;
         }
         else if(choiceStr === 'ぼうけんのしょ') {
-            if(s) { partyData = JSON.parse(s); partyData.members.forEach(m => { if (!m.equipment.shield) m.equipment.shield = null; if (!m.equipment.helmet) m.equipment.helmet = null; if (!m.equipment.accessory) m.equipment.accessory = null; }); if (!partyData.flags) partyData.flags = {}; if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps['map_field_2_2'] = true; applyGrowthDataToParty(false); break; }
+            if(s) { partyData = JSON.parse(s); partyData.members.forEach(m => { if (!m.equipment.shield) m.equipment.shield = null; if (!m.equipment.helmet) m.equipment.helmet = null; if (!m.equipment.accessory) m.equipment.accessory = null; if (!m.inventory) m.inventory = []; }); if (!partyData.flags) partyData.flags = {}; if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps['map_field_2_2'] = true; applyGrowthDataToParty(false); break; }
             else { await showCustomDialog('alert', "ぼうけんのしょ が ありません。"); }
         }
         else if(choiceStr === 'つづきから（2周目）') { let parsed = JSON.parse(s); await startSecondLoop(parsed); break; }
