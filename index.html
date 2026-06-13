@@ -946,7 +946,18 @@ let npcWanderTick = 0;          // drawMap 呼び出し回数カウンター
 let _lastWanderMapId = null;    // マップ変更検出用
 let _walkPhase = 0; let _lastMoveTime = 0;
 // 静的タイルキャッシュ（カメラ位置が変わるまで再描画不要な背景レイヤー）
-let _staticTileCache = null; let _staticCacheKey = ''; let _cachedLights = [];
+let _staticTileCache = null; let _staticCacheKey = ''; let _cachedLights = []; let _cachedCanvas = null; let _cachedCtx = null;
+let _fieldRafId = null; let _lastFieldDraw = 0;
+function startFieldLoop() {
+    if (_fieldRafId) return;
+    const _loop = (ts) => {
+        if (state !== 'FIELD' && state !== 'MSG') { _fieldRafId = null; return; }
+        // 100ms以下なら再描画スキップ（静止時の無駄な再描画を防ぐ）
+        if (ts - _lastFieldDraw >= 80) { _lastFieldDraw = ts; if (partyData && partyData.pos) drawMap(); }
+        _fieldRafId = requestAnimationFrame(_loop);
+    };
+    _fieldRafId = requestAnimationFrame(_loop);
+}
 // getMapRandom 結果キャッシュ（結果は時不変なので一度計算すれば十分）
 const _gmrCache = {};
 const tilesetImg = new Image(); tilesetImg.crossOrigin = "Anonymous"; tilesetImg.src = "https://cdn.gravity.place/aiugc/game/material/2026-04-09/88e120ab-ee16-4c1a-bdfb-4ffad407b6ad.jpeg";
@@ -3016,7 +3027,29 @@ async function handleFieldInput(key) {
     if(key === 'Escape') openMainMenu(); 
 }
 function showWindow(id) { document.getElementById(id).style.display = 'flex'; } function hideWindow(id) { document.getElementById(id).style.display = 'none'; } function hideAllWindows() { hideWindow('msg-window'); hideWindow('cmd-window'); hideWindow('party-status'); hideWindow('status-window'); hideWindow('gold-window'); hideWindow('map-name-window'); }
-async function typeMessage(text) { state = 'MSG'; document.getElementById('msg-window').style.display = 'block'; const msgDiv = document.getElementById('msg-text'); msgDiv.innerHTML = ""; for(let i=0; i<text.length; i++) { if(text[i] === '\n') msgDiv.innerHTML += '<br>'; else msgDiv.innerHTML += text[i]; await new Promise(r => setTimeout(r, 20)); } msgDiv.innerHTML += '<span class="blink">▼</span>'; await new Promise(resolve => { inputCallback = (key) => { if(key === 'Enter' || key === 'Escape') { inputCallback = null; resolve(); } }; }); }
+async function typeMessage(text) {
+    state = 'MSG';
+    const _mw = document.getElementById('msg-window'); _mw.style.display = 'block';
+    const msgDiv = document.getElementById('msg-text');
+    // HTMLエスケープ + 改行変換（一括変換で効率化）
+    const _fullHtml = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    let _skipTyping = false;
+    // タイピング中のスキップ: Enterで全文即表示
+    inputCallback = (key) => { if(key==='Enter'||key==='Escape') _skipTyping = true; };
+    if (text.length > 4) {
+        // 4文字チャンク表示（DOM操作をtext.length/4に削減）
+        let _buf = ''; const _chunks = Math.ceil(text.length / 4);
+        for (let _ci = 0; _ci < _chunks; _ci++) {
+            if (_skipTyping) break;
+            _buf += text.slice(_ci*4, _ci*4+4).replace(/\n/g,'<br>');
+            msgDiv.innerHTML = _buf;
+            await new Promise(r => setTimeout(r, 16));
+        }
+    }
+    msgDiv.innerHTML = _fullHtml + '<span class="blink">▼</span>';
+    // Enterキーを待つ
+    await new Promise(resolve => { inputCallback = (key) => { if(key==='Enter'||key==='Escape') { inputCallback=null; resolve(); } }; });
+}
 async function selectMenu(options, containerId, columns = 1, cancelable = false) { const el = document.getElementById(containerId); el.style.display = 'block'; return new Promise(resolve => { let cursor = 0; const render = () => { let html = `<div style="display:grid; grid-template-columns:repeat(${columns}, 1fr); gap: 5px;">`; options.forEach((opt, i) => { html += `<div>${i === cursor ? '▶' : '&nbsp;&nbsp;'}${opt}</div>`; }); html += `</div>`; el.innerHTML = html; }; render(); inputCallback = (key) => { let moved = false; if(key === 'ArrowUp') { cursor = (cursor - columns + options.length) % options.length; moved = true; } if(key === 'ArrowDown') { cursor = (cursor + columns) % options.length; moved = true; } if(key === 'ArrowLeft') { cursor = (cursor - 1 + options.length) % options.length; moved = true; } if(key === 'ArrowRight') { cursor = (cursor + 1) % options.length; moved = true; } if(moved) AudioManager.playSE('cursor'); render(); if(key === 'Enter') { AudioManager.playSE('decision'); inputCallback = null; el.style.display = 'none'; resolve(cursor); } if(cancelable && key === 'Escape') { AudioManager.playSE('cancel'); inputCallback = null; el.style.display = 'none'; resolve(-1); } }; }); }
 
 // ページング対応セレクトメニュー（項目数が多い時に◀戻る / 次へ▶でページ送り）
@@ -4453,9 +4486,9 @@ function drawMap() {
     const _curWanderMapId = partyData && partyData.pos ? partyData.pos.map : null;
     if (_curWanderMapId !== _lastWanderMapId) { _lastWanderMapId = _curWanderMapId; initNpcWander(); }
     npcWanderTick++;
-    if (npcWanderTick % 15 === 0) tickNpcWander();
+    if (npcWanderTick % 30 === 0) tickNpcWander();
 
-    const canvas = document.getElementById('screen'); const ctx = canvas.getContext('2d'); const cWidth = canvas.width; const cHeight = canvas.height; ctx.clearRect(0, 0, cWidth, cHeight);
+    if (!_cachedCanvas || !_cachedCanvas.isConnected) { _cachedCanvas = document.getElementById('screen'); _cachedCtx = _cachedCanvas.getContext('2d', {alpha:false}); } const canvas = _cachedCanvas; const ctx = _cachedCtx; const cWidth = canvas.width; const cHeight = canvas.height; ctx.clearRect(0, 0, cWidth, cHeight);
     const camX = partyData.pos.x * TILE_SIZE - cWidth/2 + TILE_SIZE/2; const camY = partyData.pos.y * TILE_SIZE - Math.floor(cHeight * 0.3) + TILE_SIZE/2;
     const _mapId = partyData.pos.map;
     const isCastle = _mapId.includes('castle'); const isTown = _mapId.includes('town') || _mapId.includes('market') || _mapId.includes('village'); const isCave = _mapId.includes('dungeon') || _mapId.includes('cave'); const isMountain = _mapId === 'map_field_north_2';
@@ -4476,7 +4509,7 @@ function drawMap() {
             if (_ngx < 0 || _ngy < 0 || _ngx >= 5 || _ngy >= 5) continue;
             const _nMapId2 = `map_field_${_ngx}_${_ngy}`;
             const _nMap2 = externalMapData[_nMapId2];
-            if (_nMap2) _mapsToRender.push({ map: _nMap2, mapId: _nMapId2, offX: _ndx * 15, offY: _ndy * 15 });
+            if (_nMap2) _mapsToRender.push({ map: _nMap2, mapId: _nMapId2, offX: _ndx * (_nMap2.width||45), offY: _ndy * (_nMap2.height||45) });
         }}
     } else {
         _mapsToRender.push({ map: currentMap, mapId: _mapId, offX: 0, offY: 0 });
@@ -4486,16 +4519,22 @@ function drawMap() {
     const _sCacheHit = _staticCacheKey === _sCacheKey && _staticTileCache && _staticTileCache.width === cWidth && _staticTileCache.height === cHeight;
     let _dc;
     if (!_sCacheHit) {
-        if (!_staticTileCache || _staticTileCache.width !== cWidth || _staticTileCache.height !== cHeight) { _staticTileCache = document.createElement('canvas'); _staticTileCache.width = cWidth; _staticTileCache.height = cHeight; }
+        if (!_staticTileCache || _staticTileCache.width !== cWidth || _staticTileCache.height !== cHeight) { try { _staticTileCache = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(cWidth, cHeight) : document.createElement('canvas'); } catch(e) { _staticTileCache = document.createElement('canvas'); } _staticTileCache.width = cWidth; _staticTileCache.height = cHeight; }
         _dc = _staticTileCache.getContext('2d'); _dc.clearRect(0, 0, cWidth, cHeight);
     }
 
+    // 可視タイル範囲を事前計算（全タイル走査から可視タイルのみに削減）
+    const _visTX0 = Math.floor(camX / TILE_SIZE) - 1;
+    const _visTX1 = Math.ceil((camX + cWidth) / TILE_SIZE) + 1;
+    const _visTY0 = Math.floor(camY / TILE_SIZE) - 1;
+    const _visTY1 = Math.ceil((camY + cHeight) / TILE_SIZE) + 1;
     for (const { map: _rMap, mapId: _rMapId, offX: _rOX, offY: _rOY } of _mapsToRender) {
-    for(let y = 0; y < _rMap.height; y++) {
-        for(let x = 0; x < _rMap.width; x++) {
+    const _txMin=Math.max(0,_visTX0-_rOX), _txMax=Math.min(_rMap.width-1,_visTX1-_rOX);
+    const _tyMin=Math.max(0,_visTY0-_rOY), _tyMax=Math.min(_rMap.height-1,_visTY1-_rOY);
+    for(let y = _tyMin; y <= _tyMax; y++) {
+        for(let x = _txMin; x <= _txMax; x++) {
             const vx = x+_rOX, vy = y+_rOY;
             const tile = _rMap.tiles[y * _rMap.width + x]; const px = vx*TILE_SIZE - camX; const py = vy*TILE_SIZE - camY;
-            if (px < -TILE_SIZE || px > cWidth || py < -TILE_SIZE || py > cHeight) continue;
             if (_sCacheHit || tile === 5 || tile === 8 || tile === 23) continue;
             let bgImg = null; let fgImg = null; let color = getTileColor(tile);
             // 文脈別フォールバックカラー（外部画像が読めない時の補正）
@@ -6065,7 +6104,7 @@ async function checkAction() {
                             let _retMapId = (externalMapData && externalMapData['map_town_01']) ? 'map_town_01' : Object.keys(externalMapData||{})[0] || 'map_town_01';
                             partyData.pos = { map: _retMapId, x: 10, y: 18 }; partyData.dir = 2;
                             currentMap = await loadExternalData('map-' + _retMapId); moveHistory = [];
-                            state = 'FIELD'; hideAllWindows(); drawMap(); updateBGM(); return;
+                            state = 'FIELD'; hideAllWindows(); drawMap(); updateBGM(); startFieldLoop(); return;
                         } else if (_isFinal) {
                             // 1周目・衝撃の大どんでん返し（最終形態なし）
                             await typeMessage("【グラ王】\nよく……ぞ…… 我が……末裔よ……");
@@ -7182,12 +7221,12 @@ ${act.actor.name}の ちからが すいとられた！`); }
         bScreen.style.display = 'none'; screen.style.display = 'block'; hideAllWindows(); inputCallback = null; drawMap(); updateBGM();
         screen.style.opacity = '1'; await new Promise(r => setTimeout(r, 1000)); screen.style.transition = '';
         let leaderName = partyData.members[0] ? partyData.members[0].name : "ゆうしゃ"; await typeMessage(`おお ${leaderName}！\nしんでしまうとは なにごとだ！`); await typeMessage(`そなたに もういちど 機会をあたえよう。\nふたたび たびだつのだ！`);
-        updateGoldWindow(); updatePartyStatus(); hideAllWindows(); state = 'FIELD'; 
+        updateGoldWindow(); updatePartyStatus(); hideAllWindows(); state = 'FIELD'; startFieldLoop();
         return false;
     }
     
     partyData.members.forEach(m => { resetBattleState(m); }); 
-    bScreen.style.display = 'none'; document.getElementById('screen').style.display = 'block'; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM();
+    bScreen.style.display = 'none'; document.getElementById('screen').style.display = 'block'; hideAllWindows(); state = 'FIELD'; drawMap(); updateBGM(); startFieldLoop();
     
     return (!escaped && partyData.members.some(m=>m.hp>0)); 
 }
