@@ -4642,7 +4642,29 @@ function drawMap() {
             const _nBob = _noAnim ? 0 : Math.round(Math.sin(Date.now() / 900 + parseInt(nx) * 2.3 + parseInt(ny) * 1.7) * 1.5);
             const px = _basePx; const py = _basePy + _nBob;
             if (px < -TILE_SIZE*2 || px > cWidth || py < -TILE_SIZE*2 || py > cHeight) return;
-            if(npc.id.startsWith('obj_seed_')) {
+            if(npc.id === 'obj_ship_waiting') {
+                // 停泊中の船: 洞窟クリア後に西岸に出現、乗ると has_ship 取得
+                const _shipImg = externalImages['shipSprite'];
+                const _sw = Date.now();
+                // 波の揺れアニメーション
+                const _swBob = Math.sin(_sw / 600) * 2;
+                if (_shipImg && _shipImg.complete && _shipImg.naturalHeight > 0) {
+                    const _sH = TILE_SIZE * 2.2, _sW = Math.round(_sH * _shipImg.naturalWidth / _shipImg.naturalHeight);
+                    ctx.save();
+                    ctx.translate(px + TILE_SIZE/2, py + TILE_SIZE + _swBob);
+                    ctx.drawImage(_shipImg, -_sW/2, -_sH, _sW, _sH);
+                    ctx.restore();
+                } else {
+                    // フォールバック: テキスト表示
+                    ctx.font = `${TILE_SIZE * 1.2}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('⛵', px + TILE_SIZE/2, py + TILE_SIZE/2 + _swBob);
+                }
+                // 「乗れる」ヒントのきらめき
+                const _sg = ctx.createRadialGradient(px+TILE_SIZE/2, py-4+_swBob, 1, px+TILE_SIZE/2, py-4+_swBob, 10);
+                _sg.addColorStop(0, `rgba(150,220,255,${0.5+Math.sin(_sw/400)*0.3})`);
+                _sg.addColorStop(1, 'rgba(100,180,255,0)');
+                ctx.fillStyle = _sg; ctx.beginPath(); ctx.arc(px+TILE_SIZE/2, py-4+_swBob, 10, 0, Math.PI*2); ctx.fill();
+            } else if(npc.id.startsWith('obj_seed_')) {
                 const _st = Date.now() / 600 + parseInt(nx) * 1.7 + parseInt(ny) * 2.3;
                 ctx.save(); ctx.globalAlpha = 0.7 + Math.sin(_st) * 0.3;
                 ctx.font = "20px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -5417,6 +5439,22 @@ async function checkAction() {
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
+            if (npc.id === "obj_ship_waiting") {
+                if (partyData.flags.has_ship) {
+                    await typeMessage("船はもう お前の ものだ。\n自由に 使うがよい。");
+                } else {
+                    await typeMessage("岸辺に 一艘の 船が 静かに 係留されている……\n守護霊が 遺した 船だ。\n乗っていくか？");
+                    const _yn = await selectMenu(["はい（乗り込む）", "いいえ"], 'cmd-window', 1, true);
+                    if (_yn === 0) {
+                        AudioManager.playSE('item_get');
+                        partyData.flags.has_ship = true;
+                        delete currentMap.npcs[key];
+                        await typeMessage(`${partyData.members[0]?.name||'勇者'}たちは 船に 乗り込んだ！\n海の タイルを 自由に 移動できる！`);
+                        await typeMessage("（……波音が 風に 乗って 聞こえてくる。\nいよいよ 大海原へ 漕ぎ出す 時だ……！）");
+                    }
+                }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
             if (npc.id === "obj_chest_star_frag") {
                 if (!partyData.flags.flag_has_star_fragment) { await typeMessage("地面が キラキラと 光っている……！"); AudioManager.playSE('item_get'); await typeMessage("『ほしのカケラ』を てにいれた！"); let target = partyData.members.find(m => m.inventory.length < 8 && m.hp > 0) || partyData.members[0]; if(target.inventory.length < 8) target.inventory.push("i_star_frag"); else target.inventory[0] = "i_star_frag"; partyData.flags.flag_has_star_fragment = true; delete currentMap.npcs[key]; }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
@@ -6064,11 +6102,25 @@ async function checkAction() {
                             partyData.flags.flag_dungeon_cleared = true;
                             await typeMessage("【元・王宮騎士の英霊】\n……見事じゃ。\nその 剣の 軌跡……\nまぎれもなく あの御方の 流儀じゃ。");
                             await typeMessage("【元・王宮騎士の英霊】\n最後に……ひとつだけ。\nあの城には……近づきすぎるな。\n国王と呼ばれる 者の 影を……よく 見ろ。");
-                            await typeMessage("【元・王宮騎士の英霊】\n……ひとつ、礼を させてくれ。\nこの洞窟の 西、浜辺に\nわしの 主君が 百年 前から 遺した 船がある。\nその 船……お前に 預けよう。\n海を 渡り、真実を 確かめるのだ。");
-                            AudioManager.playSE('item_get');
-                            partyData.flags.has_ship = true;
-                            await typeMessage(`${_heroName}たちは 船を 手に入れた！\n海の タイルを 自由に 移動できる！`);
+                            await typeMessage("【元・王宮騎士の英霊】\n……ひとつ、礼を させてくれ。\nこの洞窟の 西、浜辺に\nわしの 主君が 百年 前から 遺した 船がある。\n浜辺へ 行けば 船が 見つかるはずじゃ……\n海を 渡り、真実を 確かめるのだ。");
                             await typeMessage("守護霊は 静かに 光に 包まれ……\n風の如く 消えていった。");
+                            // 洞窟の西岸に船NPCを1度だけ配置
+                            (function(){
+                                for(const _smId of ['map_field_0_3','map_field_0_4']){
+                                    const _sm=externalMapData&&externalMapData[_smId]; if(!_sm) continue;
+                                    // すでに配置済みならスキップ
+                                    if(Object.values(_sm.npcs||{}).some(n=>n.id==='obj_ship_waiting')) return;
+                                    // 西側から走査: 陸地で西隣が海のタイルを探す
+                                    for(let _x=2;_x<20;_x++) for(let _y=5;_y<_sm.height-5;_y++){
+                                        const _t=_sm.tiles[_y*_sm.width+_x];
+                                        const _wt=_x>0?_sm.tiles[_y*_sm.width+(_x-1)]:5;
+                                        if(_t!==5&&_t!==1&&_t!==4&&_t!==15&&_t!==16&&_t!==17&&_t!==18&&_t!==19&&_t!==20&&_wt===5&&!_sm.exits[`${_x},${_y}`]&&!_sm.npcs[`${_x},${_y}`]){
+                                            _sm.npcs[`${_x},${_y}`]={id:'obj_ship_waiting',name:'停泊中の船'};
+                                            return;
+                                        }
+                                    }
+                                }
+                            })();
                         } else if (npc.id === 'boss_sky') {
                             partyData.flags.flag_tower_cleared = true;
                             partyData.flags.flag_sky_truth_known = true;
