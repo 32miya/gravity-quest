@@ -2066,6 +2066,8 @@ function generateFieldMapsForGravityQuest() {
     fillEll(22, 202,  20, 18, 11); // 洞窟島 (0_4 中心)
     fillEll(38, 182,  12, 10, 11); // 小橋 (0_3/0_4 境界)
     fillEll(22, 157,  16, 14, 11); // 西端岸 (0_3)
+    fillEll(20, 135,  14, 10, 11); // 西海岸橋（0_2/0_3境界）徒歩ルート確保
+    fillEll(18, 112,  12,  8, 11); // 西海岸中部補強（0_2西端）
     fillEll(70, 195,  14, 12, 11); // SW東島 (1_4)
 
     // --- 南中島（祠） row3-4, col2 ---
@@ -2096,10 +2098,9 @@ function generateFieldMapsForGravityQuest() {
     fillEllCond(198, 162,  8,  5, 20); // 魔王島 山
 
     // === 海路必須エリアの陸路切断 ===
-    // 主大陸 ↔ SW諸島: y=142-155, x=0-95
-    for(let _y=142;_y<=155;_y++) for(let _x=0;_x<=95;_x++) world[_y*GW+_x]=5;
-    // 主大陸 ↔ 南中島: y=142-150, x=90-140
-    for(let _y=142;_y<=150;_y++) for(let _x=90;_x<=140;_x++) world[_y*GW+_x]=5;
+    // 西海岸(x<50)は切断しない → 徒歩で洞窟(0_4)に到達可能
+    // SW中央部 ↔ 主大陸: y=148-158, x=50-140（南西の村・祠は船必須）
+    for(let _y=148;_y<=158;_y++) for(let _x=50;_x<=140;_x++) world[_y*GW+_x]=5;
     // 東大陸 ↔ 魔王島: y=145-160, x=163-225
     for(let _y=145;_y<=160;_y++) for(let _x=163;_x<=224;_x++) world[_y*GW+_x]=5;
     // 外周2タイルを強制水（マップ端で世界が閉じる）
@@ -5727,20 +5728,20 @@ async function checkAction() {
             // ★ストーリー導線ガイドNPC
             if (npc.id === "npc_guide_north") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n魔王を 倒したとは！\nあなたたちが 世界の 英雄ですね！"); }
-                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n試練の 洞窟を 乗り越えたなら\n東の 大陸へ 向かいましょう。\n天空の 塔が あの方向に あります！"); }
+                else if (partyData.flags.flag_dungeon_cleared) { await typeMessage("【案内人】\n試練の 洞窟を 乗り越えたなら\n船も 手に 入ったはず！\n次は 東の 大陸へ 向かいましょう。\n天空の 塔が あの方向に あります！"); }
                 else { await typeMessage("【案内人】\nこの 先 南西へ 進むと\n試練の 洞窟があります。\nまずは そこで 力を 試してみては？"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_east_tower") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\n世界に 平和が 戻りました。\nあなたたちの おかげです！"); }
-                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【案内人】\n天空の 塔を 制覇したなら\n次は 南の 海を 渡るしか ありません。\n港町で 船を 手に入れましょう。"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【案内人】\n天空の 塔を 制覇したとは 見事！\n船も あるのでしょう？\n南の 海を 渡れば\n魔王の 島が 待っています！"); }
                 else { await typeMessage("【案内人】\n東の 大陸の 北に\n天空の 塔が そびえています。\n塔の 頂には 伝説の 守護者が いるそうですよ。"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_south") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【案内人】\nお疲れ様でした！\n世界が 救われましたね！"); }
-                else if (partyData.flags.has_ship) { await typeMessage("【案内人】\n船を 持っているのですね。\n南の 海を 渡ると\n魔王の 島が あります。\n気をつけて！"); }
-                else { await typeMessage("【案内人】\n南の 港町に 行けば\n海を 渡る 船が 手に 入るかもしれません。\nレベルを 上げて 挑戦してみては？"); }
+                else if (partyData.flags.has_ship) { await typeMessage("【案内人】\n船を 持っているのですね。\n東の 天空の 塔にも 行けますし\n南の 海を 渡れば 魔王の 島が。\n気をつけて！"); }
+                else { await typeMessage("【案内人】\n南西に 試練の 洞窟が あります。\nそこを 乗り越えれば\n海への 扉が 開きますよ。\nまずは 力を 蓄えましょう！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_guide_demon") {
@@ -5829,7 +5830,7 @@ async function checkAction() {
             if (npc.id === "npc_guide_02") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【村長】\n魔王が 倒れたと 聞きました！\nこの村にも やっと 平和が 訪れますね……！"); }
                 else if (partyData.flags.has_ship) { await typeMessage("【村長】\n船を 手に 入れたのですか！\n北の 海の むこうに グラマニア城が あります。\n気を つけて いってらっしゃい！"); }
-                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【村長】\n天空の 塔を 登ったとは 見事！\n南に 港町が ございます。\n船を 手に 入れれば 海を 渡れますよ。"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【村長】\n天空の 塔まで 登ったとは！\n洞窟で 受け継いだ 船で\n南の 海を 渡れば\n魔王の 城が 見えるでしょう。"); }
                 else { await typeMessage("【村長】\nここは 南西の 村 ガルド。\n旅人よ、よくぞ 来てくれた。\n東へ 進めば 大きな 町や\n天空の 塔が あるらしい。\n腕を 磨いて 旅を 続けるがよい！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -5900,7 +5901,7 @@ async function checkAction() {
             }
             if (npc.id === "npc_bar_soldier_01") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【衛兵】\n魔王が 倒されたとは！\n我々 衛兵も これで\n剣を 置ける 日が 来るかもしれぬ。\nご苦労だった！"); }
-                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【衛兵】\n天空の 塔の 頂上を 制覇したとは……\nその 実力 なら 魔王にも\n立ち向かえる かもしれぬな。\n港の 船乗りに 会いに 行くとよい。"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【衛兵】\n天空の 塔の 頂上を 制覇したとは……\nその 実力 なら 魔王にも\n立ち向かえる かもしれぬな。\n船で 南の 海を 渡るのだ！"); }
                 else { await typeMessage("【衛兵】\n北の 天空の 塔への 道は\n我々が 警備しておる。\n魔物が 多く 危険だが……\nあの 頂上には 何か 大切なものが\n眠っているという 話だ。"); }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -5913,7 +5914,7 @@ async function checkAction() {
             if (npc.id === "npc_bar_fisherman_01") {
                 if (partyData.flags.last_boss_defeated) { await typeMessage("【海の男】\n魔王の 島にも 近づけるように なったな。\nあの 辺りは 海流が 複雑だが……\n探索しがいは あるぞ。"); }
                 else if (partyData.flags.has_ship) { await typeMessage("【海の男】\nおう、船乗りか！\n南東の 海を 渡ると\n巨大な 黒い 城が 浮かぶ 島があるぞ。\nあの 辺りの 海は 荒れてる……\nくれぐれも 気をつけろよ。"); }
-                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【海の男】\n塔を 登ったのか。\nじゃあ 次は 船だな。\nポートピアの 港は\nここから 南へ まっすぐ 下ればある。\nレベルを 上げていけよ。"); }
+                else if (partyData.flags.flag_tower_cleared) { await typeMessage("【海の男】\n塔まで 登ったのか。\nなら 洞窟の 船も あるんだろ？\nそれで 南の 海を 渡れ。\n魔王の 島は 覚悟して 行けよ。"); }
                 else { await typeMessage("【海の男】\n俺は 昔 船乗りだった。\n南の ポートピアに行って 船を 借りれば\n海の 向こうまで 行けるぞ。\nまあ 今は 魔物が 多くて\n無理だろうがな……。"); }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -6019,38 +6020,25 @@ async function checkAction() {
                 if (npc.id === 'npc_port_town') {
                     const _ptk = Object.keys(externalMapData).find(k => k.includes('port'));
                     const _hasShip2 = partyData.flags && partyData.flags.has_ship;
-                    // 船入手ゲート: 天空の塔クリア or LV15以上（迂回防止の二重条件）
-                    const _avgLv = Math.floor(partyData.members.reduce((s,m) => s+(m.lv||1), 0) / partyData.members.length);
-                    const _towerCleared = partyData.flags && (partyData.flags.flag_tower_cleared || partyData.flags.flag_dungeon_cleared && _avgLv >= 15);
-                    const _canGetShip = !_hasShip2 && _towerCleared;
                     if (_hasShip2) {
-                        await typeMessage("【船乗り】\nいってらっしゃい！\n船は もう あなたのものです。\nたくみに つかいこなしてください！");
-                    } else if (_canGetShip) {
-                        await typeMessage("【船乗り】\nおお！ 天空の 守護者を 倒した\n実力者が 来たか……！\n大海原を わたれる 力が あるとお見受けします。\n船を お使いになりますか？");
-                        const _yn2 = await selectMenu(["船を手に入れる", "港町に入る", "やめる"], 'cmd-window', 0, true);
-                        if (_yn2 === 0) {
-                            partyData.flags.has_ship = true; AudioManager.playSE('item_get');
-                            await typeMessage("【船乗り】\nこの船は あなたに さしあげます！\n海の タイルを 自由に うごけますよ！");
-                            await typeMessage("【船乗り】\nせっかくだから 教えてあげましょう。\n各地の 孤島には 竜霊の 祠や\n海賊が 潜む 洞窟も あるとか……\n南の 海の 果てには 魔王の 城が。\n死にたくなければ 万全の 準備を！");
-                        } else if (_yn2 === 1 && _ptk) {
-                            const _pm = externalMapData[_ptk];
-                            partyData.pos.map = _ptk; partyData.pos.x = Math.floor(_pm.width / 2); partyData.pos.y = Math.max(1, _pm.height - 3);
-                            currentMap = await loadExternalData('map-' + _ptk); moveHistory = []; drawMap(); updateBGM();
-                        } else { await typeMessage("またの おこしを おまちしております！"); }
+                        await typeMessage("【船乗り】\nもう 船を お持ちですね！\nいってらっしゃいませ。\n海の 旅、気をつけて！");
+                    } else if (partyData.flags && partyData.flags.flag_dungeon_cleared) {
+                        // 洞窟クリア済みだが何らかの理由で船を持っていない場合のバックアップ
+                        await typeMessage("【船乗り】\nおお、試練の 洞窟を 乗り越えたお方ですね！\n聞きましたよ……守護霊の 船を 譲り受けると。\n遠慮せず 使ってください！");
+                        AudioManager.playSE('item_get');
+                        partyData.flags.has_ship = true;
+                        await typeMessage(`船を 手に入れた！\n海の タイルを 自由に 移動できる！`);
                     } else {
-                        // 塔未クリアの場合: 条件と道筋を教える
-                        if (!partyData.flags.flag_dungeon_cleared) {
-                            await typeMessage("【船乗り】\nおや？ まだ 旅の 初めの 方ですね。\n北の 試練の 洞窟で\n実力を 試してから また 来てください。");
-                        } else {
-                            await typeMessage("【船乗り】\nあなたの 実力では まだ 船を\nあつかえないかもしれません……\n東の 天空の 塔の 守護者を\n倒してきたら 船を お貸しできますよ。");
-                        }
-                        await typeMessage("【船乗り】\nただ 港町への ご案内は できますが……\nはいりますか？");
+                        await typeMessage("【船乗り】\nおや？ まだ 旅の 初めの 方ですね。\n南西に 試練の 洞窟が あります。\nそこで 実力を 証明してきたら\nきっと 道が 開けるでしょう。");
+                    }
+                    if (_ptk) {
+                        await typeMessage("【船乗り】\n港町に ご案内しましょうか？");
                         const _yn = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
-                        if (_yn === 0 && _ptk) {
+                        if (_yn === 0) {
                             const _pm = externalMapData[_ptk];
                             partyData.pos.map = _ptk; partyData.pos.x = Math.floor(_pm.width / 2); partyData.pos.y = Math.max(1, _pm.height - 3);
                             currentMap = await loadExternalData('map-' + _ptk); moveHistory = []; drawMap(); updateBGM();
-                        } else { await typeMessage("またの おこしを おまちしております！"); }
+                        }
                     }
                 }
                 else if (npc.id.includes('chest')) {
@@ -6107,6 +6095,10 @@ async function checkAction() {
                             partyData.flags.flag_dungeon_cleared = true;
                             await typeMessage("【元・王宮騎士の英霊】\n……見事じゃ。\nその 剣の 軌跡……\nまぎれもなく あの御方の 流儀じゃ。");
                             await typeMessage("【元・王宮騎士の英霊】\n最後に……ひとつだけ。\nあの城には……近づきすぎるな。\n国王と呼ばれる 者の 影を……よく 見ろ。");
+                            await typeMessage("【元・王宮騎士の英霊】\n……ひとつ、礼を させてくれ。\nこの洞窟の 西、浜辺に\nわしの 主君が 百年 前から 遺した 船がある。\nその 船……お前に 預けよう。\n海を 渡り、真実を 確かめるのだ。");
+                            AudioManager.playSE('item_get');
+                            partyData.flags.has_ship = true;
+                            await typeMessage(`${_heroName}たちは 船を 手に入れた！\n海の タイルを 自由に 移動できる！`);
                             await typeMessage("守護霊は 静かに 光に 包まれ……\n風の如く 消えていった。");
                         } else if (npc.id === 'boss_sky') {
                             partyData.flags.flag_tower_cleared = true;
