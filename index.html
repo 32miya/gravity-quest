@@ -768,12 +768,13 @@ window.SOUND_DATABASE = {
 <script>
 window.isGuraKingBattle = false;
 
-// ===== DQ2スタイル ふっかつのじゅもん（113文字かなパスワード）=====
+// ===== DQ2スタイル ふっかつのじゅもん（116文字かなパスワード）=====
 // 64文字ひらがなテーブル（6ビット/文字）
 // ※をと だ行を省いてば行を収録（だ行文字は た行に近似変換）
 const _GQ_KANA64 = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわんっゃゅょがぎぐげござじずぜぞばびぶべぼ';
-// 職業テーブル（3ビット=8種）
-const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','格闘家','忍者','道化師'];
+// 職業テーブル（4ビット=16種）— 転職で選べる全職業名を網羅
+const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','格闘家','忍者','道化師',
+                  'パラディン','盗賊','魔剣士','踊り子','召喚士','魔法戦士','モンク','商人'];
 // マップIDテーブル（6ビット=64種）
 const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4','map_eden'];
 // アイテム/装備コンパクトIDテーブル（8ビット=256種、0=なし）
@@ -832,25 +833,33 @@ function _gqBitUnpack(bytes) {
     return (n) => { let v=0; for(let i=0;i<n;i++) v=(v<<1)|(bits[pos++]||0); return v; };
 }
 
-// 名前の正規化: カタカナ→ひらがな変換、テーブル外文字を近似変換
-function _gqNormName(name) {
-    const _approx = {'を':'わ','だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と','ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ'};
-    return [...(name||'')].map(c => {
-        const cp = c.codePointAt(0);
-        if (cp >= 0x30A1 && cp <= 0x30F6) c = String.fromCodePoint(cp - 0x60); // カタカナ→ひらがな
-        return _approx[c] ?? c;
-    }).join('');
-}
-// かな名前のエンコード: 4文字×6ビット
+// かな名前エンコード: 7ビット/文字 (0-63=ひらがな, 64-127=カタカナ)
+// ひらがなはそのまま、カタカナは 64+hiragana_index で保持
 function _gqEncodeName(name) {
-    const s = _gqNormName(name).padEnd(4,'あ').slice(0,4);
-    return [...s].map(c=>{ const i=_GQ_KANA64.indexOf(c); return [i>=0?i:0,6]; });
+    const chars = [...(name||'')].slice(0,4);
+    while(chars.length<4) chars.push('あ');
+    const _approx={'を':'わ','だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と','ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ'};
+    return chars.map(c=>{
+        const cp=c.codePointAt(0);
+        if(cp>=0x30A1&&cp<=0x30F6){
+            // カタカナ → 対応ひらがなのインデックス+64
+            let h=String.fromCodePoint(cp-0x60);
+            h=_approx[h]??h;
+            const i=_GQ_KANA64.indexOf(h); return [i>=0?64+i:64,7];
+        }
+        const c2=_approx[c]??c;
+        const i=_GQ_KANA64.indexOf(c2); return [i>=0?i:0,7];
+    });
 }
-// かな名前のデコード
-function _gqDecodeName(read) {
-    return [0,1,2,3].map(()=>_GQ_KANA64[read(6)]||'　').join('').trimEnd();
+// かな名前デコード: bitsが7の場合64以上ならカタカナ復元、6の場合は旧形式
+function _gqDecodeName(read,bits=7){
+    return [0,1,2,3].map(()=>{
+        const idx=read(bits);
+        if(bits===7&&idx>=64){const h=_GQ_KANA64[idx-64];if(!h)return'　';return String.fromCodePoint(h.codePointAt(0)+0x60);}
+        return _GQ_KANA64[idx&63]||'　';
+    }).join('').trimEnd();
 }
-// DQ2スタイル 5文字区切り表示（113文字）
+// DQ2スタイル 5文字区切り表示（116文字）
 function _gqFormatPwd(kana) {
     let out=''; for(let i=0;i<kana.length;i+=5){ if(i>0)out+=' '; out+=kana.slice(i,i+5); } return out;
 }
@@ -867,14 +876,14 @@ function packSaveData(pData) {
     fields.push([Math.min((pData.pos||{}).x||0,63), 6]);
     fields.push([Math.min((pData.pos||{}).y||0,63), 6]);
     for (const k of _GQ_FLAGS) fields.push([f[k]?1:0, 1]);
-    // メンバー×4: 名前(24)+職業(3)+Lv(6)+EXP(14)+装備5本(8bit×5=40)+所持8個(8bit×8=64) = 151ビット×4=604ビット
-    // 合計: 64+604=668ビット → ceil(668/6)=112文字 + チェックサム1文字 = 113文字
+    // メンバー×4: 名前(28=7×4)+職業(4)+Lv(6)+EXP(14)+装備5本(8×5=40)+所持8個(8×8=64) = 156ビット×4=624ビット
+    // 合計: 64+624=688ビット → ceil(688/6)=115文字 + チェックサム1文字 = 116文字
     for (let i=0;i<4;i++) {
         const m=(pData.members||[])[i];
         const _slot = (id) => { const idx=_GQ_EQUIP.indexOf(id||''); return idx>=0?idx:0; };
-        if (!m) { for(let j=0;j<151;j++) fields.push([0,1]); continue; }
-        fields.push(..._gqEncodeName(m.name));
-        const ji=_GQ_JOBS.indexOf(m.job||'勇者'); fields.push([ji>=0?ji:0,3]);
+        if (!m) { for(let j=0;j<156;j++) fields.push([0,1]); continue; }
+        fields.push(..._gqEncodeName(m.name)); // 7bit×4=28ビット
+        const ji=_GQ_JOBS.indexOf(m.job||'勇者'); fields.push([ji>=0?ji:0,4]); // 4ビット
         fields.push([Math.min(m.lv||1,63),6]);
         fields.push([Math.min(Math.floor((m.exp||0)/100),(1<<14)-1),14]);
         // 装備5スロット（weapon/armor/shield/helmet/accessory）各8ビット
@@ -885,7 +894,7 @@ function packSaveData(pData) {
     }
     const payload = _gqBitPack(fields);
     const cs = payload.reduce((a,b)=>a+b,0)%64;
-    const bytes = [cs, ...payload.slice(0,112)]; // 1+112=113文字
+    const bytes = [cs, ...payload.slice(0,115)]; // 1+115=116文字
     return bytes.map(b=>_GQ_KANA64[b%64]).join('');
 }
 
@@ -902,8 +911,10 @@ function unpackSaveData(pwd) {
 
     // ── かなパスワード判定: 先頭文字が_GQ_KANA64に含まれるか ──
     if (_GQ_KANA64.includes(pwd[0])) {
-        // 113文字=8ビット新形式、104文字=7ビット旧形式（互換）
-        const _eb = pwd.length >= 109 ? 8 : 7; // equipment/inventory bits per slot
+        // フォーマット判定: 116文字=新形式(7bit名前,4bit職業), 113文字=旧8bit形式, 104文字=旧7bit形式
+        const _eb = pwd.length >= 109 ? 8 : 7; // 装備/所持品ビット数
+        const _nb = pwd.length >= 115 ? 7 : 6;  // 名前1文字あたりビット数
+        const _jb = pwd.length >= 115 ? 4 : 3;  // 職業ビット数
         const _minLen = _eb === 8 ? 109 : 100;
         if ([...pwd].every(c => _GQ_KANA64.includes(c)) && pwd.length >= _minLen) {
             const bytes = [...pwd].map(c => _GQ_KANA64.indexOf(c));
@@ -919,8 +930,8 @@ function unpackSaveData(pwd) {
             for (const k of _GQ_FLAGS) { if(read(1)) flags[k]=true; }
             const members = [];
             for (let i=0;i<4;i++) {
-                const name = _gqDecodeName(read);
-                const job = _GQ_JOBS[read(3)]||'勇者';
+                const name = _gqDecodeName(read,_nb); // 7bit=カタカナ保持, 6bit=旧形式
+                const job = _GQ_JOBS[read(_jb)]||'勇者';
                 const lv = read(6)||1;
                 const exp = read(14)*100;
                 // 装備5スロット（_ebビット×5）
@@ -3414,17 +3425,19 @@ async function loadExternalData(id) {
                     const _is2ndDark=rawId.includes('town_01')||(rawId.includes('castle_01')&&!rawId.includes('demon'));
                     if(_is2ndDark) {
                         const _g2Ids=['guard','soldier','knight','veteran','npc_story_citizen'];
+                        const _normRaw=_stripMapPfx(rawId);
                         if(!partyData.flags.last_boss_defeated) {
                             // 戦闘に勝った兵士をマップコピーから除去（フラグで永続管理）
                             Object.keys(mapCopy.npcs).forEach(k => {
                                 const _n=mapCopy.npcs[k];
                                 if(_n&&_n.id&&_g2Ids.some(g=>_n.id.includes(g))) {
-                                    if(partyData.flags['2nd_guard_'+rawId+'_'+k]) delete mapCopy.npcs[k];
+                                    // map_プレフィックス有無どちらでも対応
+                                    if(partyData.flags['2nd_guard_'+_normRaw+'_'+k]||partyData.flags['2nd_guard_map_'+_normRaw+'_'+k]) delete mapCopy.npcs[k];
                                 }
                             });
                         } else {
-                            // ラスボス撃破後: 暗黒兵士フラグを除去して通常状態に戻す
-                            Object.keys(partyData.flags).filter(k=>k.startsWith('2nd_guard_'+rawId)).forEach(k=>delete partyData.flags[k]);
+                            // ラスボス撃破後: 暗黒兵士フラグを除去して通常状態に戻す（プレフィックス両形式対応）
+                            Object.keys(partyData.flags).filter(k=>k.startsWith('2nd_guard_'+_normRaw+'_')||k.startsWith('2nd_guard_map_'+_normRaw+'_')).forEach(k=>delete partyData.flags[k]);
                         }
                     }
                 }
@@ -5132,7 +5145,7 @@ function drawMap() {
             const _is2ndPoss = partyData.flags && partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated
                 && (_rMapId.includes('town_01') || (_rMapId.includes('castle_01') && !_rMapId.includes('demon')))
                 && (npc.id.includes('guard') || npc.id.includes('soldier') || npc.id.includes('knight') || npc.id.includes('veteran') || npc.id === 'npc_story_citizen' || npc.id.includes('story_advisor'))
-                && !partyData.flags['2nd_guard_' + _rMapId + '_' + key];
+                && !partyData.flags['2nd_guard_' + _stripMapPfx(_rMapId) + '_' + key];
             if (_is2ndPoss) {
                 const _dNow = Date.now();
                 // 紫黒オーラ（外側から）
@@ -5855,6 +5868,9 @@ async function _check2ndMemory() {
     }
 }
 
+// 2周目兵士フラグのマップIDを正規化（map_プレフィックスを除去して統一）
+function _stripMapPfx(id){ return (id||'').replace(/^map_/,''); }
+
 // 2周目: 城・城下町の残り暗黒兵士数をカウント
 function _countRemainingGuards() {
     if(!externalMapData) return 0;
@@ -5868,7 +5884,7 @@ function _countRemainingGuards() {
             for(const[_k,_n] of Object.entries(_m.npcs)) {
                 if(!_n||!_n.id) continue;
                 if(_guardIds.some(g=>_n.id.includes(g))) {
-                    const _gf='2nd_guard_'+_mKey+'_'+_k;
+                    const _gf='2nd_guard_'+_stripMapPfx(_mKey)+'_'+_k;
                     if(!partyData.flags[_gf]) count++;
                 }
             }
@@ -6226,7 +6242,7 @@ async function checkAction() {
             if (partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated) {
                 const _in2ndDark = partyData.pos.map.includes('town_01') || (partyData.pos.map.includes('castle') && !partyData.pos.map.includes('demon'));
                 if (_in2ndDark && (npc.id.includes('guard') || npc.id.includes('soldier') || npc.id.includes('knight') || npc.id.includes('veteran') || npc.id === 'npc_story_citizen')) {
-                    const _gFlag = '2nd_guard_' + partyData.pos.map + '_' + key;
+                    const _gFlag = '2nd_guard_' + _stripMapPfx(partyData.pos.map) + '_' + key;
                     if (partyData.flags[_gFlag]) {
                         // フラグあり（倒し済み）: loadExternalDataで除去済みのため通常は到達しない
                         await typeMessage("【解放された兵士】\n……（虚ろな 瞳で 立っている）\nわ……わしは 何を していたんだ……？");
@@ -7326,12 +7342,12 @@ async function eventPriest() {
             partyData.flags.rura_destinations[partyData.pos.map] = { x: partyData.pos.x, y: partyData.pos.y, name: _rulaMapName };
             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData)); await typeMessage("スマホに データーを きろくしました。\n（※ブラウザ履歴を消すと消える場合があります）");
             let encoded = packSaveData(partyData);
-            await showCustomDialog('copy', "念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（5文字区切り・113文字）", _gqFormatPwd(encoded));
+            await showCustomDialog('copy', "念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（5文字区切り・116文字）", _gqFormatPwd(encoded));
             if (partyData.flags && partyData.flags.is_second_loop) { await typeMessage("しかし まだ せかいのどこかに\nふおんな けはいが のこっております...\nきをつけて おすすみください。"); }
         } else if (choice === 1) {
             AudioManager.playSE('inn'); 
             let encoded = packSaveData(partyData);
-            await typeMessage("あなたの これまでの ぼうけんを\nひらがなの じゅもんに して おしえましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん\n（5文字区切り・113文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
+            await typeMessage("あなたの これまでの ぼうけんを\nひらがなの じゅもんに して おしえましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん\n（5文字区切り・116文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
         } else if (choice === 2) {
             let deadMembers = partyData.members.filter(m => m.hp <= 0);
             if(deadMembers.length === 0) await typeMessage("しんでいる なかまは いませんよ。");
