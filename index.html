@@ -3604,7 +3604,7 @@ async function loadExternalData(id) {
                 if (partyData.flags.last_boss_defeated || partyData.flags.gate_removed) { let gateKeys = Object.keys(mapCopy.npcs).filter(k => mapCopy.npcs[k].id === 'maou_castle_gate'); gateKeys.forEach(k => { delete mapCopy.npcs[k]; }); } 
                 if(partyData.flags.flag_saved_richman) { let rKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_richman"); if(rKey) delete mapCopy.npcs[rKey]; }
                 if(partyData.flags.flag_mage_trial_cleared) { let mKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_mage"); if(mKey) delete mapCopy.npcs[mKey]; }
-                if(partyData.flags.flag_weapon_forged) { let smKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_smith"); if(smKey) delete mapCopy.npcs[smKey]; }
+                if(partyData.flags.flag_weapon_forged && isSQDone('sq_05')) { let smKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "npc_sub_smith"); if(smKey) delete mapCopy.npcs[smKey]; }
                 if(partyData.flags.flag_has_star_fragment) { let sKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "obj_chest_star_frag"); if(sKey) delete mapCopy.npcs[sKey]; }
                 // 船入手済みなら係留船NPCを非表示
                 if(partyData.flags.has_ship) { Object.keys(mapCopy.npcs).forEach(k => { if(mapCopy.npcs[k]?.id === 'obj_ship_waiting') delete mapCopy.npcs[k]; }); }
@@ -6329,19 +6329,23 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_sub_smith") {
+                // sq_05: いんせきのかけら → メタルキングの鎧
+                { let _mfOwner=null,_mfIdx=-1; for(let m of partyData.members){_mfIdx=m.inventory.indexOf('meteorite_fragment');if(_mfIdx!==-1){_mfOwner=m;break;}} if(_mfOwner && getSQ('sq_05')>=1 && !isSQDone('sq_05')) { await typeMessage("【伝説の鍛冶屋】\nなんじゃ これは……！\nいんせきのかけら！！\nこれほどの 素材は 長年 夢に みておったわ！\nこれで 究極の 鎧を 打てるぞ……！"); AudioManager.playSE('attack_hit'); await typeMessage("カン！ コン！ カン！\nカーン！！……"); _mfOwner.inventory.splice(_mfIdx,1); let _aTgt=partyData.members.find(m=>m.inventory.length<8&&m.hp>0)||partyData.members.find(m=>m.inventory.length<8)||partyData.members[0]; if(_aTgt&&_aTgt.inventory.length<8)_aTgt.inventory.push('a26'); AudioManager.playSE('item_get'); await typeMessage("メタルキングの鎧 を てにいれた！\n（ふしぎな台帳が 更新された）"); await grantSQReward('sq_05'); state='FIELD'; hideAllWindows(); drawMap(); return; } }
                 if (partyData.flags.flag_weapon_forged) {
                     if (partyData.flags.is_second_loop) { await typeMessage("【伝説の鍛冶屋】\nその 剣なら 偽の王の 闇の 衣を 剥げる……！\n必ずや 世界に 真の 光を 取り戻してくれ！"); }
                     else { await typeMessage("【伝説の鍛冶屋】\nよくきたな！\nお前の 武器は すでに 最高だ！"); }
+                    if(isSQDone('sq_05')) { await typeMessage("【伝説の鍛冶屋】\nメタルキングの 鎧は\nうまく 役立てて おるかの？"); }
                 } else {
                     let hasFrag = false; let fragOwner = null; let fragIdx = -1;
                     for(let m of partyData.members) { fragIdx = m.inventory.indexOf("i_star_frag"); if(fragIdx !== -1) { hasFrag = true; fragOwner = m; break; } }
                     if (hasFrag) {
                         await typeMessage("【伝説の鍛冶屋】\nおお！ それは 『ほしのカケラ』！！\nよし、約束通り お前の武器を\n最強に 鍛え直してやろう！"); AudioManager.playSE('attack_hit'); await typeMessage("カン！ コン！ カン！……"); fragOwner.inventory.splice(fragIdx, 1);
-                        let target = partyData.members[0]; if(target.inventory.length < 8) target.inventory.push("w_star_sword"); else target.inventory[0] = "w_star_sword"; 
-                        AudioManager.playSE('item_get'); await typeMessage(`最強の武器『星砕きの剣』を\nてにいれた！`); partyData.flags.flag_weapon_forged = true; delete currentMap.npcs[key];
+                        let target = partyData.members[0]; if(target.inventory.length < 8) target.inventory.push("w_star_sword"); else target.inventory[0] = "w_star_sword";
+                        AudioManager.playSE('item_get'); await typeMessage(`最強の武器『星砕きの剣』を\nてにいれた！`); partyData.flags.flag_weapon_forged = true; if(isSQDone('sq_05')) delete currentMap.npcs[key];
                     } else {
                         if (partyData.flags.is_second_loop) { await typeMessage("【伝説の鍛冶屋】\nわしは 伝説の鍛冶屋だ。\n北の山岳地帯に おちている\n『ほしのカケラ』を 持ってきてくれ。\nあの 偽の王が 張っている 闇の 結界を\n剥ぎ取れる 唯一の 剣を 打ってみせよう……！"); }
                         else { await typeMessage("【伝説の鍛冶屋】\nわしは 伝説の鍛冶屋だ。\n北の山岳地帯に おちている\n『ほしのカケラ』が あれば\nお前の武器を 鍛え直してやれるのだがな……"); }
+                        if (getSQ('sq_05') === 1 && !isSQDone('sq_05')) { await typeMessage("【伝説の鍛冶屋】\nそうじゃ……もうひとつ 夢がある。\nはぐれメタル系の まものが 持つ\nいんせきのかけら を 手に入れられれば\n究極の 鎧を 打てるのじゃが……"); }
                     }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
@@ -8124,8 +8128,8 @@ async function executeBattle(fixedEnemies = null) {
         await typeMessage(`パーティー ぜんいんの こうげきりょくが\nさがってしまった！`);
     }
     
-    let escaped = false; let totalExp = 0; let totalGold = 0;
-    const addReward = (eRef) => { if(eRef) { let eExp = parseInt(eRef.exp); if(isNaN(eExp) || eExp <= 0) eExp = 1; let eGold = parseInt(eRef.gold); if(isNaN(eGold) || eGold < 0) eGold = 1; totalExp += eExp; totalGold += eGold; } };
+    let escaped = false; let totalExp = 0; let totalGold = 0; let killedEnemyIds = [];
+    const addReward = (eRef) => { if(eRef) { let eExp = parseInt(eRef.exp); if(isNaN(eExp) || eExp <= 0) eExp = 1; let eGold = parseInt(eRef.gold); if(isNaN(eGold) || eGold < 0) eGold = 1; totalExp += eExp; totalGold += eGold; if(eRef.id) killedEnemyIds.push(eRef.id); } };
 
     while(enemies.length > 0 && partyData.members.some(m=>m.hp>0) && !escaped) {
         let actionsArray = []; let aliveMembers = partyData.members.filter(m => m.hp > 0); let mIdx = 0;
@@ -8634,7 +8638,13 @@ ${act.actor.name}の ちからが すいとられた！`); }
     
     if(!escaped && partyData.members.some(m=>m.hp>0)) {
         AudioManager.playBGM('victory'); await typeMessage(`まものたちを やっつけた！`); partyData.gold += totalGold; await typeMessage(`${totalExp}の けいけんちを かくとく！\n${totalGold}G をてにいれた！`);
-        
+
+        // sq_05: はぐれグラちゃん撃破 → いんせきのかけら入手
+        if (killedEnemyIds.includes('hagure_gura') && getSQ('sq_05') === 1 && !partyData.members.some(m => m.inventory.includes('meteorite_fragment'))) {
+            let _sq5Tgt = partyData.members.find(m => m.inventory.length < 8 && m.hp > 0) || partyData.members.find(m => m.inventory.length < 8) || partyData.members[0];
+            if (_sq5Tgt && _sq5Tgt.inventory.length < 8) { _sq5Tgt.inventory.push('meteorite_fragment'); AudioManager.playSE('item_get'); await typeMessage("はぐれグラちゃんが 珍しいものを\nおとしていった……！\nいんせきのかけら を てにいれた！\nガルドの 鍛冶屋に 持参してみよう。"); advanceSQ('sq_05', 2); }
+        }
+
         const _isEquipDrop = totalExp >= 50 && Math.random() < 0.35;
         if (Math.random() < 0.18) {
             let dropPool = Object.values(masterData.items).filter(i => i.price > 0 && (_isEquipDrop ? i.type !== 'tool' : i.type === 'tool'));
