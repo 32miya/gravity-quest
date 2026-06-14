@@ -1218,6 +1218,38 @@ const bossPhantomImg = new Image(); bossPhantomImg.crossOrigin = "Anonymous"; bo
     _src.onerror = function() { /* 読み込み失敗: SVGグラフィックにフォールバック */ };
     _src.src = './pirate_king.jpg';
 })();
+// 暗黒化した兵士（2周目）: 白背景をcanvasで除去してPNG化
+(function() {
+    const _ds = new Image();
+    _ds.onload = function() {
+        const _cv = document.createElement('canvas');
+        _cv.width = _ds.naturalWidth; _cv.height = _ds.naturalHeight;
+        const _cx = _cv.getContext('2d');
+        _cx.drawImage(_ds, 0, 0);
+        try {
+            const _id = _cx.getImageData(0, 0, _cv.width, _cv.height);
+            const _d = _id.data;
+            for (let _i = 0; _i < _d.length; _i += 4) {
+                const _r = _d[_i], _g = _d[_i+1], _b = _d[_i+2];
+                const _max = Math.max(_r, _g, _b), _min = Math.min(_r, _g, _b);
+                const _sat = _max > 0 ? (_max - _min) / _max : 0;
+                if (_max > 210 && _sat < 0.15) {
+                    const _fade = Math.max(0, Math.min(255, (_max - 210) * 5));
+                    _d[_i+3] = Math.max(0, _d[_i+3] - _fade);
+                }
+            }
+            _cx.putImageData(_id, 0, 0);
+        } catch(e) {}
+        const _out = new Image();
+        _out.onload = function() {
+            externalImages['possessed_guard_2nd'] = _out;
+            externalImages['enemy_possessed_guard_2nd'] = _out;
+        };
+        _out.src = _cv.toDataURL('image/png');
+    };
+    _ds.onerror = function() {};
+    _ds.src = './dark_soldier.jpg';
+})();
 const SHEET_COLS = 30; const SHEET_ROWS = 16; const TILE_IMG_MAP = { 3: { cx: 23, cy: 0 }, 6: { cx: 5, cy: 5 }, 7: { cx: 7, cy: 1 }, 8: { cx: 22, cy: 4 } };
 
 function getMapRandom(x, y, mapId) { const _k = x + '|' + y + '|' + (mapId||''); if (_gmrCache[_k] !== undefined) return _gmrCache[_k]; if (_gmrCacheSize > 8000) { const _ks = Object.keys(_gmrCache); for (let _i = 0; _i < 4000; _i++) delete _gmrCache[_ks[_i]]; _gmrCacheSize = Math.max(0, _gmrCacheSize - 4000); } let seed = 0; let mStr = mapId || ""; for(let i=0; i<mStr.length; i++) seed += mStr.charCodeAt(i); _gmrCacheSize++; return (_gmrCache[_k] = Math.abs(Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453) % 1); }
@@ -4386,7 +4418,7 @@ function getEnemyImageHtml(enemyId) {
     let mData = masterData.monsters[enemyId];
     let isLarge = enemyId.includes('master_dragon') || enemyId.includes('hidden_boss') || enemyId.includes('dragon_god') ||
                   enemyId.includes('_final') || enemyId.includes('demon') || enemyId.includes('maou') ||
-                  enemyId === 'npc_boss_maou' || enemyId === 'boss_desert_killer' || enemyId === 'boss_trial_phantom' || enemyId === 'boss_secret_traveler' || enemyId === 'boss_sky' || enemyId === 'boss_dungeon' || enemyId === 'boss_pirate_king';
+                  enemyId === 'npc_boss_maou' || enemyId === 'boss_desert_killer' || enemyId === 'boss_trial_phantom' || enemyId === 'boss_secret_traveler' || enemyId === 'boss_sky' || enemyId === 'boss_dungeon' || enemyId === 'boss_pirate_king' || enemyId === 'possessed_guard_2nd';
     if (mData && (mData.name.includes('グラ王') || mData.name.includes('最終形態'))) isLarge = true;
     if (isLarge) cls = "enemy-img enemy-img-large";
 
@@ -6338,7 +6370,7 @@ async function checkAction() {
                     } else {
                         await typeMessage("【暗黒化した兵士】\nガ……アアア……！！\n来るな……来るな！！！\n（漆黒の 炎が 体を 包んでいる……！）");
                         const _gMId = 'possessed_guard_2nd';
-                        if(!masterData.monsters[_gMId]) masterData.monsters[_gMId]={name:'暗黒化した兵士',max_hp:250,atk:50,def:28,spd:22,exp:500,gold:250,traits:['undead']};
+                        if(!masterData.monsters[_gMId]) masterData.monsters[_gMId]={name:'暗黒化した兵士',max_hp:480,atk:88,def:52,spd:40,exp:900,gold:400,traits:['undead','dark_attack']};
                         hideGoldWindow(); const _gW = await executeBattle([_gMId]); showGoldWindow(); updateGoldWindow();
                         if(_gW) {
                             partyData.flags[_gFlag] = true;
