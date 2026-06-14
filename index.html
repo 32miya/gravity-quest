@@ -768,7 +768,7 @@ window.SOUND_DATABASE = {
 <script>
 window.isGuraKingBattle = false;
 
-// ===== DQ2スタイル ふっかつのじゅもん（116文字かなパスワード）=====
+// ===== DQ2スタイル ふっかつのじゅもん（119文字かなパスワード）=====
 // 64文字ひらがなテーブル（6ビット/文字）
 // ※をと だ行を省いてば行を収録（だ行文字は た行に近似変換）
 const _GQ_KANA64 = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわんっゃゅょがぎぐげござじずぜぞばびぶべぼ';
@@ -836,33 +836,81 @@ function _gqBitUnpack(bytes) {
     return (n) => { let v=0; for(let i=0;i<n;i++) v=(v<<1)|(bits[pos++]||0); return v; };
 }
 
-// かな名前エンコード: 7ビット/文字 (0-63=ひらがな, 64-127=カタカナ)
-// ひらがなはそのまま、カタカナは 64+hiragana_index で保持
-function _gqEncodeName(name) {
-    const chars = [...(name||'')].slice(0,4);
-    while(chars.length<4) chars.push('あ');
+// 名前エンコード/デコードの文字マッピング（8ビット=256値）
+// 0-63: ひらがな, 64-127: カタカナ
+// 128-153: A-Z, 154-179: a-z, 180-189: 0-9
+// 190-199: 記号 ！？ー・「」Ⅱ…①②
+const _GQ_NAME_SYMBOLS = ['！','？','ー','・','「','」','Ⅱ','…','①','②'];
+function _nameCharEncode(c){
+    const cp=c.codePointAt(0);
     const _approx={'を':'わ','だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と','ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ'};
-    return chars.map(c=>{
+    // カタカナ (0x30A1-0x30F6)
+    if(cp>=0x30A1&&cp<=0x30F6){
+        let h=String.fromCodePoint(cp-0x60); h=_approx[h]??h;
+        const i=_GQ_KANA64.indexOf(h); return i>=0?64+i:64;
+    }
+    // ひらがな
+    if(cp>=0x3041&&cp<=0x3096){const c2=_approx[c]??c;const i=_GQ_KANA64.indexOf(c2);return i>=0?i:0;}
+    // A-Z (半角・全角 Ａ-Ｚ)
+    if(cp>=65&&cp<=90) return 128+(cp-65);
+    if(cp>=0xFF21&&cp<=0xFF3A) return 128+(cp-0xFF21); // 全角A-Z
+    // a-z (半角・全角)
+    if(cp>=97&&cp<=122) return 154+(cp-97);
+    if(cp>=0xFF41&&cp<=0xFF5A) return 154+(cp-0xFF41); // 全角a-z
+    // 0-9 (半角・全角)
+    if(cp>=48&&cp<=57) return 180+(cp-48);
+    if(cp>=0xFF10&&cp<=0xFF19) return 180+(cp-0xFF10); // 全角0-9
+    // 記号
+    const si=_GQ_NAME_SYMBOLS.indexOf(c); if(si>=0) return 190+si;
+    return 0; // 漢字等は非対応→パディング(あ)
+}
+function _nameCharDecode(idx,bits){
+    if(bits>=8){
+        if(idx>=128&&idx<=153) return String.fromCharCode(65+(idx-128)); // A-Z
+        if(idx>=154&&idx<=179) return String.fromCharCode(97+(idx-154)); // a-z
+        if(idx>=180&&idx<=189) return String.fromCharCode(48+(idx-180)); // 0-9
+        if(idx>=190&&idx<=199) return _GQ_NAME_SYMBOLS[idx-190]||'　';  // 記号
+    }
+    if(idx>=64&&idx<128){const h=_GQ_KANA64[idx-64];if(!h)return'　';return String.fromCodePoint(h.codePointAt(0)+0x60);}
+    return _GQ_KANA64[idx&63]||'　';
+}
+// 名前エンコード: 8ビット/文字（英数字・記号対応）
+// パディングは200番（未使用領域）を使用 → 'あ'(idx=0)との混同を防ぐ
+function _gqEncodeName(name) {
+    const chars=[...(name||'')].slice(0,4);
+    const result=chars.map(c=>[_nameCharEncode(c),8]);
+    while(result.length<4) result.push([200,8]); // 200=パディング記号
+    return result;
+}
+// 名前デコード: bitsに応じてフォーマット自動判定
+function _gqDecodeName(read,bits=8){
+    if(bits<8){
+        // 旧形式（6/7ビット）: 旧互換動作（index=0='あ'）
+        return [0,1,2,3].map(()=>{
+            const idx=read(bits);
+            if(idx>=64&&idx<128){const h=_GQ_KANA64[idx-64];if(!h)return'　';return String.fromCodePoint(h.codePointAt(0)+0x60);}
+            return _GQ_KANA64[idx&63]||'　';
+        }).join('').trimEnd();
+    }
+    // 新形式（8ビット）: idx=200がパディング → 末尾のパディングを除去
+    const chars=[0,1,2,3].map(()=>{const idx=read(8);return idx===200?null:_nameCharDecode(idx,8);});
+    let end=4; while(end>0&&chars[end-1]===null) end--;
+    return chars.slice(0,end).join('');
+}
+// 名前に呪文で継承できない文字（漢字等）が含まれているか確認
+function _hasUnsupportedNameChars(name){
+    return [...(name||'')].some(c=>{
         const cp=c.codePointAt(0);
-        if(cp>=0x30A1&&cp<=0x30F6){
-            // カタカナ → 対応ひらがなのインデックス+64
-            let h=String.fromCodePoint(cp-0x60);
-            h=_approx[h]??h;
-            const i=_GQ_KANA64.indexOf(h); return [i>=0?64+i:64,7];
-        }
-        const c2=_approx[c]??c;
-        const i=_GQ_KANA64.indexOf(c2); return [i>=0?i:0,7];
+        if(cp>=0x3041&&cp<=0x3096) return false; // ひらがな
+        if(cp>=0x30A1&&cp<=0x30F6) return false; // カタカナ
+        if(cp>=65&&cp<=90||cp>=97&&cp<=122) return false; // A-Z a-z
+        if(cp>=48&&cp<=57) return false; // 0-9
+        if(_GQ_NAME_SYMBOLS.includes(c)) return false; // 記号
+        if(c===' '||c==='　') return false;
+        return true; // 漢字等
     });
 }
-// かな名前デコード: bitsが7の場合64以上ならカタカナ復元、6の場合は旧形式
-function _gqDecodeName(read,bits=7){
-    return [0,1,2,3].map(()=>{
-        const idx=read(bits);
-        if(bits===7&&idx>=64){const h=_GQ_KANA64[idx-64];if(!h)return'　';return String.fromCodePoint(h.codePointAt(0)+0x60);}
-        return _GQ_KANA64[idx&63]||'　';
-    }).join('').trimEnd();
-}
-// DQ2スタイル 5文字区切り表示（116文字）
+// DQ2スタイル 5文字区切り表示（119文字）
 function _gqFormatPwd(kana) {
     let out=''; for(let i=0;i<kana.length;i+=5){ if(i>0)out+=' '; out+=kana.slice(i,i+5); } return out;
 }
@@ -879,13 +927,13 @@ function packSaveData(pData) {
     fields.push([Math.min((pData.pos||{}).x||0,63), 6]);
     fields.push([Math.min((pData.pos||{}).y||0,63), 6]);
     for (const k of _GQ_FLAGS) fields.push([f[k]?1:0, 1]);
-    // メンバー×4: 名前(28=7×4)+職業(4)+Lv(6)+EXP(14)+装備5本(8×5=40)+所持8個(8×8=64) = 156ビット×4=624ビット
-    // 合計: 64+624=688ビット → ceil(688/6)=115文字 + チェックサム1文字 = 116文字
+    // メンバー×4: 名前(32=8×4)+職業(4)+Lv(6)+EXP(14)+装備5本(8×5=40)+所持8個(8×8=64) = 160ビット×4=640ビット
+    // 合計: 64+640=704ビット → ceil(704/6)=118文字 + チェックサム1文字 = 119文字
     for (let i=0;i<4;i++) {
         const m=(pData.members||[])[i];
         const _slot = (id) => { const idx=_GQ_EQUIP.indexOf(id||''); return idx>=0?idx:0; };
-        if (!m) { for(let j=0;j<156;j++) fields.push([0,1]); continue; }
-        fields.push(..._gqEncodeName(m.name)); // 7bit×4=28ビット
+        if (!m) { for(let j=0;j<160;j++) fields.push([0,1]); continue; }
+        fields.push(..._gqEncodeName(m.name)); // 8bit×4=32ビット
         const ji=_GQ_JOBS.indexOf(m.job||'勇者'); fields.push([ji>=0?ji:0,4]); // 4ビット
         fields.push([Math.min(m.lv||1,63),6]);
         fields.push([Math.min(Math.floor((m.exp||0)/100),(1<<14)-1),14]);
@@ -897,7 +945,7 @@ function packSaveData(pData) {
     }
     const payload = _gqBitPack(fields);
     const cs = payload.reduce((a,b)=>a+b,0)%64;
-    const bytes = [cs, ...payload.slice(0,115)]; // 1+115=116文字
+    const bytes = [cs, ...payload.slice(0,118)]; // 1+118=119文字
     return bytes.map(b=>_GQ_KANA64[b%64]).join('');
 }
 
@@ -914,9 +962,11 @@ function unpackSaveData(pwd) {
 
     // ── かなパスワード判定: 先頭文字が_GQ_KANA64に含まれるか ──
     if (_GQ_KANA64.includes(pwd[0])) {
-        // フォーマット判定: 116文字=新形式(7bit名前,4bit職業), 113文字=旧8bit形式, 104文字=旧7bit形式
+        // フォーマット判定:
+        // 119文字=最新形式(8bit名前,4bit職業,8bit装備)
+        // 116文字=旧7bit名前形式, 113文字=旧6bit名前形式, 104文字=旧7bit装備形式
         const _eb = pwd.length >= 109 ? 8 : 7; // 装備/所持品ビット数
-        const _nb = pwd.length >= 115 ? 7 : 6;  // 名前1文字あたりビット数
+        const _nb = pwd.length >= 117 ? 8 : (pwd.length >= 115 ? 7 : 6); // 名前ビット数
         const _jb = pwd.length >= 115 ? 4 : 3;  // 職業ビット数
         const _minLen = _eb === 8 ? 109 : 100;
         if ([...pwd].every(c => _GQ_KANA64.includes(c)) && pwd.length >= _minLen) {
@@ -7345,12 +7395,17 @@ async function eventPriest() {
             partyData.flags.rura_destinations[partyData.pos.map] = { x: partyData.pos.x, y: partyData.pos.y, name: _rulaMapName };
             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData)); await typeMessage("スマホに データーを きろくしました。\n（※ブラウザ履歴を消すと消える場合があります）");
             let encoded = packSaveData(partyData);
-            await showCustomDialog('copy', "念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（5文字区切り・116文字）", _gqFormatPwd(encoded));
+            const _hasKanji=partyData.members.some(m=>_hasUnsupportedNameChars(m.name));
+            const _pwdNote="念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（5文字区切り・119文字）"+(_hasKanji?"\n\n※名前に漢字が含まれています。\n漢字は呪文では継承されないため\nひらがな・カタカナ・英数字に\n変更することをお勧めします。":"");
+            await showCustomDialog('copy', _pwdNote, _gqFormatPwd(encoded));
             if (partyData.flags && partyData.flags.is_second_loop) { await typeMessage("しかし まだ せかいのどこかに\nふおんな けはいが のこっております...\nきをつけて おすすみください。"); }
         } else if (choice === 1) {
             AudioManager.playSE('inn'); 
             let encoded = packSaveData(partyData);
-            await typeMessage("あなたの これまでの ぼうけんを\nひらがなの じゅもんに して おしえましょう。"); await showCustomDialog('copy', "ふっかつのじゅもん\n（5文字区切り・116文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
+            const _hasK2=partyData.members.some(m=>_hasUnsupportedNameChars(m.name));
+            await typeMessage("あなたの これまでの ぼうけんを\nひらがなの じゅもんに して おしえましょう。");
+            if(_hasK2) await typeMessage("【注意】名前に漢字が含まれています。\n漢字は「ふっかつのじゅもん」では\n引き継がれません。\nひらがな・カタカナ・英数字（A-Z・0-9）\nをお使いください。");
+            await showCustomDialog('copy', "ふっかつのじゅもん\n（5文字区切り・119文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
         } else if (choice === 2) {
             let deadMembers = partyData.members.filter(m => m.hp <= 0);
             if(deadMembers.length === 0) await typeMessage("しんでいる なかまは いませんよ。");
