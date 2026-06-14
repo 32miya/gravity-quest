@@ -1393,6 +1393,8 @@ function updateBGM() { let mapId = partyData.pos.map; if(!mapId) return; if (par
     // 2周目: 城下町・グラマニア城は魔王城BGM（暗黒化）
     const _is2nd = partyData.flags && partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated;
     if (_is2nd && !mapId.includes('demon') && !mapId.includes('tower') && !mapId.includes('dungeon') && !mapId.includes('fishing_village') && (mapId.includes('castle_01') || mapId.includes('town_01'))) { AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); return; }
+    // 隠れ里エデン: 常に town BGM
+    if(mapId.includes('eden')) { AudioManager.playBGM('town'); return; }
     if (mapId.includes('castle')) { if(mapId.includes('demon') || mapId.includes('death')) AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); else if(mapId.includes('sky')) AudioManager.playBGM(AudioManager.db.bgm['sky_castle'] ? 'sky_castle' : 'castle'); else AudioManager.playBGM('castle'); } else if (mapId.includes('town') || mapId.includes('village')) { AudioManager.playBGM('town'); } else if (mapId.includes('market') || mapId.includes('bazaar')) { AudioManager.playBGM('market'); } else if (mapId.includes('shrine')) { AudioManager.playBGM('shrine'); } else if (mapId.includes('dungeon') || mapId.includes('cave')) { AudioManager.playBGM('dungeon'); } else if (mapId.includes('tower')) { AudioManager.playBGM('tower'); } else { if (mapId.includes('death') || mapId.includes('demon')) AudioManager.playBGM('field_late'); else AudioManager.playBGM('field_early'); } }
 
 async function playSpellEffect(spellData, targetObj, screenPos) {
@@ -3247,12 +3249,36 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     },
                     name:'隠れ里 エデン'
                 };
-                if(_efp&&externalMapData[_efMapId]){
-                    const _efMap=externalMapData[_efMapId];
-                    _efMap.tiles[_efp.y*(_efMap.width||45)+_efp.x]=21;
-                    _efMap.exits[_efp.k]={map:'map_eden',x:11,y:14};
-                    externalMapData['map_eden'].exits['10,15']=_eRet;
-                    externalMapData['map_eden'].exits['11,15']=_eRet;
+                // 複数フィールドを試してエデン入口NPC を配置（タイル変更ではなくNPC方式）
+                const _eFields = ['map_field_2_2','map_field_3_2','map_field_4_2','map_field_2_3','map_field_3_3'];
+                let _ePlaced = false;
+                for(const _efId of _eFields) {
+                    const _efKey = Object.keys(externalMapData).find(k=>k.includes(_efId.replace('map_',''))||k===_efId);
+                    if(!_efKey) continue;
+                    const _efMap = externalMapData[_efKey];
+                    // 中心付近の陸地を探す
+                    const _cx=Math.floor((_efMap.width||45)/2), _cy=Math.floor((_efMap.height||45)/2);
+                    const _fp = findLand(_efKey, _cx, _cy);
+                    if(!_fp) continue;
+                    // 既存NPCや出口と被らない位置に入口NPC配置
+                    if(_efMap.npcs[_fp.k]||_efMap.exits[_fp.k]) continue;
+                    _efMap.npcs[_fp.k] = {id:'obj_eden_entrance', name:'かくし扉'};
+                    // Edenからの帰還先をここに設定
+                    const _retPos = {map:_efKey, x:_fp.x, y:_fp.y+1};
+                    externalMapData['map_eden'].exits['10,15'] = _retPos;
+                    externalMapData['map_eden'].exits['11,15'] = _retPos;
+                    _ePlaced = true;
+                    break;
+                }
+                // フォールバック: map_field_2_2の固定位置
+                if(!_ePlaced){
+                    const _fbKey=Object.keys(externalMapData).find(k=>k.includes('field_2_2'))||'map_field_2_2';
+                    if(_fbKey&&externalMapData[_fbKey]) {
+                        externalMapData[_fbKey].npcs['20,20']={id:'obj_eden_entrance',name:'かくし扉'};
+                        const _fbRet={map:_fbKey,x:20,y:21};
+                        externalMapData['map_eden'].exits['10,15']=_fbRet;
+                        externalMapData['map_eden'].exits['11,15']=_fbRet;
+                    }
                 }
             }
             // ===== 2周目開始地点: 試練の洞窟南の漁村「グラ港」(14×14) =====
@@ -6276,6 +6302,8 @@ async function checkAction() {
                     }
                     if(_guardsLeft > 0 && _memCount2 === _totalMem) await typeMessage(`【アリア】\nまだ ${_guardsLeft}人 の 兵士が 残っています……\n闇に 操られた 被害者なのです……\n解放してあげてください！`);
                     else if(_guardsLeft === 0 && _memCount2 === _totalMem) await typeMessage("【アリア】\n全ての 兵士が 解放されました……！\nグラ王様が 目覚めているはずです……\n城へ 急いで！！");
+                    // 船入手後にエデンへのヒントを追加
+                    if(partyData.flags.has_ship && _memCount2 >= 1) await typeMessage("【アリア】\nそうそう……フィールドの 中央あたりに\n「かくし扉」があります。\n偽王の 支配を 逃れた 人々が 作った\n「隠れ里 エデン」への 入り口です。\n仲間の 声を 聞きに 行ってみてください。");
                 } else {
                     await typeMessage("【アリア】\n（不思議な 雰囲気を 持つ 少女が\n優しく 微笑んでいる……）\nこの 村には 海と 龍の 加護が あります。\n旅の 疲れを 癒やしてください。");
                 }
@@ -6336,17 +6364,17 @@ async function checkAction() {
             }
 
             // ===== エデンへの入口（フィールドから） =====
-            if(npc.id === 'obj_eden_entrance' || (currentMap===externalMapData[partyData.pos.map] && npc.id==='obj_eden_entrance')) {
+            if(npc.id === 'obj_eden_entrance') {
                 if(partyData.flags.is_second_loop){
-                    await typeMessage("草むらの 中に 隠し扉がある……！\n「隠れ里 エデン」への 入り口だ。\n中に 入りますか？");
+                    await typeMessage("草むらの 中に 隠し扉がある……！\n「かくし扉」だ……。\nここに 何かが あるようだ。\n中に 入りますか？");
                     const _eGo=await selectMenu(["はい","いいえ"],'cmd-window',1,true);
                     if(_eGo===0&&externalMapData['map_eden']){
-                        partyData.pos={map:'map_eden',x:11,y:14};
+                        partyData.pos={map:'map_eden',x:11,y:13};
                         currentMap=await loadExternalData('map-map_eden');
                         moveHistory=[]; state='FIELD'; hideAllWindows(); drawMap(); updateBGM(); startFieldLoop(); return;
                     }
                 } else {
-                    await typeMessage("草むらに 古い 石段の 痕跡がある。\n（まだ 誰も 住んでいない 廃地……）");
+                    await typeMessage("草むらに 古い 石段の 痕跡がある……。\n（まだ 何も ない 廃地のようだ）");
                 }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
