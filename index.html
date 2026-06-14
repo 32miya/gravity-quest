@@ -1077,6 +1077,9 @@ function injectSubStoryData() {
     masterData.monsters["boss_secret_traveler"] = { name: "異世界の旅人", max_hp: 5500, atk: 250, def: 150, spd: 200, exp: 50000, gold: 10000 };
     masterData.monsters["boss_pirate_king"] = { name: "海賊王バルゴ", max_hp: 2800, atk: 150, def: 90, spd: 110, exp: 12000, gold: 8000, traits: ["boss", "water_element", "two_actions"] };
     masterData.items["meteorite_fragment"] = { id: "meteorite_fragment", name: "いんせきのかけら", type: "tool", price: 5000, desc: "はぐれグラちゃんから手に入る超レアなかけら。ガルドの鍛冶屋に持参すると最強の鎧を作れるという。" };
+    masterData.items["dragon_scale_red"]  = { id: "dragon_scale_red",  name: "赤竜の鱗", type: "tool", price: 0, desc: "赤く燃える竜の鱗。試練の洞窟の最奥に眠っていた。竜霊グラドスの呪いを解く三枚の鱗のひとつ。" };
+    masterData.items["dragon_scale_blue"] = { id: "dragon_scale_blue", name: "蒼竜の鱗", type: "tool", price: 0, desc: "深海のような蒼い竜の鱗。天空の頂に隠されていた。竜霊グラドスの呪いを解く三枚の鱗のひとつ。" };
+    masterData.items["dragon_scale_gold"] = { id: "dragon_scale_gold", name: "金竜の鱗", type: "tool", price: 0, desc: "黄金色に輝く竜の鱗。魔王城の深部に封印されていた。竜霊グラドスの呪いを解く三枚の鱗のひとつ。" };
     masterData.monsters["boss_dragon_spirit"] = { name: "竜霊グラドス", max_hp: 3500, atk: 180, def: 110, spd: 140, exp: 25000, gold: 5000, traits: ["boss", "fire_element", "status_immunity"] };
     masterData.items["w_trident"] = { id: "w_trident", name: "海神の三叉槍（槍）", type: "weapon", price: 18000, power: 78, element: "water", desc: "深海の神が手放した古代の槍。水の力を宿し、炎の敵に絶大な効果を発揮する。" };
     masterData.items["a_sea_armor"] = { id: "a_sea_armor", name: "海竜の鎧（鎧）", type: "armor", price: 15000, power: 70, effect: "water_resist", desc: "海竜の鱗で作られた鎧。水・氷の攻撃をほぼ無効化し、深海の圧力にも耐える。" };
@@ -1098,7 +1101,7 @@ const SUBSTORIES = [
       doneText:'王者のつるぎを受け継いだ', reward:'w28', rewardMember:0 },
     { id:'sq_03', title:'海賊王の遺言',
       steps:{ 1:'海賊王バルゴを倒し、秘密の遺言を聞いた', 2:'海賊の部下から古い海図を手に入れた' },
-      doneText:'海神の三叉槍と海竜の鎧を入手した', reward:'w_trident', reward2:'a_sea_armor' },
+      doneText:'海竜の鎧を手に入れた', reward:'a_sea_armor' },
     { id:'sq_04', title:'竜霊グラドスの浄化',
       steps:{ 1:'竜霊グラドスと話し、浄化の方法を知った', 2:'赤竜の鱗を入手（1/3）', 3:'蒼竜の鱗を入手（2/3）', 4:'金竜の鱗を入手（3/3）' },
       doneText:'グラドスを浄化し、英雄のヤリを授かった', reward:'w_spear_11', rewardMember:1 },
@@ -6411,6 +6414,7 @@ async function checkAction() {
                     if (partyData.flags.is_second_loop) { await typeMessage("【大富豪 カリバン】\n実は 国王グラードから\n莫大な 資金を 提供する と 言われていたのです……\nでも その 提案……なにか おかしい 気がして。\nあなたたちに 救われて 本当によかった。"); }
                     else { await typeMessage("【大富豪 カリバン】\nグラマニアの 町に\n新しい カジノを 開く 予定でしてね。\nぜひ また 遊びに 来てくださいよ！"); }
                     partyData.flags.flag_saved_richman = true; delete currentMap.npcs[key];
+                    if (getSQ('sq_02') === 1) { advanceSQ('sq_02', 2); await typeMessage("（ふしぎな台帳：「王者の剣の継承」が 進んだ。\n次は 試練の洞窟の 最奥に 行け。）"); }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -6989,29 +6993,42 @@ async function checkAction() {
                 } else if (isSQDone('sq_04')) {
                     await typeMessage("【竜霊グラドス】\n……よく 戻ってきたな 末裔よ。\n世界の 行方を 見守っておる……。"); state = 'FIELD'; hideAllWindows(); drawMap(); return;
                 } else {
-                    await typeMessage("【竜霊グラドス】\n……来たか。\n我は グラマニア初代王家の\n守護竜 グラドスじゃ。");
-                    await typeMessage("【竜霊グラドス】\n百年の 時を こえて\nやっと 本物の 血筋が 現れた……。\nお前が 真に 継承者たるか\n試させてもらおう！");
-                    hideGoldWindow(); let _dw = await executeBattle(["boss_dragon_spirit"]); showGoldWindow(); updateGoldWindow();
-                    if (_dw) {
-                        partyData.flags.flag_dragon_spirit_cleared = true;
-                        AudioManager.playBGM('victory');
-                        await typeMessage("【竜霊グラドス】\n……見事じゃ。\n呪いが……解けていく……！\n正真正銘 の 王家の 末裔。\nこの 力を 受け取るがよい！");
-                        let tgt = partyData.members[0]; if (tgt.inventory.length < 8) tgt.inventory.push("acc_sea_ring"); else tgt.inventory[0] = "acc_sea_ring";
-                        AudioManager.playSE('item_get'); await typeMessage("波濤の指輪 を てにいれた！\n（戦闘中 毎ターン MP が 回復する！）");
-                        await grantSQReward('sq_04');
-                        await typeMessage("【ふしぎな台帳】\n「竜霊グラドスの浄化」が 完了した！");
-                        await typeMessage("【竜霊グラドス】\nグラマニア城 の 地下に\n更なる 力が 眠っておる……。\n城を 制した のち に 探してみよ。");
-                    } else { return; }
+                    const _hasAllScales = partyData.members.some(m=>m.inventory.includes('dragon_scale_red'))
+                        && partyData.members.some(m=>m.inventory.includes('dragon_scale_blue'))
+                        && partyData.members.some(m=>m.inventory.includes('dragon_scale_gold'));
+                    if (!_hasAllScales) {
+                        const _have = [
+                            partyData.members.some(m=>m.inventory.includes('dragon_scale_red'))   ? '赤竜の鱗 ✓' : '赤竜の鱗 ？',
+                            partyData.members.some(m=>m.inventory.includes('dragon_scale_blue'))  ? '蒼竜の鱗 ✓' : '蒼竜の鱗 ？',
+                            partyData.members.some(m=>m.inventory.includes('dragon_scale_gold'))  ? '金竜の鱗 ✓' : '金竜の鱗 ？',
+                        ].join('\n');
+                        await typeMessage("【竜霊グラドス】\n……まだ 三枚の 竜鱗が 揃っていない。\n洞窟・天空・魔王城の 各地に\n眠る 鱗を 持ってきてくれ……。");
+                        await typeMessage(`現在の 収集状況：\n${_have}`);
+                    } else {
+                        await typeMessage("【竜霊グラドス】\n……全ての 鱗が 揃った……！\nこれで……呪縛を 断ち切れる……！\n我と 共に 試練を 乗り越えてくれ！！");
+                        // 鱗を消費
+                        partyData.members.forEach(m => { m.inventory = m.inventory.filter(id=>id!=='dragon_scale_red'&&id!=='dragon_scale_blue'&&id!=='dragon_scale_gold'); });
+                        hideGoldWindow(); let _dw = await executeBattle(["boss_dragon_spirit"]); showGoldWindow(); updateGoldWindow();
+                        if (_dw) {
+                            partyData.flags.flag_dragon_spirit_cleared = true;
+                            AudioManager.playBGM('victory');
+                            await typeMessage("【竜霊グラドス】\n……呪いが……解けた……！\n百年間の 苦しみが……消えていく……。\nあなた方の おかげで……やっと 正気に 戻れた……！");
+                            await typeMessage("【竜霊グラドス】\n感謝の 証として この 槍を 授けよう。\n英雄の 魂が 宿った 一本の 槍……\n大切に 使うがよい。");
+                            await grantSQReward('sq_04');
+                            await typeMessage("【ふしぎな台帳】\n「竜霊グラドスの浄化」が 完了した！");
+                            await typeMessage("【竜霊グラドス】\nグラマニア城 の 地下に\n更なる 力が 眠っておる……。\n城を 制した のち に 探してみよ。");
+                        } else { return; }
+                    }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "obj_chest_sea_armor") {
                 let _cf = `chest_dragon_island_armor`;
                 if (partyData.flags[_cf]) { await typeMessage("たからばこは からっぽだ。"); state='FIELD'; hideAllWindows(); drawMap(); return; }
-                if (!partyData.flags.flag_dragon_spirit_cleared) { await typeMessage("宝箱に 強力な 封印が かかっている……\n竜霊を 鎮めなければ 開かないようだ。"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                if (!partyData.flags.flag_dragon_spirit_cleared && !isSQDone('sq_04')) { await typeMessage("宝箱に 強力な 封印が かかっている……\n竜霊を 鎮めなければ 開かないようだ。"); state='FIELD'; hideAllWindows(); drawMap(); return; }
                 partyData.flags[_cf] = true; AudioManager.playSE('item_get');
-                let tgt = partyData.members[0]; if (tgt.inventory.length < 8) tgt.inventory.push("a_sea_armor"); else tgt.inventory[0] = "a_sea_armor";
-                await typeMessage("宝箱から 海竜の鎧 を てにいれた！\n（水・氷 攻撃を ほぼ 無効化！）");
+                let _satgt = partyData.members[0]; if (_satgt.inventory.length < 8) _satgt.inventory.push("acc_sea_ring"); else _satgt.inventory[0] = "acc_sea_ring";
+                await typeMessage("宝箱から 波濤の指輪 を てにいれた！\n（戦闘中 毎ターン MP が 回復する！）");
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "obj_chest_sea_ring") {
@@ -7061,7 +7078,19 @@ async function checkAction() {
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_pirate_sailor") {
-                if (partyData.flags.flag_pirate_king_cleared) { await typeMessage("【海賊の部下】\nボス……本当に 負けちまった……。\nアンタは 本物の 強さを 持ってる。\n敬意を 表するぜ……。"); }
+                if (partyData.flags.flag_pirate_king_cleared) {
+                    if (getSQ('sq_03') === 1 && !isSQDone('sq_03')) {
+                        await typeMessage("【海賊の部下】\nボス……本当に 負けちまった……。\nアンタは 本物の 強さを 持ってる。\n敬意を 表するぜ……。");
+                        await typeMessage("【海賊の部下】\nボスの 遺言だ……\nこの 古い 海図を 渡せ と 言ってた。\n南の 海底に 古代の 宝が 眠ってる って。\n……持ってけ。ボスの 意志だ。");
+                        advanceSQ('sq_03', 2);
+                        await grantSQReward('sq_03');
+                        await typeMessage("【ふしぎな台帳】\n「海賊王の遺言」が 完了した！");
+                    } else if (isSQDone('sq_03')) {
+                        await typeMessage("【海賊の部下】\nボスの 遺言を 果たしてくれた……\nありがとうよ。");
+                    } else {
+                        await typeMessage("【海賊の部下】\nボス……本当に 負けちまった……。\nアンタは 本物の 強さを 持ってる。\n敬意を 表するぜ……。");
+                    }
+                }
                 else { await typeMessage("【海賊の部下】\nここから 先は ボスの 部屋だ！\n通りたければ ボスを 倒してから にしろ！！"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -7414,6 +7443,10 @@ async function checkAction() {
                                 await grantSQReward('sq_02');
                                 await typeMessage("【ふしぎな台帳】\n「王者の剣の継承」が 完了した！");
                             }
+                            if (getSQ('sq_04') >= 1 && !isSQDone('sq_04') && !partyData.members.some(m=>m.inventory.includes('dragon_scale_red'))) {
+                                const _rTgt = partyData.members.find(m=>m.inventory.length<8)||partyData.members[0];
+                                if(_rTgt){_rTgt.inventory.push('dragon_scale_red'); AudioManager.playSE('item_get'); await typeMessage("洞窟の 深部に 赤く 輝く 鱗が 残されていた……\n赤竜の鱗 を てにいれた！"); advanceSQ('sq_04',2);}
+                            }
 
                         } else if (npc.id === 'boss_sky') {
                             partyData.flags.flag_tower_cleared = true;
@@ -7426,6 +7459,10 @@ async function checkAction() {
                                 advanceSQ('sq_01', 2);
                                 await grantSQReward('sq_01');
                                 await typeMessage("【ふしぎな台帳】\n「天空の剣の試練」が 完了した！");
+                            }
+                            if (getSQ('sq_04') >= 1 && !isSQDone('sq_04') && !partyData.members.some(m=>m.inventory.includes('dragon_scale_blue'))) {
+                                const _bTgt = partyData.members.find(m=>m.inventory.length<8)||partyData.members[0];
+                                if(_bTgt){_bTgt.inventory.push('dragon_scale_blue'); AudioManager.playSE('item_get'); await typeMessage("天空の頂に 蒼く 輝く 鱗が 残されていた……\n蒼竜の鱗 を てにいれた！"); advanceSQ('sq_04',3);}
                             }
                         } else if (_isFinal && _is2nd) {
                             // 2周目: 魔王城のボス撃破 → 城下町グラマニアへ帰還
@@ -7441,6 +7478,10 @@ async function checkAction() {
                             state = 'FIELD'; hideAllWindows(); drawMap(); updateBGM(); startFieldLoop(); return;
                         } else if (_isFinal) {
                             // 1周目・衝撃の大どんでん返し（最終形態なし）
+                            if (getSQ('sq_04') >= 1 && !isSQDone('sq_04') && !partyData.members.some(m=>m.inventory.includes('dragon_scale_gold'))) {
+                                const _gTgt = partyData.members.find(m=>m.inventory.length<8)||partyData.members[0];
+                                if(_gTgt){_gTgt.inventory.push('dragon_scale_gold'); AudioManager.playSE('item_get'); await typeMessage("魔王城の 深部から 金色に 輝く 鱗が 現れた……\n金竜の鱗 を てにいれた！"); advanceSQ('sq_04',4);}
+                            }
                             await typeMessage("【グラ王】\nよく……ぞ…… 我が……末裔よ……");
                             await typeMessage("【グラ王】\nわしは……グラード。\n百年前の……本物の 初代国王じゃ。\n長い……長い 時を かけて\nやっと……お前に 会えた……！");
                             await typeMessage("【グラ王】\n城に いる グラードは……偽物じゃ。\n百年前に わしの 肉体を 奪い\n人間を 操り続けた 初代魔王……！\n急いで……城へ……戻れ……！");
