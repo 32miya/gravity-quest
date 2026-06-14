@@ -772,9 +772,12 @@ window.isGuraKingBattle = false;
 // 64文字ひらがなテーブル（6ビット/文字）
 // ※をと だ行を省いてば行を収録（だ行文字は た行に近似変換）
 const _GQ_KANA64 = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわんっゃゅょがぎぐげござじずぜぞばびぶべぼ';
-// 職業テーブル（4ビット=16種）— 転職で選べる全職業名を網羅
-const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','格闘家','忍者','道化師',
-                  'パラディン','盗賊','魔剣士','踊り子','召喚士','魔法戦士','モンク','商人'];
+// 職業テーブル（4ビット=16種）— characterDataの実際のjob名に合わせた正確なリスト
+// 変更禁止: 既存パスワードの互換性のためインデックス順序を保持
+// idx: 0=勇者,1=戦士,2=魔法使い,3=僧侶,4=賢者,5=パンダ,6=忍者,7=ネコ,
+//      8=パラディン,9=サムライ,10=魔剣士,11=踊り子,12=召喚士,13=魔法戦士,14=モンク,15=商人
+const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','パンダ','忍者','ネコ',
+                  'パラディン','サムライ','魔剣士','踊り子','召喚士','魔法戦士','モンク','商人'];
 // マップIDテーブル（6ビット=64種）
 const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4','map_eden'];
 // アイテム/装備コンパクトIDテーブル（8ビット=256種、0=なし）
