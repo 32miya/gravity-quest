@@ -1088,6 +1088,68 @@ function injectSubStoryData() {
     }
 }
 
+// ===== サブストーリー定義 =====
+const SUBSTORIES = [
+    { id:'sq_01', title:'天空の剣の試練',
+      steps:{ 1:'天空の塔の守護者が試練の剣について語った', 2:'天空の王を打ち倒した' },
+      doneText:'天空のつるぎを手に入れた', reward:'w06', rewardMember:0 },
+    { id:'sq_02', title:'王者の剣の継承',
+      steps:{ 1:'引退した冒険者ゴルが王者の剣の伝承を語った', 2:'砂漠の商人カリバンを救出した', 3:'試練の洞窟の守護霊を倒した' },
+      doneText:'王者のつるぎを受け継いだ', reward:'w28', rewardMember:0 },
+    { id:'sq_03', title:'海賊王の遺言',
+      steps:{ 1:'海賊王バルゴを倒し、秘密の遺言を聞いた', 2:'海賊の部下から古い海図を手に入れた' },
+      doneText:'海神の三叉槍と海竜の鎧を入手した', reward:'w_trident', reward2:'a_sea_armor' },
+    { id:'sq_04', title:'竜霊グラドスの浄化',
+      steps:{ 1:'竜霊グラドスと話し、浄化の方法を知った', 2:'赤竜の鱗を入手（1/3）', 3:'蒼竜の鱗を入手（2/3）', 4:'金竜の鱗を入手（3/3）' },
+      doneText:'グラドスを浄化し、英雄のヤリを授かった', reward:'w_spear_11', rewardMember:1 },
+    { id:'sq_05', title:'鍛冶師ガルドの宿願',
+      steps:{ 1:'鍛冶師ガルドが隕石の欠片を求めていると知った', 2:'はぐれグラちゃんを倒しいんせきのかけらを入手した' },
+      doneText:'メタルキングの鎧が完成した', reward:'a26', rewardMember:1 },
+    { id:'sq_06', title:'ほしのカケラ伝説',
+      steps:{ 1:'宮廷賢者バルダックから星の伝承を聞いた', 2:'北の洞窟でほしのカケラを発見（1/3）', 3:'西の森でほしのカケラを発見（2/3）', 4:'南の祠でほしのカケラを発見（3/3）' },
+      doneText:'三つのカケラが合わさり、星砕きの剣と星降る腕輪を入手した', reward:'w_star_sword', reward2:'acc_star_bracelet' },
+    { id:'sq_07', title:'呪われた魔斧の行方',
+      steps:{ 1:'野の賢者ガンダから廃屋の話を聞いた', 2:'廃屋で魔人の斧を発見した', 3:'ダーマの神殿で呪い解除を依頼した', 4:'呪いの源・暗黒の魔将を倒した' },
+      doneText:'魔人の斧の呪いが解け、真の力が目覚めた', reward:'w27' },
+    { id:'sq_08', title:'大賢者アークの遺訓',
+      steps:{ 1:'賢者の祠で大賢者アークの存在を知った', 2:'第1の断章を発見（1/4）', 3:'第2の断章を発見（2/4）', 4:'第3の断章を発見（3/4）', 5:'第4の断章を発見（4/4）' },
+      doneText:'遺訓が集まり、隠れ里エデンへの道が開いた', reward:null },
+    { id:'sq_09', title:'エデンの誓い',
+      steps:{ 1:'隠れ里エデンに到達し、長老ガルドスと話した', 2:'反乱軍の隊長の依頼を受けた', 3:'偽王の証拠「封印の書状」を入手した', 4:'真実を証明する「聖印」を見つけた' },
+      doneText:'偽王グラードの正体が判明した。いよいよ決戦の時だ', reward:'a05', rewardMember:0 },
+    { id:'sq_10', title:'異世界の旅人',
+      steps:{ 1:'謎の旅人の噂が各地に広まっている', 2:'旅人の目撃情報を集めた（2/3）', 3:'旅人の目撃情報を全て集めた（3/3）' },
+      doneText:'異世界の旅人を撃破した', reward:'w_2nd_03' },
+];
+function getSQ(id) { return (partyData.flags && partyData.flags[id]) || 0; }
+function setSQ(id, lv) { if (partyData.flags) partyData.flags[id] = lv; }
+function isSQDone(id) { return getSQ(id) >= 99; }
+function advanceSQ(id, toStep) { if (getSQ(id) < toStep && !isSQDone(id)) setSQ(id, toStep); }
+function startSQ(id) { if (getSQ(id) === 0) setSQ(id, 1); }
+async function grantSQReward(sq) {
+    const def = SUBSTORIES.find(s => s.id === sq);
+    if (!def) return;
+    setSQ(sq, 99);
+    const _giveItem = async (itemId, memberIdx) => {
+        if (!itemId) return;
+        const _m = partyData.members[memberIdx || 0] || partyData.members.find(m => m.inventory.length < 8);
+        if (_m && _m.inventory.length < 8) {
+            _m.inventory.push(itemId);
+            AudioManager.playSE('item_get');
+            const _n = (masterData.items[itemId] && masterData.items[itemId].name) || itemId;
+            await typeMessage(`${_m.name}は ${_n}を 手に入れた！`);
+        }
+    };
+    await _giveItem(def.reward, def.rewardMember);
+    if (def.reward2) await _giveItem(def.reward2);
+}
+function checkSQ10Unlock() {
+    if (getSQ('sq_10') === 0) {
+        const done = SUBSTORIES.slice(0, 9).filter(s => isSQDone(s.id)).length;
+        if (done >= 8) startSQ('sq_10');
+    }
+}
+
 const battleBgImages = [
     "https://cdn.gravity.place/aiugc/game/material/2026-04-17/81d36868-2c8b-4bee-aaae-28d51fab8810.jpeg", 
     "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5d96c8b0-7b34-40a5-aef8-e4ee76069d52.jpeg", 
@@ -6505,6 +6567,7 @@ async function checkAction() {
 
             // ===== 隠れ里エデン NPCイベント =====
             if(partyData.pos.map==='map_eden' || partyData.pos.map.includes('map_eden')) {
+                if (!getSQ('sq_09')) { startSQ('sq_09'); await typeMessage("（ふしぎな台帳に 「エデンの誓い」が 記録された）"); }
                 const _inEden = partyData.pos.map.includes('eden');
                 const _2nd = partyData.flags.is_second_loop;
                 const _fin = partyData.flags.last_boss_defeated;
@@ -6698,8 +6761,14 @@ async function checkAction() {
                     else { await typeMessage("【宮廷賢者バルダック】\n……あの日 何かが 変わった。\n王様の 眼が……以前と 違う 気がする。\nお前たちは……本当に 大丈夫か？\nどうか……身を 守れ。"); }
                 } else if (!partyData.flags.flag_king_met) { await typeMessage("【宮廷賢者バルダック】\nまず 玉座の間の 王様に\nご挨拶を するのじゃ。\nただ……王様の 御言葉を 鵜呑みに\nしすぎるでないぞ。 ふむ……。"); }
                 else if (partyData.flags.flag_mage_trial_cleared) { await typeMessage("【宮廷賢者バルダック】\n究極の魔法まで 手に入れたか。\nあとは 魔王城のみ。\n……どうか 生きて 戻ってきてくれ。\n魔王を 倒しても……それで 終わりでは ないかもしれぬ。"); }
-                else if (partyData.flags.flag_weapon_forged) { await typeMessage("【宮廷賢者バルダック】\n伝説の鍛冶屋に 会ったのじゃな。\n次は 東の 大魔導士の島へ 向かうのじゃ。\nあの島には 魔王城も あるが、\nまず 大魔導士に 会うのじゃぞ。"); }
-                else { await typeMessage("【宮廷賢者バルダック】\n魔王の 力は 闇の 呪いで 守られておる。\n西の大森林の 奥の 伝説の鍛冶屋に\n会いに 行くのじゃ。\n北山岳の『ほしのカケラ』が あれば\n最強の剣を 鍛えてくれるという……"); }
+                else if (partyData.flags.flag_weapon_forged) {
+                    await typeMessage("【宮廷賢者バルダック】\n伝説の鍛冶屋に 会ったのじゃな。\n次は 東の 大魔導士の島へ 向かうのじゃ。\nあの島には 魔王城も あるが、\nまず 大魔導士に 会うのじゃぞ。");
+                    if (!getSQ('sq_05')) { startSQ('sq_05'); await typeMessage("【宮廷賢者バルダック】\nそうじゃ……鍛冶屋が\n「隕石のかけら」で 究極の鎧を 打てると\n言っておったではないか。\nはぐれメタル系の 魔物が 持っておるという……\n（ふしぎな台帳に 記録された）"); }
+                }
+                else {
+                    await typeMessage("【宮廷賢者バルダック】\n魔王の 力は 闇の 呪いで 守られておる。\n西の大森林の 奥の 伝説の鍛冶屋に\n会いに 行くのじゃ。\n北山岳の『ほしのカケラ』が あれば\n最強の剣を 鍛えてくれるという……");
+                    if (!getSQ('sq_06')) { startSQ('sq_06'); await typeMessage("【宮廷賢者バルダック】\nそうそう……もうひとつ。\n古い 星の 伝承書に こう あった：\n「三つの カケラが 揃う時\n星砕きの 剣と 腕輪が 現れる」と。\nカケラは 各地の ダンジョンに 隠れておるらしい……\n（ふしぎな台帳に 記録された）"); }
+                }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             // ★心配性の市民
@@ -6721,6 +6790,7 @@ async function checkAction() {
                 } else {
                     await typeMessage("【引退した冒険者 ゴル】\nワシは かつて 冒険者じゃった。\n北の 孤島にある 試練の洞窟の\n最奥まで たどりついたが\nそこの ボスに 完敗……今も トラウマじゃよ。");
                     await typeMessage("【引退した冒険者 ゴル】\n西の大森林の 奥に\n伝説の 鍛冶屋が 住んでいると いうぞ。\n北の島の 岩場に きらめく 鉱石が\nあるという から 探してみよ。");
+                    if (!getSQ('sq_02')) { startSQ('sq_02'); await typeMessage("【引退した冒険者 ゴル】\nそうそう……一つ 頼みがある。\n試練の 洞窟の 最奥に\n百年前の 老騎士の 守護霊が いる。\nそいつを 倒したら……\n「王者のつるぎ」を 受け取ってきてくれ。\nあの剣は お前たちに こそ 相応しい！\n（ふしぎな台帳に 記録された）"); }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -6751,6 +6821,7 @@ async function checkAction() {
                     await typeMessage("【野の賢者 ガンダ】\n……魔王を 滅ぼしたいのなら\n天空の 力が 必要じゃ。");
                     await typeMessage("【野の賢者 ガンダ】\nこの地の 東に\n天空の塔の 入り口がある。\n頂には 太古の 守護者が 眠っておる。\n倒せれば その 力が お前たちに 宿るだろう。");
                     await typeMessage("【野の賢者 ガンダ】\nしかし 守護者は 強い……\n十分に 力を 蓄えてから\n挑むのじゃぞ。");
+                    if (!getSQ('sq_07')) { startSQ('sq_07'); await typeMessage("【野の賢者 ガンダ】\nあと……北東の廃屋に\n不吉な 気配が ある。\n呪われた 斧が 眠っていると いう話じゃ。\nダーマの 神殿なら 呪いを 解けるかもしれぬ……\n（ふしぎな台帳に 記録された）"); }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -6840,6 +6911,10 @@ async function checkAction() {
                         if (_healed) { AudioManager.playSE('heal'); await typeMessage("【旅の僧侶】\n女神よ この 旅人たちを 守りたまえ……。\nHPが 少し 回復した！"); }
                         else { await typeMessage("【旅の僧侶】\nあなたたちは すでに 万全の 状態ですね。\n女神の 加護が ありますように。"); }
                     } else { await typeMessage("【旅の僧侶】\nそうですか。\n道中 ご無事で。"); }
+                    if (!getSQ('sq_08')) {
+                        startSQ('sq_08');
+                        await typeMessage("【旅の僧侶】\nそうだ……この 祠で\n大賢者 アークという 人物の 記述を\n発見しました。\n各地に 遺された 古文書の 断章を\n集めると 伝説の 隠れ里への 道が\n開くとか……\n（ふしぎな台帳に 記録された）");
+                    }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -6906,17 +6981,28 @@ async function checkAction() {
                 if (partyData.flags.flag_dragon_spirit_cleared) {
                     await typeMessage("【竜霊グラドス】\n……よく 戻ってきたな 末裔よ。\n世界の 行方を 見守っておる……。"); state = 'FIELD'; hideAllWindows(); drawMap(); return;
                 }
-                await typeMessage("【竜霊グラドス】\n……来たか。\n我は グラマニア初代王家の\n守護竜 グラドスじゃ。");
-                await typeMessage("【竜霊グラドス】\n百年の 時を こえて\nやっと 本物の 血筋が 現れた……。\nお前が 真に 継承者たるか\n試させてもらおう！");
-                hideGoldWindow(); let _dw = await executeBattle(["boss_dragon_spirit"]); showGoldWindow(); updateGoldWindow();
-                if (_dw) {
-                    partyData.flags.flag_dragon_spirit_cleared = true;
-                    AudioManager.playBGM('victory');
-                    await typeMessage("【竜霊グラドス】\n……見事じゃ。\n正真正銘 の 王家の 末裔。\nこの 力を 受け取るがよい！");
-                    let tgt = partyData.members[0]; if (tgt.inventory.length < 8) tgt.inventory.push("acc_sea_ring"); else tgt.inventory[0] = "acc_sea_ring";
-                    AudioManager.playSE('item_get'); await typeMessage("波濤の指輪 を てにいれた！\n（戦闘中 毎ターン MP が 回復する！）");
-                    await typeMessage("【竜霊グラドス】\nグラマニア城 の 地下に\n更なる 力が 眠っておる……。\n城を 制した のち に 探してみよ。");
-                } else { return; }
+                if (!getSQ('sq_04')) {
+                    startSQ('sq_04');
+                    await typeMessage("【竜霊グラドス】\n……来たか。\n我は グラマニア初代王家の\n守護竜 グラドスじゃ。");
+                    await typeMessage("【竜霊グラドス】\n今は 試練の 時では ない。\n我は 魔王の 呪縛に 囚われ\n正気を 失いかけておる……。");
+                    await typeMessage("【竜霊グラドス】\n呪いを 解くには\n三種の 竜鱗が 必要じゃ。\n赤・蒼・金の 竜が 住む 地を\n探し 出してくれ……。\n（ふしぎな台帳に 記録された）");
+                } else if (isSQDone('sq_04')) {
+                    await typeMessage("【竜霊グラドス】\n……よく 戻ってきたな 末裔よ。\n世界の 行方を 見守っておる……。"); state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                } else {
+                    await typeMessage("【竜霊グラドス】\n……来たか。\n我は グラマニア初代王家の\n守護竜 グラドスじゃ。");
+                    await typeMessage("【竜霊グラドス】\n百年の 時を こえて\nやっと 本物の 血筋が 現れた……。\nお前が 真に 継承者たるか\n試させてもらおう！");
+                    hideGoldWindow(); let _dw = await executeBattle(["boss_dragon_spirit"]); showGoldWindow(); updateGoldWindow();
+                    if (_dw) {
+                        partyData.flags.flag_dragon_spirit_cleared = true;
+                        AudioManager.playBGM('victory');
+                        await typeMessage("【竜霊グラドス】\n……見事じゃ。\n呪いが……解けていく……！\n正真正銘 の 王家の 末裔。\nこの 力を 受け取るがよい！");
+                        let tgt = partyData.members[0]; if (tgt.inventory.length < 8) tgt.inventory.push("acc_sea_ring"); else tgt.inventory[0] = "acc_sea_ring";
+                        AudioManager.playSE('item_get'); await typeMessage("波濤の指輪 を てにいれた！\n（戦闘中 毎ターン MP が 回復する！）");
+                        await grantSQReward('sq_04');
+                        await typeMessage("【ふしぎな台帳】\n「竜霊グラドスの浄化」が 完了した！");
+                        await typeMessage("【竜霊グラドス】\nグラマニア城 の 地下に\n更なる 力が 眠っておる……。\n城を 制した のち に 探してみよ。");
+                    } else { return; }
+                }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "obj_chest_sea_armor") {
@@ -6952,6 +7038,10 @@ async function checkAction() {
                     await typeMessage("【海賊王バルゴ】\n……約束は 守る 主義だ。\nその 宝 ……持ってけ。\nただし……あの 魔王だけは\nブッ倒してから 死にやがれ……！！");
                     let tgt2 = partyData.members[0]; if (tgt2.inventory.length < 8) tgt2.inventory.push("w_trident"); else tgt2.inventory[0] = "w_trident";
                     AudioManager.playSE('item_get'); await typeMessage("海神の三叉槍 を てにいれた！\n（水 属性の 超強力 武器！）");
+                    if (!getSQ('sq_03')) {
+                        startSQ('sq_03');
+                        await typeMessage("【海賊王バルゴ】\nそうだ……最後に ひとつ。\n俺の 部下が 「古い 海図」を 持ってる。\nそいつに 話しかけてみな……\nあの 海図には 伝説の 宝が 眠る 場所が\n記されているはずだ……\n（ふしぎな台帳に 記録された）");
+                    }
                     delete currentMap.npcs[key];
                 } else { return; }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
@@ -7319,6 +7409,11 @@ async function checkAction() {
                             await typeMessage("【元・王宮騎士の英霊】\n最後に……ひとつだけ。\nあの城には……近づきすぎるな。\n国王と呼ばれる 者の 影を……よく 見ろ。");
                             await typeMessage("【元・王宮騎士の英霊】\n……ひとつ、礼を させてくれ。\nこの洞窟の 西、浜辺に\nわしの 主君が 百年 前から 遺した 船がある。\n浜辺へ 行けば 船が 見つかるはずじゃ……\n海を 渡り、真実を 確かめるのだ。");
                             await typeMessage("守護霊は 静かに 光に 包まれ……\n風の如く 消えていった。");
+                            if (getSQ('sq_02') >= 1 && !isSQDone('sq_02')) {
+                                advanceSQ('sq_02', 3);
+                                await grantSQReward('sq_02');
+                                await typeMessage("【ふしぎな台帳】\n「王者の剣の継承」が 完了した！");
+                            }
 
                         } else if (npc.id === 'boss_sky') {
                             partyData.flags.flag_tower_cleared = true;
@@ -7327,6 +7422,11 @@ async function checkAction() {
                             await typeMessage("【天空の王】\nこの力を 授けよう。\nしかし これは 魔王を 殺すための 力ではない。\n世界の 嘘を その刃で\n切り裂くための 力だ。");
                             await typeMessage("【天空の王】\n城へ 帰れば……全てが 分かるだろう。\nその時 どうか 正しい 選択を してくれ。");
                             await typeMessage(`天空の 力が ${_heroName}たちに 宿った！\n（魔族の 言葉が 理解できるように なった……！）`);
+                            if (getSQ('sq_01') >= 1 && !isSQDone('sq_01')) {
+                                advanceSQ('sq_01', 2);
+                                await grantSQReward('sq_01');
+                                await typeMessage("【ふしぎな台帳】\n「天空の剣の試練」が 完了した！");
+                            }
                         } else if (_isFinal && _is2nd) {
                             // 2周目: 魔王城のボス撃破 → 城下町グラマニアへ帰還
                             await typeMessage("【偽の国王グラード】\n……くっ……！\nこの力では……まだ 勝てぬか！\nだが……これで 終わりとは 思うな！\n（偽王が 魔王城から 姿を 消した……）");
@@ -7412,7 +7512,15 @@ async function checkAction() {
                     await typeMessage(_dm_msg);
                 }
                 else if (npc.id === 'npc_tower_sage') { await typeMessage("【塔の番人】\nここは 天空の塔の 1階。\n太古の 守護者が 頂に 眠っておる……\nその 力を 受け継ぐに ふさわしい 者のみが\n先へ 進めると いうぞ。\nご武運を！"); }
-                else if (npc.id === 'npc_sky_guard') { await typeMessage("【天空の守護者】\nよく ここまで たどりついた……\nその血脈……天空の 王は ずっと\nお前を 待ち続けておった。\n全力で ぶつかるがよい。\n必ずや 真実を 知る 力を 授けられるはずだ！"); }
+                else if (npc.id === 'npc_sky_guard') {
+                    if (!getSQ('sq_01')) {
+                        startSQ('sq_01');
+                        await typeMessage("【天空の守護者】\nよく ここまで たどりついた……\nその血脈……天空の 王は ずっと\nお前を 待ち続けておった。");
+                        await typeMessage("【天空の守護者】\n天空のつるぎは 王が 守っておる。\n王を 打ち倒した 者にのみ\nその 剣は 授けられる。\n全力で ぶつかるがよい！\n（ふしぎな台帳に 記録された）");
+                    } else {
+                        await typeMessage("【天空の守護者】\nよく ここまで たどりついた……\nその血脈……天空の 王は ずっと\nお前を 待ち続けておった。\n全力で ぶつかるがよい。\n必ずや 真実を 知る 力を 授けられるはずだ！");
+                    }
+                }
                 else if (npc.id === 'npc_guard_demon') {
                     if (partyData.flags.is_second_loop) {
                         await typeMessage("【魔族の兵士】\n……お前たちが 来るのを\nずっと 待っておった……。\n百年……百年もの間\nわれらは 偽りの 主に 仕えてきた……！");
@@ -7557,6 +7665,7 @@ async function eventPriest() {
             if (!partyData.flags.rura_destinations) partyData.flags.rura_destinations = {};
             const _rulaMapName = (currentMap && currentMap.name) ? currentMap.name : getMapDisplayName(partyData.pos.map, currentMap);
             partyData.flags.rura_destinations[partyData.pos.map] = { x: partyData.pos.x, y: partyData.pos.y, name: _rulaMapName };
+            checkSQ10Unlock();
             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData)); await typeMessage("スマホに データーを きろくしました。\n（※ブラウザ履歴を消すと消える場合があります）");
             let encoded = packSaveData(partyData);
             const _hasKanji=partyData.members.some(m=>_hasUnsupportedNameChars(m.name));
@@ -7661,10 +7770,42 @@ async function eventShop(npcId) {
     }
 }
 
+async function openSubstoryLedger() {
+    let html = `<div style="font-size:13px;border-bottom:1px solid #446;margin-bottom:7px;padding-bottom:3px;text-align:center;letter-spacing:3px;color:#d0e8ff;font-weight:bold;">ふ し ぎ な 台 帳</div>`;
+    SUBSTORIES.forEach(sq => {
+        const lv = getSQ(sq.id);
+        const done = lv >= 99;
+        const active = lv > 0 && !done;
+        const icon = done ? '○' : active ? '…' : '？';
+        const col = done ? '#80ff80' : active ? '#f8e040' : '#666';
+        const titleCol = done ? '#80ff80' : active ? '#ffe080' : '#555';
+        const hint = done ? sq.doneText : (active ? (sq.steps[lv] || '進行中…') : '');
+        html += `<div style="margin:3px 0 3px 0;">`;
+        html += `<span style="color:${col};font-weight:bold;font-size:13px;margin-right:5px;">${icon}</span>`;
+        html += `<span style="color:${titleCol};font-size:12px;">${active||done ? sq.title : '？？？？？？？？'}</span>`;
+        if (hint) html += `<div style="margin-left:16px;font-size:10px;color:${done?'#a0ffa0':'#ccc'};line-height:1.4;">${hint}</div>`;
+        html += `</div>`;
+    });
+    const doneCount = SUBSTORIES.filter(s => isSQDone(s.id)).length;
+    const activeCount = SUBSTORIES.filter(s => getSQ(s.id) > 0 && !isSQDone(s.id)).length;
+    html += `<div style="margin-top:7px;border-top:1px solid #446;padding-top:4px;font-size:11px;color:#a0c0ff;text-align:center;">クリア ${doneCount}/${SUBSTORIES.length}　進行中 ${activeCount}</div>`;
+    html += `<div style="margin-top:4px;text-align:right;font-size:11px;color:#888;" class="blink">▼とじる</div>`;
+    document.getElementById('status-window').innerHTML = html;
+    showWindow('status-window');
+    await new Promise(resolve => {
+        inputCallback = (key) => {
+            if (key === 'Enter' || key === 'Escape' || key === ' ') {
+                AudioManager.playSE('cancel'); inputCallback = null; resolve();
+            }
+        };
+    });
+    hideWindow('status-window');
+}
+
 async function openMainMenu() {
     state = 'MENU'; showWindow('party-status'); updatePartyStatus(); showGoldWindow();
     while(true) {
-        let cmd = await selectMenu(['はなす', 'じゅもん', 'どうぐ', 'つよさ', 'ちず'], 'cmd-window', 1, true); if(cmd === -1) break;
+        let cmd = await selectMenu(['はなす', 'じゅもん', 'どうぐ', 'つよさ', 'ちず', 'ふしぎな台帳'], 'cmd-window', 1, true); if(cmd === -1) break;
         if(cmd === 0) { hideAllWindows(); await checkAction(); if (state !== 'FIELD') break; showWindow('party-status'); updatePartyStatus(); state = 'MENU'; } 
         else if(cmd === 1) {
             await typeMessage("だれの じゅもん？"); let charIdx = await selectMenu(partyData.members.map(m=>m.name), 'cmd-window', 1, true); if(charIdx === -1) continue; let char = partyData.members[charIdx];
@@ -7845,6 +7986,7 @@ async function openMainMenu() {
                 _stIdx = Math.max(0, Math.min(partyData.members.length-1, _stIdx+_stDir));
             }
         } else if(cmd === 4) { await showWorldMap(); }
+        else if(cmd === 5) { await openSubstoryLedger(); }
     }
     hideAllWindows(); state = 'FIELD'; drawMap();
 }
