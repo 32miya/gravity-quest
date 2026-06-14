@@ -785,6 +785,7 @@ const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1
 const _GQ_EQUIP = [
     '','i01','i02','i03','i04','i05','i06','i07','i08','i09','i10',
     'i11','i12','i13','i14','i15','i16','i17','i_star_frag','meteorite_fragment',
+    'dragon_scale_red','dragon_scale_blue','dragon_scale_gold',
     'w01','w02','w03','w04','w05','w06','w07','w08','w09','w10',
     'w11','w12','w13','w14','w15','w16','w17','w18','w19','w20',
     'w21','w22','w23','w24','w25','w26','w27','w28','w29','w30',
@@ -814,6 +815,10 @@ const _GQ_EQUIP = [
     'w_staff_10','w_staff_11','w_staff_13','w_staff_14',
 ];
 // フラグリスト（27ビット固定順）
+// SQ専用アイテム（ドロップ・宝箱・ショップから除外）
+const _SQ_EXCL = new Set(['meteorite_fragment','dragon_scale_red','dragon_scale_blue','dragon_scale_gold',
+    'w_star_sword','acc_star_bracelet','a_sea_armor','acc_sea_ring','i_star_frag']);
+
 const _GQ_FLAGS = ['last_boss_defeated','is_second_loop','is_second_loop_unlocked','has_ship','flag_dungeon_cleared','flag_tower_cleared','flag_sky_truth_known','flag_2nd_maou_cleared','flag_king_met','flag_pirate_king_cleared','flag_weapon_forged','flag_has_star_fragment','flag_saved_richman','flag_mage_trial_cleared','flag_dragon_spirit_cleared','flag_beaten_secret_boss','2nd_mem_maou','2nd_mem_shrine','2nd_mem_village','2nd_mem_tower','2nd_mem_dungeon','2nd_mem_town','2nd_final_spawned','shrine_healed','flag_wedding','flag_casino_won','flag_rsv1'];
 
 // ビット書き込み: 6ビット単位でbytes配列に積む
@@ -927,8 +932,10 @@ function packSaveData(pData) {
     fields.push([Math.min((pData.pos||{}).x||0,63), 6]);
     fields.push([Math.min((pData.pos||{}).y||0,63), 6]);
     for (const k of _GQ_FLAGS) fields.push([f[k]?1:0, 1]);
+    // SQ完了フラグ10個 (各1bit, 計10bit)
+    for (let _sqE=1; _sqE<=10; _sqE++) { const _sqK=_sqE<10?'sq_0'+_sqE:'sq_10'; fields.push([(f[_sqK]||0)>=99?1:0, 1]); }
     // メンバー×4: 名前(32=8×4)+職業(4)+Lv(6)+EXP(14)+装備5本(8×5=40)+所持8個(8×8=64) = 160ビット×4=640ビット
-    // 合計: 64+640=704ビット → ceil(704/6)=118文字 + チェックサム1文字 = 119文字
+    // 合計: 64+10+640=714ビット → ceil(714/6)=119文字 + チェックサム1文字 = 120文字
     for (let i=0;i<4;i++) {
         const m=(pData.members||[])[i];
         const _slot = (id) => { const idx=_GQ_EQUIP.indexOf(id||''); return idx>=0?idx:0; };
@@ -945,7 +952,7 @@ function packSaveData(pData) {
     }
     const payload = _gqBitPack(fields);
     const cs = payload.reduce((a,b)=>a+b,0)%64;
-    const bytes = [cs, ...payload.slice(0,118)]; // 1+118=119文字
+    const bytes = [cs, ...payload.slice(0,119)]; // 1+119=120文字
     return bytes.map(b=>_GQ_KANA64[b%64]).join('');
 }
 
@@ -963,11 +970,12 @@ function unpackSaveData(pwd) {
     // ── かなパスワード判定: 先頭文字が_GQ_KANA64に含まれるか ──
     if (_GQ_KANA64.includes(pwd[0])) {
         // フォーマット判定:
-        // 119文字=最新形式(8bit名前,4bit職業,8bit装備)
-        // 116文字=旧7bit名前形式, 113文字=旧6bit名前形式, 104文字=旧7bit装備形式
+        // 120文字=最新形式+SQ完了フラグ10個
+        // 119文字=旧形式(SQフラグなし), 116文字=旧7bit名前形式, 113文字=旧6bit名前形式
         const _eb = pwd.length >= 109 ? 8 : 7; // 装備/所持品ビット数
         const _nb = pwd.length >= 117 ? 8 : (pwd.length >= 115 ? 7 : 6); // 名前ビット数
         const _jb = pwd.length >= 115 ? 4 : 3;  // 職業ビット数
+        const _hasSQ = pwd.length >= 120; // SQ完了フラグ有無
         const _minLen = _eb === 8 ? 109 : 100;
         if ([...pwd].every(c => _GQ_KANA64.includes(c)) && pwd.length >= _minLen) {
             const bytes = [...pwd].map(c => _GQ_KANA64.indexOf(c));
@@ -981,6 +989,8 @@ function unpackSaveData(pwd) {
             const px=read(6), py=read(6);
             const flags = {};
             for (const k of _GQ_FLAGS) { if(read(1)) flags[k]=true; }
+            // SQ完了フラグ (120文字形式のみ)
+            if (_hasSQ) { for (let _sqD=1; _sqD<=10; _sqD++) { const _sqK=_sqD<10?'sq_0'+_sqD:'sq_10'; if(read(1)) flags[_sqK]=99; } }
             const members = [];
             for (let i=0;i<4;i++) {
                 const name = _gqDecodeName(read,_nb); // 7bit=カタカナ保持, 6bit=旧形式
@@ -7520,9 +7530,9 @@ async function checkAction() {
                     else {
                         partyData.flags[_cf] = true; AudioManager.playSE('item_get');
                         let _pool, _itemId = null;
-                        if (npc.id.includes('weapon')) _pool = Object.values(masterData.items).filter(i => i.type !== 'tool' && i.type !== 'armor' && i.type !== 'helmet' && i.type !== 'acc' && i.price > 0);
-                        else if (npc.id.includes('armor')) _pool = Object.values(masterData.items).filter(i => (i.type === 'armor' || i.type === 'helmet' || i.type === 'acc') && i.price > 0);
-                        else _pool = Object.values(masterData.items).filter(i => i.type === 'tool' && i.price > 0);
+                        if (npc.id.includes('weapon')) _pool = Object.values(masterData.items).filter(i => i.type !== 'tool' && i.type !== 'armor' && i.type !== 'helmet' && i.type !== 'acc' && i.price > 0 && !_SQ_EXCL.has(i.id));
+                        else if (npc.id.includes('armor')) _pool = Object.values(masterData.items).filter(i => (i.type === 'armor' || i.type === 'helmet' || i.type === 'acc') && i.price > 0 && !_SQ_EXCL.has(i.id));
+                        else _pool = Object.values(masterData.items).filter(i => i.type === 'tool' && i.price > 0 && !_SQ_EXCL.has(i.id));
                         if (_pool && _pool.length > 0) { let _it = _pool[Math.floor(Math.random() * _pool.length)]; _itemId = _it.id; }
                         if (_itemId && masterData.items[_itemId]) {
                             let _it = masterData.items[_itemId];
@@ -7885,7 +7895,7 @@ async function eventWeaponShop(npcId) {
         let mainChoice = await selectMenu(["かう", "うる", "やめる"], 'cmd-window', 1, true);
         if (mainChoice === -1 || mainChoice === 2) { await typeMessage("またの おこしを おまちしております！"); break; }
         if (mainChoice === 0) {
-            let allEquip = Object.values(masterData.items).filter(i => i.price > 0 && i.type !== 'tool').sort((a, b) => a.price - b.price);
+            let allEquip = Object.values(masterData.items).filter(i => i.price > 0 && !_SQ_EXCL.has(i.id) && i.type !== 'tool').sort((a, b) => a.price - b.price);
             let shopIds;
             if (npcId === "npc_strong_weapon_shop") { shopIds = allEquip.filter(i => i.price >= 3000).map(i => i.id).slice(-6); }
             else if (partyData.pos.map.includes('bazaar') || partyData.pos.map.includes('market')) { shopIds = allEquip.filter(i => i.price >= 300 && i.price <= 3000).map(i => i.id).slice(0, 7); }
@@ -7923,7 +7933,7 @@ async function eventShop(npcId) {
         let mainChoice = await selectMenu(["かう", "うる", "やめる"], 'cmd-window', 1, true);
         if (mainChoice === -1 || mainChoice === 2) { await typeMessage("またの おこしを おまちしております！"); break; }
         if (mainChoice === 0) {
-            let allTools = Object.values(masterData.items).filter(i => i.price > 0 && i.type === 'tool').sort((a, b) => a.price - b.price);
+            let allTools = Object.values(masterData.items).filter(i => i.price > 0 && !_SQ_EXCL.has(i.id) && i.type === 'tool').sort((a, b) => a.price - b.price);
             let shopIds = [];
             if (partyData.pos.map.includes('town_01') || partyData.pos.map.includes('castle_01')) { shopIds = allTools.slice(0, 5).map(i => i.id); }
             else { let maxP = Math.max(100, partyData.gold / 1.5); let cands = allTools.filter(i => i.price <= maxP); if (cands.length === 0) cands = allTools; shopIds = cands.slice(-6).map(i => i.id); }
@@ -8788,8 +8798,8 @@ ${act.actor.name}の ちからが すいとられた！`); }
 
         const _isEquipDrop = totalExp >= 50 && Math.random() < 0.35;
         if (Math.random() < 0.18) {
-            let dropPool = Object.values(masterData.items).filter(i => i.price > 0 && (_isEquipDrop ? i.type !== 'tool' : i.type === 'tool'));
-            if (dropPool.length === 0) dropPool = Object.values(masterData.items).filter(i => i.price > 0 && i.type === 'tool');
+            let dropPool = Object.values(masterData.items).filter(i => i.price > 0 && !_SQ_EXCL.has(i.id) && (_isEquipDrop ? i.type !== 'tool' : i.type === 'tool'));
+            if (dropPool.length === 0) dropPool = Object.values(masterData.items).filter(i => i.price > 0 && !_SQ_EXCL.has(i.id) && i.type === 'tool');
             if (dropPool.length > 0) {
                 let targetPrice = totalExp * 5;
                 let candidates = dropPool.filter(i => i.price <= targetPrice && i.price >= targetPrice / 8);
