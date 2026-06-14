@@ -3194,7 +3194,7 @@ function generateDQStyleMaps() {
             [[10,0,10,8],[10,13,10,19]],
             [[10,19]],[],
             {'10,19':{map:'map_field_1_3',x:7,y:8},'9,19':{map:'map_field_1_3',x:7,y:8},'11,19':{map:'map_field_1_3',x:7,y:8}},
-            {'15,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_02',name:'道具屋'},'2,15':{id:'npc_weapon_shop_02',name:'武器屋'},'15,15':{id:'npc_inn_02',name:'宿屋'},'9,6':{id:'npc_guide_02',name:'村長'},'5,10':{id:'npc_villager_03',name:'農夫'},'14,10':{id:'npc_villager_04',name:'旅人'},'9,15':{id:'npc_sub_smith',name:'伝説の鍛冶屋'},'3,7':{id:'npc_gar_woman_01',name:'村の女性'},'12,6':{id:'npc_gar_child_01',name:'子供'},'17,10':{id:'npc_gar_fisherman_01',name:'元漁師'},'6,15':{id:'npc_gar_young_01',name:'若者'},'17,6':{id:'npc_gar_elder_w_01',name:'老婆'}},
+            {'15,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_02',name:'道具屋'},'2,15':{id:'npc_weapon_shop_02',name:'武器屋'},'15,15':{id:'npc_inn_02',name:'宿屋'},'9,6':{id:'npc_guide_02',name:'村長'},'5,10':{id:'npc_villager_03',name:'農夫'},'14,10':{id:'npc_villager_04',name:'旅人'},'9,15':{id:'npc_sub_smith',name:'伝説の鍛冶屋'},'3,7':{id:'npc_gar_woman_01',name:'村の女性'},'12,6':{id:'npc_gar_child_01',name:'子供'},'17,10':{id:'npc_gar_fisherman_01',name:'元漁師'},'6,15':{id:'npc_gar_young_01',name:'若者'},'17,6':{id:'npc_gar_elder_w_01',name:'老婆'},'9,8':{id:'obj_deco_flower_s',name:'花壇'},'10,12':{id:'obj_deco_flower_m',name:'花壇'}},
             [],'南西の村 ガルド');
     }
 
@@ -3205,7 +3205,7 @@ function generateDQStyleMaps() {
             [[11,0,11,13],[11,13,11,19],[6,5,11,5],[11,5,15,5],[6,16,11,16],[11,16,15,16]],
             [[11,19]],[],
             {'11,19':{map:'map_field_4_1',x:7,y:8},'10,19':{map:'map_field_4_1',x:7,y:8},'12,19':{map:'map_field_4_1',x:7,y:8}},
-            {'16,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_03',name:'道具屋'},'2,15':{id:'npc_weapon_shop_03',name:'武器屋'},'16,15':{id:'npc_inn_03',name:'宿屋'},'9,3':{id:'npc_merchant_01',name:'商人'},'13,3':{id:'npc_merchant_02',name:'行商人'},'6,10':{id:'npc_guide_03',name:'案内人'},'15,10':{id:'npc_sub_richman',name:'大富豪'},'11,16':{id:'npc_sub_mage',name:'大魔導士'},'4,10':{id:'npc_bar_woman_01',name:'市場の女性'},'11,3':{id:'npc_bar_child_01',name:'子供'},'17,7':{id:'npc_bar_soldier_01',name:'衛兵'},'4,15':{id:'npc_bar_young_01',name:'若い商人'},'17,12':{id:'npc_bar_fisherman_01',name:'海の男'}},
+            {'16,4':{id:'npc_priest',name:'神父'},'2,4':{id:'npc_item_shop_03',name:'道具屋'},'2,15':{id:'npc_weapon_shop_03',name:'武器屋'},'16,15':{id:'npc_inn_03',name:'宿屋'},'9,3':{id:'npc_merchant_01',name:'商人'},'13,3':{id:'npc_merchant_02',name:'行商人'},'6,10':{id:'npc_guide_03',name:'案内人'},'15,10':{id:'npc_sub_richman',name:'大富豪'},'11,16':{id:'npc_sub_mage',name:'大魔導士'},'4,10':{id:'npc_bar_woman_01',name:'市場の女性'},'11,3':{id:'npc_bar_child_01',name:'子供'},'17,7':{id:'npc_bar_soldier_01',name:'衛兵'},'4,15':{id:'npc_bar_young_01',name:'若い商人'},'17,12':{id:'npc_bar_fisherman_01',name:'海の男'},'5,6':{id:'obj_deco_flower_l',name:'花壇'},'17,6':{id:'obj_deco_fountain_s',name:'噴水'},'9,7':{id:'obj_deco_flower_s',name:'花壇'},'13,7':{id:'obj_deco_flower_s',name:'花壇'}},
             [],'東の市場 バルカ');
     }
 }
@@ -3219,6 +3219,46 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
     // 純粋な JSON ファイル（GitHub に直接 JSON をホストした場合）は script タグでラップして既存処理に流す
     let html2 = _rawHtml;
     try { if (_rawHtml.trimStart().startsWith('{') && JSON.parse(_rawHtml)) html2 = `<html><body><script id="map-data" type="application/json">${_rawHtml}<\/script></body></html>`; } catch(e2) {} const imgRegex = /const\s+([a-zA-Z0-9_]+)Img\s*=\s*new\s+Image\(\).*?\.src\s*=\s*["']([^"']+)["']/g; let imgMatch; while ((imgMatch = imgRegex.exec(html2)) !== null) { let img = new Image(); img.crossOrigin = "Anonymous"; img.src = imgMatch[2]; externalImages[imgMatch[1]] = img; } const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); const scriptTag = doc.getElementById('map-data'); if (scriptTag) { const jsonData = JSON.parse(scriptTag.textContent); externalEntitiesData = jsonData.entities_definitions || {}; if (externalEntitiesData) { Object.keys(externalEntitiesData).forEach(key => { let ent = externalEntitiesData[key]; if (ent.type === "boss" || ent.is_boss) { if (!masterData.monsters[key]) { masterData.monsters[key] = { name: ent.name, max_hp: 200, atk: 30, def: 15, spd: 20, exp: 500, gold: 300 }; } } }); } if (jsonData.monsters) Object.assign(masterData.monsters, jsonData.monsters); if (jsonData.maps) { externalMapData = {}; jsonData.maps.forEach(m => { let mapData = convertMapData(m); Object.keys(mapData.npcs).forEach(k => { let npcId = mapData.npcs[k].id; if (externalEntitiesData[npcId] && externalEntitiesData[npcId].name) mapData.npcs[k].name = externalEntitiesData[npcId].name; }); externalMapData[m.map_id] = mapData; }); { const _dirA={east:'map_field_east_2',west:'map_field_west_2',north:'map_field_north_2',south:'map_field_south_2'}; const _gP=/^(map_)?field_[0-4]_[0-4]$/; Object.entries(_dirA).forEach(([dir,canon])=>{ if(!externalMapData[canon]){ const alt=Object.keys(externalMapData).find(k=>!_gP.test(k)&&k.toLowerCase().includes(dir)); if(alt) externalMapData[canon]=externalMapData[alt]; } }); } generateFieldMapsForGravityQuest(); let mapB3FKey = Object.keys(externalMapData).find(k => k.includes('dungeon_b3f')); if (mapB3FKey) { let b3f = externalMapData[mapB3FKey]; let warpA_x = 2, warpA_y = 2; let exitKeys = Object.keys(b3f.exits); if(exitKeys.length > 0) { let [ex, ey] = exitKeys[0].split(',').map(Number); warpA_x = ex; warpA_y = ey + 2; if (warpA_y >= b3f.height - 1) warpA_y = ey - 2; } let warpB_x = Math.floor(b3f.width / 2); let warpB_y = Math.floor(b3f.height / 2); let npcKeys = Object.keys(b3f.npcs); if(npcKeys.length > 0) { let targetNpc = npcKeys[npcKeys.length - 1]; let [nx, ny] = targetNpc.split(',').map(Number); warpB_x = nx; warpB_y = ny + 2; if (warpB_y >= b3f.height - 1) warpB_y = ny - 2; } if (Math.abs(warpA_x - warpB_x) < 3 && Math.abs(warpA_y - warpB_y) < 3) { warpB_x = b3f.width - 3; warpB_y = b3f.height - 3; } const setWarp = (wx, wy, destX, destY) => { wx = Math.max(1, Math.min(wx, b3f.width - 2)); wy = Math.max(1, Math.min(wy, b3f.height - 2)); destX = Math.max(1, Math.min(destX, b3f.width - 2)); destY = Math.max(1, Math.min(destY, b3f.height - 2)); b3f.tiles[wy * b3f.width + wx] = 8; b3f.exits[`${wx},${wy}`] = { map: mapB3FKey, x: destX, y: destY }; b3f.tiles[destY * b3f.width + destX] = 0; if(destY+1 < b3f.height) b3f.tiles[(destY+1) * b3f.width + destX] = 0; if(destX+1 < b3f.width) b3f.tiles[destY * b3f.width + (destX+1)] = 0; if(destX-1 >= 0) b3f.tiles[destY * b3f.width + (destX-1)] = 0; }; setWarp(warpA_x, warpA_y, warpB_x, warpB_y + 1); setWarp(warpB_x, warpB_y, warpA_x, warpA_y + 1); } let mapTown1Key = Object.keys(externalMapData).find(k => k.includes('town_01')); if (mapTown1Key) { let town1 = externalMapData[mapTown1Key]; town1.npcs["12,16"] = { id: "npc_casino_bunny", name: "バニーガール" }; if (16 * town1.width + 12 < town1.tiles.length) { town1.tiles[16 * town1.width + 12] = 9; } if (!externalEntitiesData["npc_casino_bunny"]) { externalEntitiesData["npc_casino_bunny"] = { id: "npc_casino_bunny", name: "バニーガール", type: "casino", msg: "ようこそ カジノへ！" }; } } for (let mapKey in externalMapData) { let map = externalMapData[mapKey]; let isSafeMap = mapKey.includes('town') || mapKey.includes('village') || mapKey.includes('market') || mapKey.includes('castle') || mapKey.includes('shrine'); if (isSafeMap && !mapKey.includes('demon') && !mapKey.includes('death')) { let hasPriest = false; for (let k in map.npcs) { if (map.npcs[k].id.includes('priest') || map.npcs[k].id.includes('church')) { hasPriest = true; break; } } if (!hasPriest) { let placed = false; let startY = Math.floor(map.height / 2) - 2; if (startY < 1) startY = 1; for (let y = startY; y < map.height - 1 && !placed; y++) { for (let x = 2; x < map.width - 2 && !placed; x++) { let tile = map.tiles[y * map.width + x]; let key = `${x},${y}`; if ((tile === 0 || tile === 10 || tile === 11 || tile === 23) && !map.exits[key] && !map.npcs[key] && ![[0,1],[0,-1],[1,0],[-1,0]].some(([dx,dy]) => map.exits[`${x+dx},${y+dy}`])) { map.npcs[key] = { id: "npc_priest", name: "神父" }; placed = true; } } } } } } injectSubStoryData(); if (externalMapData["map_field_2_0"]) externalMapData["map_field_2_0"].npcs["7,3"] = { id: "obj_chest_star_frag", name: "光る地面" }; if (externalMapData["map_town_01"]) externalMapData["map_town_01"].npcs["8,14"] = { id: "npc_sub_rumor", name: "マルコ" };
+            // ── 装飾オブジェクト配置 ────────────────────────────────────────
+            (function _injectDecorations() {
+                const _decoSolid=[1,2,4,5,15,16,17,18,19,20];
+                const _decoOk=(m,x,y)=>{ const k=`${x},${y}`; return x>=1&&y>=1&&x<m.width-1&&y<m.height-1&&!_decoSolid.includes(m.tiles[y*m.width+x])&&!m.exits[k]&&!m.npcs[k]; };
+                // castle_01: 入口広場に石像2体
+                const _cKey=Object.keys(externalMapData||{}).find(k=>k.includes('castle_01')&&!k.includes('demon'));
+                if(_cKey){const _cm=externalMapData[_cKey];
+                    const _cw=_cm.width,_ch=_cm.height;
+                    // 下半分の広場に配置（入口付近）
+                    for(let _cy=Math.floor(_ch*0.6);_cy<_ch-2;_cy++){
+                        let _placed=0;
+                        for(let _cx=2;_cx<_cw-2&&_placed<2;_cx++){
+                            if(_decoOk(_cm,_cx,_cy)){
+                                _cm.npcs[`${_cx},${_cy}`]={id:_placed===0?'obj_deco_statue_woman':'obj_deco_statue_knight',name:_placed===0?'石像（女）':'石像（騎士）'};
+                                _placed++;_cx+=3;
+                            }
+                        }
+                        if(_placed>=2)break;
+                    }
+                }
+                // map_shrine_warp / shrine: 天使像
+                const _sKey=Object.keys(externalMapData||{}).find(k=>k.includes('shrine')&&!k.includes('field'));
+                if(_sKey){const _sm=externalMapData[_sKey];
+                    const _sw=_sm.width,_sh=_sm.height;
+                    for(let _sx=1;_sx<_sw-1;_sx++){
+                        const _sy=Math.floor(_sh*0.7);
+                        if(_decoOk(_sm,_sx,_sy)){_sm.npcs[`${_sx},${_sy}`]={id:'obj_deco_statue_angel',name:'天使の像'};break;}
+                    }
+                }
+                // map_town_01: 中央噴水（大）
+                if(externalMapData['map_town_01']){const _t1=externalMapData['map_town_01'];
+                    const _t1cx=Math.floor(_t1.width/2), _t1cy=Math.floor(_t1.height/2);
+                    for(let _r=0;_r<4;_r++){
+                        const _candidates=[[_t1cx,_t1cy-_r],[_t1cx,_t1cy+_r],[_t1cx-_r,_t1cy],[_t1cx+_r,_t1cy]];
+                        let _found=false;
+                        for(const[_fx,_fy]of _candidates){if(_decoOk(_t1,_fx,_fy)){_t1.npcs[`${_fx},${_fy}`]={id:'obj_deco_fountain_l',name:'噴水（大）'};_found=true;break;}}
+                        if(_found)break;
+                    }
+                }
+            })();
             let _castleKey = Object.keys(externalMapData).find(k => k.includes('castle_01') && !k.includes('demon')); if (_castleKey) { let _cM = externalMapData[_castleKey]; let _cp = false; for (let _y = 2; _y < Math.floor(_cM.height * 0.55) && !_cp; _y++) { for (let _x = 2; _x < _cM.width - 2 && !_cp; _x++) { let _ct = _cM.tiles[_y * _cM.width + _x]; let _ck = `${_x},${_y}`; if ((_ct === 0 || _ct === 9 || _ct === 10) && !_cM.exits[_ck] && !_cM.npcs[_ck]) { _cM.npcs[_ck] = { id: "npc_story_advisor", name: "宮廷賢者バルダック" }; _cp = true; } } } }
             // NPC安全配置ヘルパー: 回廊ブロック防止・既存NPCとの間隔確保
             const _npcSolid=[1,2,4,5,15,16,17,18,19,20];
@@ -4051,7 +4091,8 @@ function _isWanderingNpc(id) {
                    'sub_smith','sub_richman','sub_mage','sub_rumor','class_change',
                    'npc_port','dharma_monk','shrine_priestess','dragon_spirit',
                    'story_advisor','pirate_sailor','guard_01','sky_guard',
-                   'obj_chest','npc_tower','npc_maou','npc_sky','king'];
+                   'obj_chest','npc_tower','npc_maou','npc_sky','king',
+                   'obj_deco_'];
     return !fixed.some(f => id.includes(f));
 }
 
@@ -5470,6 +5511,36 @@ function drawMap() {
                 ctx.font = "20px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
                 ctx.fillText("🌟", px + TILE_SIZE/2, py + TILE_SIZE/2 + Math.sin(_st)*2);
                 ctx.restore();
+            } else if (npc.id.startsWith('obj_deco_')) {
+                // ── 装飾オブジェクト（花壇・石像・噴水）────────────────────────
+                const _decoMap = {
+                    'obj_deco_flower_s':    { key:'decoFlowerS',   h:20, w:40, yOff: 4 },
+                    'obj_deco_flower_m':    { key:'decoFlowerM',   h:24, w:44, yOff: 0 },
+                    'obj_deco_flower_l':    { key:'decoFlowerL',   h:30, w:48, yOff:-4 },
+                    'obj_deco_statue_woman':{ key:'decoStatueW',   h:52, w:28, yOff:-4 },
+                    'obj_deco_statue_knight':{ key:'decoStatueK',  h:52, w:28, yOff:-4 },
+                    'obj_deco_statue_angel':{ key:'decoStatueA',   h:52, w:30, yOff:-4 },
+                    'obj_deco_fountain_l':  { key:'decoFountainL', h:34, w:52, yOff: 0 },
+                    'obj_deco_fountain_s':  { key:'decoFountainS', h:34, w:52, yOff: 0 },
+                };
+                const _decoInfo = _decoMap[npc.id];
+                if (_decoInfo) {
+                    const _di = externalImages[_decoInfo.key];
+                    if (_di && _di.complete && _di.naturalHeight > 0) {
+                        const _dRatio = _di.width / _di.height;
+                        const _dH = _decoInfo.h, _dW = _dH * _dRatio;
+                        const _dOx = (TILE_SIZE - _dW) / 2, _dOy = TILE_SIZE - _dH + (_decoInfo.yOff||0);
+                        ctx.drawImage(_di, px + _dOx, py + _dOy, _dW, _dH);
+                    } else {
+                        // フォールバック: 絵文字
+                        const _decoEmoji = { flower_s:'🌸', flower_m:'🌼', flower_l:'🌺',
+                            statue_woman:'🗿', statue_knight:'⚔️', statue_angel:'👼',
+                            fountain_l:'⛲', fountain_s:'💧' };
+                        const _ek = npc.id.replace('obj_deco_','');
+                        ctx.font='18px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                        ctx.fillText(_decoEmoji[_ek]||'🏛️', px+TILE_SIZE/2, py+TILE_SIZE/2);
+                    }
+                }
             } else if(npc.id === 'obj_fountain') {
                 // 花畑の噴水：石台＋水柱＋水しぶきアニメーション
                 const _ft = Date.now(); const T = TILE_SIZE; const fl = Math.floor;
@@ -6612,6 +6683,22 @@ async function checkAction() {
             }
 
             // ===== エデンへの入口（フィールドから） =====
+            // ── 装飾オブジェクト（花壇・石像・噴水） ────────────────────────────
+            if (npc.id.startsWith('obj_deco_')) {
+                const _decoMsgMap = {
+                    'obj_deco_flower_s':     "色とりどりの 花が 咲き乱れる 花壇……\n道行く 人々の 目を 楽しませている。",
+                    'obj_deco_flower_m':     "きれいに 整えられた 花壇だ。\n花の 香りが ほのかに 漂ってくる。",
+                    'obj_deco_flower_l':     "円形の 大きな 花壇。\n色とりどりの 花が 太陽に 向かって 咲いている。",
+                    'obj_deco_statue_woman': "美しい 女性の 石像が 立っている。\n台座に 「慈愛の 女神 アルシア」と 刻まれている。",
+                    'obj_deco_statue_knight':"盾と 槍を 持った 騎士の 石像だ。\n「この 国を 守護した 英雄 ガイアス」と 刻まれている。",
+                    'obj_deco_statue_angel': "翼を 広げた 天使の 石像が 荘厳に 立っている。\n光が 石の 翼に 反射し、神々しく 輝いている。",
+                    'obj_deco_fountain_l':   "大きな 噴水だ。\n水が 弧を 描いて 空に 舞い上がり、\n涼しげな 音を たてている。",
+                    'obj_deco_fountain_s':   "天使の 像が 飾られた 小さな 噴水。\n澄んだ 水が コポコポと 流れ落ちている。",
+                };
+                const _dMsg = _decoMsgMap[npc.id] || "美しい 装飾が 施されている。";
+                await typeMessage(_dMsg);
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
             if(npc.id === 'obj_eden_entrance') {
                 if(partyData.flags.is_second_loop){
                     await typeMessage("草むらの 中に 隠し扉がある……！\n「かくし扉」だ……。\nここに 何かが あるようだ。\n中に 入りますか？");
