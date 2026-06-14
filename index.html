@@ -775,7 +775,7 @@ const _GQ_KANA64 = 'あいうえおかきくけこさしすせそたちつてと
 // 職業テーブル（3ビット=8種）
 const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','格闘家','忍者','道化師'];
 // マップIDテーブル（6ビット=64種）
-const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4'];
+const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4','map_eden'];
 // アイテム/装備コンパクトIDテーブル（8ビット=256種、0=なし）
 // 消耗品(i*)・武器(w*)・防具(a*)・盾(s*)・兜(h*)・アクセ(x*/acc*)・特殊品を網羅
 const _GQ_EQUIP = [
@@ -1017,6 +1017,11 @@ function injectSubStoryData() {
     masterData.items["w_trident"] = { id: "w_trident", name: "海神の三叉槍（槍）", type: "weapon", price: 18000, power: 78, element: "water", desc: "深海の神が手放した古代の槍。水の力を宿し、炎の敵に絶大な効果を発揮する。" };
     masterData.items["a_sea_armor"] = { id: "a_sea_armor", name: "海竜の鎧（鎧）", type: "armor", price: 15000, power: 70, effect: "water_resist", desc: "海竜の鱗で作られた鎧。水・氷の攻撃をほぼ無効化し、深海の圧力にも耐える。" };
     masterData.items["acc_sea_ring"] = { id: "acc_sea_ring", name: "波濤の指輪（指輪）", type: "accessory", price: 8000, power: 0, effect: "mp_regen", desc: "海の精霊が宿った指輪。戦闘中に毎ターン少量のMPが回復する不思議な力を持つ。" };
+    // ===== 2周目専用NPC: 各マップに追加 =====
+    // 城下町グラマニア: 元騎士（偽王の支配を逃れた生き残り）
+    if(masterData.monsters) {
+        if(!masterData.monsters['boss_gura_guard_elite']) masterData.monsters['boss_gura_guard_elite']={name:'暗黒精鋭兵',max_hp:380,atk:70,def:40,spd:30,exp:800,gold:400,traits:['undead']};
+    }
 }
 
 const battleBgImages = [
@@ -3078,6 +3083,13 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 _placeNpc(_tM2,"npc_town_bard",   "旅の吟遊詩人", Math.floor(_tM2.height*0.7), Math.floor(_tM2.width*0.7));
             }
             { const _cK2=Object.keys(externalMapData).find(k=>k.includes('castle_01')&&!k.includes('demon')); const _cM2=_cK2&&externalMapData[_cK2]; if(_cM2){ _placeNpc(_cM2,"npc_story_veteran","歴戦の兵士",Math.floor(_cM2.height*0.6),Math.floor(_cM2.width*0.4)); _placeNpc(_cM2,"npc_town_elder","お婆さん",Math.floor(_cM2.height*0.7),Math.floor(_cM2.width*0.6)); _placeNpc(_cM2,"npc_town_merchant","旅の商人",Math.floor(_cM2.height*0.65),Math.floor(_cM2.width*0.3)); _placeNpc(_cM2,"obj_parents_relic","古い肖像画",Math.floor(_cM2.height*0.2),Math.floor(_cM2.width*0.5)); } }
+            // ===== 2周目専用NPC: 各マップに配置 =====
+            // 城下町: 元騎士ガリード（偽王支配を逃れた退役騎士）
+            if(externalMapData['map_town_01']){ const _tE=externalMapData['map_town_01']; _placeNpc(_tE,'npc_2nd_survivor','退役騎士ガリード',Math.floor(_tE.height*0.4),Math.floor(_tE.width*0.7)); }
+            // 南西の村: 百年の歴史を知る老婦（代々語り継いできた真実）
+            { const _t2K=Object.keys(externalMapData).find(k=>k.includes('town_02')); const _t2M=_t2K&&externalMapData[_t2K]; if(_t2M) _placeNpc(_t2M,'npc_2nd_village_elder','語り部の老婦',Math.floor(_t2M.height*0.4),Math.floor(_t2M.width*0.5)); }
+            // ダーマ神殿: 予言の修道女（10年前から英雄の到来を待っていた）
+            { const _dtK=Object.keys(externalMapData).find(k=>k.includes('dharma')); const _dtM=_dtK&&externalMapData[_dtK]; if(_dtM) _placeNpc(_dtM,'npc_2nd_oracle','予言の修道女',Math.floor(_dtM.height*0.55),Math.floor(_dtM.width*0.6)); }
             // ===== 新マップ: 旅人の里 (12×12) — 旅の案内人・釣り人・神父 =====
             {
                 const _vw=12,_vh=12,_vt=[];
@@ -3129,6 +3141,54 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 if(_sfp&&externalMapData["map_field_3_0"]){
                     externalMapData["map_field_3_0"].tiles[_sfp.y*(externalMapData["map_field_3_0"].width||45)+_sfp.x]=21;
                     externalMapData["map_field_3_0"].exits[_sfp.k]={map:'map_sage_shrine',x:5,y:8};
+                }
+            }
+            // ===== 新マップ: 隠れ里 エデン(22×16) — 2周目 偽王支配10年後の避難民の街 =====
+            {
+                const _ew=22,_eh=16;
+                const _et=[];
+                for(let y=0;y<_eh;y++)for(let x=0;x<_ew;x++){
+                    let t=0;
+                    if(y===0||y===_eh-1||x===0||x===_ew-1){t=1;}
+                    // 建物1(宿屋) x2-5, y2-5
+                    else if(x>=2&&x<=5&&y>=2&&y<=5){t=(x===3&&y===5)?0:(x===4&&y===5)?0:1;}
+                    // 建物2(長老の家) x8-13, y2-5
+                    else if(x>=8&&x<=13&&y>=2&&y<=5){t=(x===10&&y===5)?0:(x===11&&y===5)?0:1;}
+                    // 建物3(道具屋) x16-19, y2-5
+                    else if(x>=16&&x<=19&&y>=2&&y<=5){t=(x===17&&y===5)?0:(x===18&&y===5)?0:1;}
+                    // 中央広場の石畳
+                    else if(x>=7&&x<=14&&y>=7&&y<=11){t=9;}
+                    _et.push(t);
+                }
+                // 出口タイル(21=階段) at y=15(下壁), x=10,11
+                _et[(_eh-1)*_ew+10]=21; _et[(_eh-1)*_ew+11]=0;
+                const _efp=findLand('map_field_2_2',22,22)||findLand('map_field_3_2',15,22)||findLand('map_field_4_2',10,22);
+                const _efMapId=_efp?Object.keys(externalMapData).find(k=>{
+                    const _fl=externalMapData[k]; if(!_fl) return false;
+                    return _fl.tiles&&_fl.tiles[_efp.y*(_fl.width||45)+_efp.x]!==undefined&&(k.includes('field_2_2')||k.includes('field_3_2')||k.includes('field_4_2'));
+                })||'map_field_2_2':'map_field_2_2';
+                const _eRet=_efp?{map:_efMapId,x:_efp.x,y:_efp.y+1}:{map:'map_field_2_2',x:22,y:23};
+                externalMapData['map_eden']={
+                    width:_ew,height:_eh,tiles:_et,encounters:[],
+                    exits:{'10,15':_eRet,'11,15':_eRet},
+                    npcs:{
+                        '3,3':{id:'npc_eden_inn',name:'エデン 宿屋'},
+                        '10,3':{id:'npc_eden_elder',name:'長老ガルドス'},
+                        '17,3':{id:'npc_eden_shop',name:'エデン 道具屋'},
+                        '3,8':{id:'npc_eden_rebel',name:'反乱軍の隊長'},
+                        '10,8':{id:'npc_priest',name:'神父'},
+                        '18,8':{id:'npc_eden_poet',name:'吟遊詩人カルロ'},
+                        '3,12':{id:'npc_eden_refugee',name:'城下町の難民'},
+                        '18,12':{id:'npc_eden_child',name:'少女シア'},
+                    },
+                    name:'隠れ里 エデン'
+                };
+                if(_efp&&externalMapData[_efMapId]){
+                    const _efMap=externalMapData[_efMapId];
+                    _efMap.tiles[_efp.y*(_efMap.width||45)+_efp.x]=21;
+                    _efMap.exits[_efp.k]={map:'map_eden',x:11,y:14};
+                    externalMapData['map_eden'].exits['10,15']=_eRet;
+                    externalMapData['map_eden'].exits['11,15']=_eRet;
                 }
             }
             // ===== 2周目開始地点: 試練の洞窟南の漁村「グラ港」(14×14) =====
@@ -5858,12 +5918,28 @@ async function checkAction() {
                 if (!masterData.monsters['boss_gura_final']) masterData.monsters['boss_gura_final'] = { name: 'グラ王（最終形態）', max_hp: 1100 + _lv2 * 35, atk: 35 + _lv2 * 8, def: 25 + _lv2 * 5, spd: 22 + _lv2 * 4, exp: _lv2 * 400, gold: _lv2 * 200 };
                 hideGoldWindow(); let _bwK = await executeBattle(['boss_gura_final']); showGoldWindow(); updateGoldWindow();
                 if (!_bwK) return;
-                await typeMessage("【偽の国王グラード】\n……そんな……バカな……！\nわしが……人間 ごときに……！！");
-                AudioManager.playBGM('victory');
-                await typeMessage("偽の国王グラードが 砕け散った……！\n百年の 呪縛が 解け\n世界に 真の 光が 戻ってきた……！！");
-                await typeMessage("【聖王グラード（魂）】\n……末裔よ。\nよくぞ やり遂げた……。\n百年の 怨念が やっと 晴れた……。");
-                await typeMessage("【聖王グラード（魂）】\nお前たちの 勇気と 愛が\nこの 世界を 救ったのじゃ……。\n誇り高く……生きよ……。");
-                await typeMessage(`＊　＊　真のゲームクリア！　＊　＊\n${_hn2}たちの 名は えいえんに\nグラマニアの 歴史に 刻まれた！`);
+                await typeMessage("【偽の国王グラード】\n……そんな……バカな……！\nわしが……百年もの 時を かけて……！\nわし……は……もう……！！");
+                // 白フラッシュ演出
+                const _gc_e = document.getElementById('game-container');
+                _gc_e.style.transition = 'filter 0.08s'; _gc_e.style.filter = 'brightness(6) saturate(0)';
+                AudioManager.playSE('magic_cast');
+                await new Promise(r => setTimeout(r, 300));
+                _gc_e.style.transition = 'filter 2s'; _gc_e.style.filter = 'brightness(1) saturate(1)';
+                await new Promise(r => setTimeout(r, 600));
+                AudioManager.playBGM('ending');
+                await new Promise(r => setTimeout(r, 800));
+                await typeMessage("……光が 広がっていく……。\n百年 続いた 闇が\n一瞬にして 溶けていく……！");
+                await typeMessage("偽の国王グラードが 砕け散った……！\n魔王の 呪縛が 完全に 解け\n世界に 真の 夜明けが 訪れた……！！");
+                await typeMessage("（……あの日。\n兵士たちが 泣いていた。\n刃を向けながら……「すまない」と。\nその言葉の 意味が、やっと 分かった。\nみんな……ずっと 助けを 求めていたんだ……！）");
+                await typeMessage("【聖王グラード（魂）】\n……末裔よ。\nよくぞ……やり遂げてくれた。\n百年間 ずっと 苦しんでいた 魂たちが\nやっと……自由に なれる……。");
+                await typeMessage("【聖王グラード（魂）】\n魔王城で お前たちに 敗れた時\nわしは 絶望したが……\nその 敗北が 真実を 気づかせる 力に なった。\nお前たちの 諦めない 心が……世界を 変えたのじゃ。");
+                await typeMessage("【聖王グラード（魂）】\nわしの 血を 引く 末裔よ……\nお前たちの 勇気と 愛が\nこの 世界を 救ったのじゃ。\n誇り高く……生きよ……！");
+                await typeMessage("（どこからか あの 少女の 声が 届く……）");
+                await typeMessage("【アリア】\n……よかった。\n本当に……よかった……！\n天空の 龍たちも みんな 喜んでいます。\n百年間……涙を 流しながら 見守っていましたから。");
+                await typeMessage("【アリア】\n魔王城に 向かうお二人を 見送った時\n「きっと できる」と 信じていました。\nありがとう……勇者様たち。\nどうか……幸せに、生きてください。");
+                await typeMessage("（風が 吹き抜けた……\n龍の 羽音のような 優しい 風。\nアリアの 気配が 空の 彼方へと 消えていった……）");
+                const _allN = partyData.members.filter(m => m.name).map(m => m.name).join('、');
+                await typeMessage(`────── ${_allN}の 物語は\nここに 幕を 閉じる。\n彼らの 名は えいえんに\nグラマニアの 真の 歴史に 刻まれた ──────`);
                 partyData.flags.last_boss_defeated = true; partyData.flags.is_second_loop_unlocked = true;
                 localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
                 await typeMessage("タイトル画面に もどります。\nAボタン または Enterキーを 押してください。");
@@ -6175,6 +6251,157 @@ async function checkAction() {
                     await typeMessage("【偽の国王グラード】\nなぜ そんな 目で 見る……？\nわしは 正当な グラマニアの 王じゃぞ。\n（……その眼、何かに 気づいているのか？）");
                     if (_gleft > 0) await typeMessage(`【偽の国王グラード】\n……まだ 闇の 兵士が ${_gleft}人 残っておる。\n（笑みが ゆがんでいる……）\n……勇者よ、城の 兵士に 会ったか？`);
                     state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                }
+            }
+
+            // ===== エデンへの入口（フィールドから） =====
+            if(npc.id === 'obj_eden_entrance' || (currentMap===externalMapData[partyData.pos.map] && npc.id==='obj_eden_entrance')) {
+                if(partyData.flags.is_second_loop){
+                    await typeMessage("草むらの 中に 隠し扉がある……！\n「隠れ里 エデン」への 入り口だ。\n中に 入りますか？");
+                    const _eGo=await selectMenu(["はい","いいえ"],'cmd-window',1,true);
+                    if(_eGo===0&&externalMapData['map_eden']){
+                        partyData.pos={map:'map_eden',x:11,y:14};
+                        currentMap=await loadExternalData('map-map_eden');
+                        moveHistory=[]; state='FIELD'; hideAllWindows(); drawMap(); updateBGM(); startFieldLoop(); return;
+                    }
+                } else {
+                    await typeMessage("草むらに 古い 石段の 痕跡がある。\n（まだ 誰も 住んでいない 廃地……）");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ===== 隠れ里エデン NPCイベント =====
+            if(partyData.pos.map==='map_eden' || partyData.pos.map.includes('map_eden')) {
+                const _inEden = partyData.pos.map.includes('eden');
+                const _2nd = partyData.flags.is_second_loop;
+                const _fin = partyData.flags.last_boss_defeated;
+                const _memC = Object.keys(_2ND_MEMORY_MAP||{}).filter(k=>partyData.flags[(_2ND_MEMORY_MAP||{})[k]?.flag]).length;
+                const _guardL = _countRemainingGuards();
+
+                if(npc.id==='npc_eden_inn'){
+                    await typeMessage("【エデン 宿屋】\nここは 偽王の 目を 避けた\n避難民たちの 宿です。\nごゆっくり お休みください。");
+                    AudioManager.playSE('inn');
+                    partyData.members.forEach(m=>{m.hp=m.max_hp;m.mp=m.max_mp;m.isPoisoned=false;});
+                    await typeMessage("ゆっくり 休んだ……\nHP・MPが 回復した！");
+                    updatePartyStatus();
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_eden_elder'){
+                    if(_fin){
+                        await typeMessage("【長老ガルドス】\n真の王が 戻った……！\n10年の 苦しみが 報われた！\n勇者よ……ありがとう！！");
+                    } else if(_guardL===0&&_memC===Object.keys(_2ND_MEMORY_MAP||{}).length){
+                        await typeMessage("【長老ガルドス】\n全ての 記憶と 仲間が 揃った……！\nもう 行きなさい。\n城の 偽王を 倒して くれ！！");
+                    } else if(_memC>0){
+                        await typeMessage(`【長老ガルドス】\n記憶が ${_memC}個 戻りましたね。\n10年前……あの日\nグラ王様は 本当の姿で\n世界を 救おうとしていた……。`);
+                        await typeMessage("【長老ガルドス】\n私は 10年間 この里を 守ってきた。\nグラ王様の 末裔が 必ず 来ると\n信じていたから……。\nあなたたちが その人たちです！");
+                    } else {
+                        await typeMessage("【長老ガルドス】\nここが 「隠れ里 エデン」です。\n偽王の 支配が 始まって 10年……\n城下町を 逃げ出した 人々が\n力を 合わせて 作った 街です。");
+                        await typeMessage("【長老ガルドス】\nあなたたちは 10年前に\nグラ王様が 命がけで 逃がした\n勇者の 一行……！\n記憶を 取り戻して 偽王を 倒してください！");
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_eden_rebel'){
+                    if(_fin){
+                        await typeMessage("【反乱軍の隊長】\nやった……やったぞ！\n10年間 待ち続けた この日が！\nエデンの みんなに 知らせに 行かなければ！！");
+                    } else if(_guardL===0){
+                        await typeMessage("【反乱軍の隊長】\n城の 兵士たちを 全員 解放した……！\nあとは 偽王 一人 だ！\n城に 乗り込め！！ 今こそ 決着の 時！！");
+                    } else if(_memC>2){
+                        await typeMessage(`【反乱軍の隊長】\n城下町と グラマニア城の\n兵士たちが まだ 闇に 囚われている！\n残り ${_guardL}人 だ！\n全員 解放すれば 偽王の 力が 弱まる！`);
+                    } else {
+                        await typeMessage("【反乱軍の隊長】\n俺たちは 10年間\n偽王の 圧政に 抵抗し続けてきた！\n城下町には まだ 闇に 囚われた\n仲間たちが いる……。");
+                        await typeMessage("【反乱軍の隊長】\nだが 俺たちじゃ 手が 出せない。\nお前たちなら できる！\nまず 記憶を 全て 取り戻せ!\nそうすれば 見えてくるものが ある！");
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_eden_poet'){
+                    if(_fin){
+                        await typeMessage("【吟遊詩人カルロ】\nそれは 伝説の始まり……\n闇の 10年を 乗り越えた\n英雄たちの 詩を 歌わせてくれ！\n────これが 歌われる日が 来るとは！");
+                    } else {
+                        await typeMessage("【吟遊詩人カルロ】\n♪ 百年前の 王の 嘆きよ……\n奪われた 体と 魂 悲しみよ……\n10年後の 英雄よ……届けておくれ\n真実の光を 闇の城へと ♪");
+                        await typeMessage("【吟遊詩人カルロ】\n……この歌は 10年前から\n語り継がれている 詩です。\n「英雄が 時を 越えて 来る」という\n予言が 込められているそうです。");
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_eden_child'){
+                    if(_fin){
+                        await typeMessage("【少女シア】\nお空が ぱあっと 明るく なった！\nお父さんが いつも 言ってた\n「光の 勇者が 来る」って……！\nほんとに 来た！！");
+                    } else {
+                        await typeMessage("【少女シア】\nわたし エデンで 生まれたの。\nお城の 街 って どんなところ？\nお父さんは 「怖い 兵隊さんが いる」って。\nでも…いつか 行けるように なる って！");
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_eden_refugee'){
+                    if(_fin){
+                        await typeMessage("【城下町の難民】\n……あの 城下町に\nまた 戻れる日が 来るとは……！\n10年間 逃げてばかりで 悔しかった。\nありがとう……本当に ありがとう……！！");
+                    } else {
+                        await typeMessage("【城下町の難民】\n10年前……偽王が 現れた 夜\nわたしは 城下町から 逃げてきました。\nあの夜の 兵士たちの 眼は……\n黒く 濁っていて とても 怖かった……。");
+                        await typeMessage("【城下町の難民】\nでも 後で 気がついたんです。\nあの兵士たち……みんな 泣いていた。\n声に 出さずに……でも 確かに。\nきっと 呪われていて 苦しんでいたんでしょう……。");
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_eden_shop'){
+                    await typeMessage("【エデン 道具屋】\nエデンで 作った 貴重な 品々です。\n偽王の 目を くぐって 集めたものだから\n少し お高いですが……。");
+                    // エデンショップ: 2周目用高品質アイテム
+                    const _eshop=[
+                        masterData.items['i05'], // 世界樹の葉
+                        masterData.items['i03'], // 魔法の聖水
+                        masterData.items['i01'], // 薬草
+                        masterData.items['i02'], // 毒消し草
+                    ].filter(Boolean);
+                    if(_eshop.length===0){await typeMessage("【エデン 道具屋】\n……今は 品切れです。\nまた 来てください。"); state='FIELD'; hideAllWindows(); drawMap(); return;}
+                    while(true){
+                        const _ec=await selectMenu([..._eshop.map(i=>`${i.name} ${Math.floor(i.price*1.5)}G`),'やめる'],'cmd-window',1,true);
+                        if(_ec===-1||_ec===_eshop.length) break;
+                        const _ei=_eshop[_ec]; const _ep=Math.floor(_ei.price*1.5);
+                        if(partyData.gold<_ep){await typeMessage("おかねが たりません！"); continue;}
+                        const _eT=partyData.members.find(m=>m.inventory.length<8);
+                        if(!_eT){await typeMessage("もちものが いっぱいです！"); continue;}
+                        partyData.gold-=_ep; _eT.inventory.push(_ei.id); updateGoldWindow();
+                        AudioManager.playSE('item_get'); await typeMessage(`${_eT.name}は ${_ei.name}を うけとった！`);
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+            }
+
+            // ===== 2周目専用: 各町のストーリーNPC =====
+            if(partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated) {
+                if(npc.id==='npc_2nd_survivor'){
+                    if(partyData.flags['2nd_mem_town']){
+                        await typeMessage("【退役騎士ガリード】\n……記憶が 戻ってきたか。\nそうだ……あの 城には\n本物の 聖王の 魂が 眠っている。\nお前たちなら……必ず できる！");
+                    } else {
+                        await typeMessage("【退役騎士ガリード】\nわしは 10年前 城の 近衛騎士だった。\n偽王の「闇」が 迫ってきた 瞬間……\n辛うじて 城を 脱出した。\n仲間たちは……全員 囚われてしまった。");
+                        await typeMessage("【退役騎士ガリード】\nお前たちを 見ていると\n10年前の 英雄の 話を 思い出す……。\n「ふっかつのじゅもん」の 力で\n来た 者たちか？ ならば……頼む！！");
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_2nd_village_elder'){
+                    if(partyData.flags['2nd_mem_village']){
+                        await typeMessage("【語り部の老婦】\nそう……それが 本当の 歴史じゃ。\nこの村は ずっと 知っておった。\n「いつか 英雄が 時を 越えてくる」と。\nお前たちが その人たちじゃ！");
+                    } else {
+                        await typeMessage("【語り部の老婦】\nこの村には 百年前から\n語り継がれている 話がある。\n「本物の 王は 肉体を 奪われ\n百年 泣き続けた」という 話じゃ。");
+                        await typeMessage("【語り部の老婦】\n10年前……偽王が 本性を 現した 時\nこの村の 者たちは 皆 言うた……\n「やはり そうか」と。\nお前たちが 真実を 届けてくれ！");
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_2nd_oracle'){
+                    if(partyData.flags['2nd_mem_dungeon']){
+                        await typeMessage("【予言の修道女】\n……神様の 啓示が 届きました。\n「試練を 越えた 者のみが\n百年の 呪縛を 断ち切れる」と。\n洞窟の 記憶は 取り戻しましたか？");
+                    } else {
+                        await typeMessage("【予言の修道女】\nここ ダーマの 神殿では\n10年間 毎日 祈り続けました。\n「偽りの 王から 世界を 救う 者よ\n早く 来てくれ」と……。");
+                        await typeMessage("【予言の修道女】\nその 祈りが 届いた……！\nお前たちが 時を 越えて 来た 英雄ですね？\n転職の 力を 存分に 使い\n世界を 救ってください！");
+                    }
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+            }
+            if(partyData.flags.is_second_loop && partyData.flags.last_boss_defeated) {
+                if(npc.id==='npc_2nd_survivor'){
+                    await typeMessage("【退役騎士ガリード】\n城の 仲間たちが 解放された……！\n10年……10年だ……！\nやっと 本当の 騎士道に\n戻れる……！！"); state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_2nd_village_elder'){
+                    await typeMessage("【語り部の老婦】\n百年と 10年の 歴史が 今 動いた……！\n本物の 王様の 魂が 安らかに 眠れる……。\nありがとう……ありがとう！！"); state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if(npc.id==='npc_2nd_oracle'){
+                    await typeMessage("【予言の修道女】\n予言が 成就しました……！\nこれからは 平和の 祈りを\n捧げる 事ができます……。\nありがとうございます！！"); state='FIELD'; hideAllWindows(); drawMap(); return;
                 }
             }
 
@@ -6869,9 +7096,11 @@ async function checkAction() {
                             await typeMessage(`天空の 力が ${_heroName}たちに 宿った！\n（魔族の 言葉が 理解できるように なった……！）`);
                         } else if (_isFinal && _is2nd) {
                             // 2周目: 魔王城のボス撃破 → 城下町グラマニアへ帰還
-                            await typeMessage("【偽の国王グラード】\n……くっ……！\nこの姿では……まだ 終わりでは ない……！");
-                            await typeMessage("（偽の国王グラードが 魔王城から 姿を消した……）\nしかし……何かが まだ 終わっていない気がする……。");
-                            await typeMessage("「……城下町 グラマニアへ 帰れ。\n全てを 終わらせるために……」");
+                            await typeMessage("【偽の国王グラード】\n……くっ……！\nこの力では……まだ 勝てぬか！\nだが……これで 終わりとは 思うな！\n（偽王が 魔王城から 姿を 消した……）");
+                            await typeMessage("（記憶が 蘇る……この 城で\n1周目に 戦ったあの 時……。\n倒した はずの 「魔王」は\n本当は……本物の 王だったんだ。）");
+                            await typeMessage("（……あの 兵士たちが 泣いていた理由が\n今 ならば 分かる。\n全員が 呪縛に 苦しんでいた。\n城下町の 兵士たちも……まだ 苦しんでいる……！）");
+                            await typeMessage("（どこからか 懐かしい 気配が 漂ってくる……）");
+                            await typeMessage("【グラ王の 魂】\n……よく ここまで 来てくれた……。\n帰れ……城下町へ……。\n兵士たちを 解放し……偽の 王を 倒すのだ……。\n全てを……終わらせるために……。");
                             partyData.flags.flag_2nd_maou_cleared = true;
                             let _retMapId = (externalMapData && externalMapData['map_town_01']) ? 'map_town_01' : Object.keys(externalMapData||{})[0] || 'map_town_01';
                             partyData.pos = { map: _retMapId, x: 10, y: 18 }; partyData.dir = 2;
@@ -6891,10 +7120,13 @@ async function checkAction() {
                             await typeMessage("グラ王の 残った 怨念が 燃え上がり……\n理性を 失った 悲しき 竜の 姿へと 変じた……！！");
                             await typeMessage(`グラ王（悲しき竜）は 偽の王に 特攻し\n${_heroName}たちを 城の 外へと\n必死に 逃がした……！！`);
                             await typeMessage("…………。\n……光が 消えた。\nグラ王の 気配が……もう 感じられない。");
+                            await new Promise(r => setTimeout(r, 800));
+                            await typeMessage(`（……そうか。\nあの 兵士たちが 泣いていたのは……！\n呪いで 体を 操られていたから だ！！\n「すまない」と 言っていたのは\n助けを 求めていたからなんだ……！！）`);
+                            await typeMessage(`（グラ王も……同じだったんだ。\n百年間 ずっと 心だけが 生きていて\nずっと……ずっと 苦しんでいた……。\nそれが 分からなかった わたしたちは\n何て 残酷な ことを……！）`);
                             AudioManager.playBGM('game_over');
                             await typeMessage("世界は 偽の国王グラードによって\n完全に 闇に 包まれた。\n城下町は まものの 巣窟と化し\n人々は 怯え 暮らしている……。");
-                            await typeMessage(`${_heroName}たちは 絶望の 中に いた。\nしかし その 胸に ひとつの\n「呪文（ちから）」が 宿っていた……。`);
-                            await typeMessage("────── この 絶望の 歴史を\n覆す 呪文（ちから）を 手に入れた！ ──────");
+                            await typeMessage(`${_heroName}たちは 絶望の 中に いた。\nしかし……グラ王は 命をかけて\n「逃げ道」を 残してくれた。\n胸に 宿った 不思議な「呪文（ちから）」が\nまだ 消えていない……。`);
+                            await typeMessage("────── これは 終わりではない。\nあの 兵士たちを 救えなかった 悔しさが\n決して 忘れさせてくれない。\n時を 遡り……歴史を 塗り替える\n「呪文（ちから）」が 宿っていた！ ──────");
                             partyData.flags.last_boss_defeated = true;
                             partyData.flags.is_second_loop_unlocked = true;
                             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData));
@@ -8074,7 +8306,7 @@ async function startSecondLoop(parsedOldData) {
         let input = await showCustomDialog('prompt', `${m.job} の名前を決めてください\n（最大4文字）\n空白で「${defaultName}」`, defaultName);
         m.name = (input !== null && input.trim() !== "") ? input.trim().substring(0, 4) : defaultName;
     }
-    const _2ndMsg = `【2周目・過去改変ルート】\n「ふっかつのじゅもん」の力で\nグラ王が 逃がしてくれた 直後の\n過去へ 時間を 跳び越えた……！\n\n試練の 洞窟南の 漁村「グラ港」に\n記憶を 失った 状態で 目覚めた……。\nアリア（天空の龍の使い）が 村にいる。\n\n【2周目の 動線】\n①漁村 → 試練の洞窟（船入手）\n②ダーマ神殿（転職）\n③魔王城から 逆回りで 記憶を 取り戻せ！\n\n（※敵の強さが2倍になります）`;
+    const _2ndMsg = `【2周目・10年後の世界】\n「ふっかつのじゅもん」の力で\nグラ王が 逃がしてくれた あの瞬間から\n10年後の 世界へと 飛ばされた……！\n\n偽王の 支配が 続いて 10年――\n世界は 深い 闇の 中に ある。\n試練の 洞窟南の 漁村「グラ港」で\n記憶を 失った 状態で 目覚めた……。\nアリア（天空の龍の使い）が 村にいる。\n\n【2周目の 動線】\n①漁村 → 試練の洞窟（船入手）\n②ダーマ神殿（転職）\n③魔王城から 逆回りで 記憶を 取り戻せ！\n④隠れ里「エデン」を 探せ（船で中央の島へ）\n\n（※敵の強さが2倍になります）`;
     if(bestWeaponId) { partyData.members[0].equipment.weapon = bestWeaponId; await showCustomDialog('alert', _2ndMsg + `\n\n前世の記憶：「${masterData.items[bestWeaponId]?.name}」を引き継いだ！`); }
     else { await showCustomDialog('alert', _2ndMsg); }
 }
