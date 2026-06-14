@@ -779,7 +779,10 @@ const _GQ_KANA64 = 'あいうえおかきくけこさしすせそたちつてと
 const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','パンダ','忍者','ネコ',
                   'パラディン','サムライ','魔剣士','踊り子','召喚士','魔法戦士','モンク','商人'];
 // マップIDテーブル（6ビット=64種）
-const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4','map_eden'];
+const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4','map_eden',
+    'map_castle_zarmo','map_castle_estoria','map_castle_deserta',
+    'map_town_nord','map_town_rosalia','map_town_coral','map_town_bazaar','map_town_estoria_city','map_town_oasis','map_town_south_port','map_town_frost','map_village_elfheim','map_town_salmon',
+    'map_tower_magic_1f','map_tower_darkspire_1f'];
 // アイテム/装備コンパクトIDテーブル（8ビット=256種、0=なし）
 // 消耗品(i*)・武器(w*)・防具(a*)・盾(s*)・兜(h*)・アクセ(x*/acc*)・特殊品を網羅
 const _GQ_EQUIP = [
@@ -819,7 +822,12 @@ const _GQ_EQUIP = [
 const _SQ_EXCL = new Set(['meteorite_fragment','dragon_scale_red','dragon_scale_blue','dragon_scale_gold',
     'w_star_sword','acc_star_bracelet','a_sea_armor','acc_sea_ring','i_star_frag']);
 
-const _GQ_FLAGS = ['last_boss_defeated','is_second_loop','is_second_loop_unlocked','has_ship','flag_dungeon_cleared','flag_tower_cleared','flag_sky_truth_known','flag_2nd_maou_cleared','flag_king_met','flag_pirate_king_cleared','flag_weapon_forged','flag_has_star_fragment','flag_saved_richman','flag_mage_trial_cleared','flag_dragon_spirit_cleared','flag_beaten_secret_boss','2nd_mem_maou','2nd_mem_shrine','2nd_mem_village','2nd_mem_tower','2nd_mem_dungeon','2nd_mem_town','2nd_final_spawned','shrine_healed','flag_wedding','flag_casino_won','flag_rsv1'];
+const _GQ_FLAGS = ['last_boss_defeated','is_second_loop','is_second_loop_unlocked','has_ship','flag_dungeon_cleared','flag_tower_cleared','flag_sky_truth_known','flag_2nd_maou_cleared','flag_king_met','flag_pirate_king_cleared','flag_weapon_forged','flag_has_star_fragment','flag_saved_richman','flag_mage_trial_cleared','flag_dragon_spirit_cleared','flag_beaten_secret_boss','2nd_mem_maou','2nd_mem_shrine','2nd_mem_village','2nd_mem_tower','2nd_mem_dungeon','2nd_mem_town','2nd_final_spawned','shrine_healed','flag_wedding','flag_casino_won','flag_rsv1','flag_dark_general_cleared','chest_haiya_axe',
+    'flag_zarmo_lich_cleared','chest_zarmo_key','flag_ice_dragon_cleared','flag_lava_titan_cleared',
+    'flag_ancient_guardian_cleared','flag_dungeon_lord_cleared','flag_shadow_knight_cleared',
+    'flag_desert_mummy_cleared','flag_sea_god_cleared','flag_dark_disciple_cleared',
+    'flag_crystal_golem_cleared','flag_chaos_dragon_cleared','flag_archmage_cleared',
+    'flag_demon_avatar_cleared','chest_deserta_seal'];
 
 // ビット書き込み: 6ビット単位でbytes配列に積む
 function _gqBitPack(fields) {
@@ -1086,6 +1094,25 @@ function injectSubStoryData() {
     masterData.spells["spl_ultima"] = { id: "spl_ultima", name: "アルテマ", type: "attack", target: "enemies", mp: 30, value: 250, desc: "敵全体に究極の大ダメージ", element: "light" };
     masterData.monsters["boss_secret_traveler"] = { name: "異世界の旅人", max_hp: 5500, atk: 250, def: 150, spd: 200, exp: 50000, gold: 10000 };
     masterData.monsters["boss_pirate_king"] = { name: "海賊王バルゴ", max_hp: 2800, atk: 150, def: 90, spd: 110, exp: 12000, gold: 8000, traits: ["boss", "water_element", "two_actions"] };
+    masterData.monsters["boss_dark_general"] = { name: "暗黒の魔将", max_hp: 1200, atk: 180, def: 120, spd: 90, exp: 8000, gold: 5000, traits: ["boss", "dark_element", "magic_attack", "two_actions", "weak_light"] };
+    // ★ 拡張世界ボス・アイテム
+    masterData.monsters["boss_zarmo_lich"]      = { name: "暗黒公リッチ",        max_hp: 1800, atk: 200, def: 140, spd: 120, exp: 15000, gold: 8000, traits: ["boss","undead","magic_attack","dark_attack","two_actions","weak_light"] };
+    masterData.monsters["boss_ice_dragon"]      = { name: "氷竜アイスフロスト",  max_hp: 1600, atk: 190, def: 130, spd: 100, exp: 12000, gold: 6000, traits: ["boss","ice_element","breath","two_actions"] };
+    masterData.monsters["boss_lava_titan"]      = { name: "溶岩大魔神",          max_hp: 2000, atk: 220, def: 150, spd: 80,  exp: 16000, gold: 9000, traits: ["boss","fire_element","resist_fire","two_actions"] };
+    masterData.monsters["boss_ancient_guardian"]= { name: "古代の守護者",        max_hp: 1400, atk: 170, def: 160, spd: 70,  exp: 11000, gold: 7000, traits: ["boss","high_defense","status_immunity"] };
+    masterData.monsters["boss_dungeon_lord"]    = { name: "迷宮の覇者",          max_hp: 1700, atk: 195, def: 145, spd: 110, exp: 13000, gold: 7500, traits: ["boss","all_element_resist","two_actions"] };
+    masterData.monsters["boss_shadow_knight"]   = { name: "影の騎士",            max_hp: 1500, atk: 185, def: 135, spd: 140, exp: 12500, gold: 7000, traits: ["boss","dark_attack","high_speed","weak_light"] };
+    masterData.monsters["boss_desert_mummy"]    = { name: "砂漠のミイラ王",      max_hp: 1300, atk: 175, def: 120, spd: 60,  exp: 10000, gold: 6500, traits: ["boss","undead","status_attack","weak_fire"] };
+    masterData.monsters["boss_sea_god_statue"]  = { name: "海神像",              max_hp: 2200, atk: 210, def: 170, spd: 90,  exp: 18000, gold: 10000,traits: ["boss","water_element","high_defense","status_immunity","two_actions"] };
+    masterData.monsters["boss_dark_disciple"]   = { name: "魔将の使徒",          max_hp: 1900, atk: 215, def: 155, spd: 105, exp: 17000, gold: 9500, traits: ["boss","dark_element","magic_attack","two_actions","weak_light"] };
+    masterData.monsters["boss_crystal_golem"]   = { name: "水晶ゴーレム",        max_hp: 2400, atk: 180, def: 200, spd: 50,  exp: 19000, gold: 11000,traits: ["boss","high_defense","resist_physical","magic_immunity"] };
+    masterData.monsters["boss_chaos_dragon"]    = { name: "混沌竜カオスドレイク",max_hp: 3800, atk: 280, def: 190, spd: 155, exp: 45000, gold: 20000,traits: ["boss","all_element_resist","three_actions","status_immunity","ultimate_attack"] };
+    masterData.monsters["boss_archmage"]        = { name: "魔法王アルカノス",    max_hp: 2800, atk: 260, def: 160, spd: 170, exp: 35000, gold: 15000,traits: ["boss","magic_attack","all_element","two_actions","magic_immunity"] };
+    masterData.monsters["boss_demon_avatar"]    = { name: "魔王の化身",          max_hp: 3200, atk: 270, def: 180, spd: 145, exp: 40000, gold: 18000,traits: ["boss","dark_element","status_immunity","three_actions","ultimate_attack"] };
+    // アイテム
+    masterData.items["acc_zarmo_crown"]  = { id:"acc_zarmo_crown",  name:"ザーモの王冠",     type:"accessory", price:0, power:0, effect:"all_stats_up",  desc:"古城ザーモに眠っていた古王の冠。全ステータスが大きく上昇する。" };
+    masterData.items["w_estoria_blade"]  = { id:"w_estoria_blade",  name:"エストリアの覇剣（剣）", type:"weapon", price:0, power:140, element:"light", desc:"東の王国の覇者に授けられる伝説の剣。光属性で闇の敵に絶大な威力を発揮。" };
+    masterData.items["a_deserta_robe"]   = { id:"a_deserta_robe",   name:"砂漠の賢者の法衣（鎧）", type:"armor", price:0, power:90, effect:"mp_regen",   desc:"砂漠の封印を解いた者に贈られる法衣。MPが毎ターン少量回復する。" };
     masterData.items["meteorite_fragment"] = { id: "meteorite_fragment", name: "いんせきのかけら", type: "tool", price: 5000, desc: "はぐれグラちゃんから手に入る超レアなかけら。ガルドの鍛冶屋に持参すると最強の鎧を作れるという。" };
     masterData.items["dragon_scale_red"]  = { id: "dragon_scale_red",  name: "赤竜の鱗", type: "tool", price: 0, desc: "赤く燃える竜の鱗。試練の洞窟の最奥に眠っていた。竜霊グラドスの呪いを解く三枚の鱗のひとつ。" };
     masterData.items["dragon_scale_blue"] = { id: "dragon_scale_blue", name: "蒼竜の鱗", type: "tool", price: 0, desc: "深海のような蒼い竜の鱗。天空の頂に隠されていた。竜霊グラドスの呪いを解く三枚の鱗のひとつ。" };
@@ -1133,6 +1160,15 @@ const SUBSTORIES = [
     { id:'sq_10', title:'異世界の旅人',
       steps:{ 1:'謎の旅人の噂が各地に広まっている', 2:'旅人の目撃情報を集めた（2/3）', 3:'旅人の目撃情報を全て集めた（3/3）' },
       doneText:'異世界の旅人を撃破した', reward:'w_2nd_03' },
+    { id:'sq_11', title:'封印の古城ザーモ',
+      steps:{ 1:'ロザリーヒルの住人から古城ザーモの話を聞いた', 2:'古城の地下で封印の鍵を発見した', 3:'暗黒公リッチを撃破した', 4:'ザーモ王の霊を解放した' },
+      doneText:'ザーモの呪縛が解かれ、王の霊は永遠の眠りについた', reward:'acc_zarmo_crown', rewardMember:0 },
+    { id:'sq_12', title:'エストリアの覇者',
+      steps:{ 1:'エストリア王から覇者の称号への挑戦を求められた', 2:'東の地下迷宮を制した（1/2）', 3:'魔法使いの塔を制した（2/2）', 4:'エストリア王に勝利を報告した' },
+      doneText:'エストリアの覇者の称号を得た！王国の全権を任された', reward:'w_estoria_blade', rewardMember:0 },
+    { id:'sq_13', title:'砂漠の封印',
+      steps:{ 1:'デセルタ王から砂漠の封印の話を聞いた', 2:'砂漠の遺跡でミイラ王を倒した', 3:'預言者から封印の印を授かった', 4:'砂漠の封印を完成させた' },
+      doneText:'砂漠の封印が完成し、大砂漠嵐は消え去った', reward:'a_deserta_robe', rewardMember:2 },
 ];
 function getSQ(id) { return (partyData.flags && partyData.flags[id]) || 0; }
 function setSQ(id, lv) { if (partyData.flags) partyData.flags[id] = lv; }
@@ -1317,6 +1353,35 @@ const bossPhantomImg = new Image(); bossPhantomImg.crossOrigin = "Anonymous"; bo
     _src.onerror = function() { /* 読み込み失敗: SVGグラフィックにフォールバック */ };
     _src.src = './pirate_king.jpg';
 })();
+// 暗黒の魔将: 白背景をcanvasで除去してPNG化
+(function() {
+    const _src = new Image();
+    _src.onload = function() {
+        const _cv = document.createElement('canvas');
+        _cv.width = _src.naturalWidth; _cv.height = _src.naturalHeight;
+        const _cx = _cv.getContext('2d');
+        _cx.drawImage(_src, 0, 0);
+        try {
+            const _id = _cx.getImageData(0, 0, _cv.width, _cv.height);
+            const _d = _id.data;
+            for (let _i = 0; _i < _d.length; _i += 4) {
+                const _r = _d[_i], _g = _d[_i+1], _b = _d[_i+2];
+                const _max = Math.max(_r, _g, _b), _min = Math.min(_r, _g, _b);
+                const _sat = _max > 0 ? (_max - _min) / _max : 0;
+                if (_max > 215 && _sat < 0.18) {
+                    const _fade = Math.max(0, Math.min(255, (_max - 215) * 4));
+                    _d[_i+3] = Math.max(0, _d[_i+3] - _fade);
+                }
+            }
+            _cx.putImageData(_id, 0, 0);
+        } catch(e) {}
+        const _out = new Image();
+        _out.onload = function() { externalImages['boss_dark_general'] = _out; };
+        _out.src = _cv.toDataURL('image/png');
+    };
+    _src.onerror = function() {};
+    _src.src = './dark_general.jpg';
+})();
 // 暗黒化した兵士（2周目）: base64埋め込みPNG（白背景除去済み）
 (function() {
     const _dk = new Image();
@@ -1346,7 +1411,33 @@ const bossPhantomImg = new Image(); bossPhantomImg.crossOrigin = "Anonymous"; bo
 const SHEET_COLS = 30; const SHEET_ROWS = 16; const TILE_IMG_MAP = { 3: { cx: 23, cy: 0 }, 6: { cx: 5, cy: 5 }, 7: { cx: 7, cy: 1 }, 8: { cx: 22, cy: 4 } };
 
 function getMapRandom(x, y, mapId) { const _k = x + '|' + y + '|' + (mapId||''); if (_gmrCache[_k] !== undefined) return _gmrCache[_k]; if (_gmrCacheSize > 8000) { const _ks = Object.keys(_gmrCache); for (let _i = 0; _i < 4000; _i++) delete _gmrCache[_ks[_i]]; _gmrCacheSize = Math.max(0, _gmrCacheSize - 4000); } let seed = 0; let mStr = mapId || ""; for(let i=0; i<mStr.length; i++) seed += mStr.charCodeAt(i); _gmrCacheSize++; return (_gmrCache[_k] = Math.abs(Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453) % 1); }
-function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return mapObj.name; if (!mapId) return "フィールド"; if (mapId.includes('town_01')) return "城下町グラマニア"; if (mapId.includes('castle_01')) return "グラマニア城"; if (mapId.includes('dungeon_1f')) return "試練の洞窟 1F"; if (mapId.includes('dungeon_b1f')) return "試練の洞窟 B1F"; if (mapId.includes('dungeon_b2f')) return "試練の洞窟 B2F"; if (mapId.includes('dungeon_b3f')) return "試練の洞窟 B3F"; if (mapId.includes('tower_1f')) return "天空の塔 1F"; if (mapId.includes('tower_2f')) return "天空の塔 2F"; if (mapId.includes('tower_3f')) return "天空の塔 3F"; if (mapId.includes('demon_castle_1f')) return "魔王城 1F"; if (mapId.includes('demon_castle_2f')) return "魔王城 2F"; if (mapId.includes('demon_castle_3f')) return "魔王城 3F"; if (mapId.includes('demon_castle_4f')) return "魔王城 4F"; if (mapId.includes('shrine')) return "ほこら"; if (mapId.includes('town') || mapId.includes('village') || mapId.includes('market')) return "街・村"; if (mapId.includes('dungeon') || mapId.includes('cave')) return "ダンジョン"; if (mapId.includes('field')) return "フィールド"; return "未知の場所"; }
+function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return mapObj.name; if (!mapId) return "フィールド";
+    if (mapId.includes('castle_zarmo')) return "北東の古城ザーモ";
+    if (mapId.includes('castle_estoria')) return "東の王国城エストリア";
+    if (mapId.includes('castle_deserta')) return "南の砂漠城デセルタ";
+    if (mapId.includes('town_nord')) return "冒険者の港ノルド";
+    if (mapId.includes('town_rosalia')) return "花の街ロザリーヒル";
+    if (mapId.includes('town_coral')) return "海峡の街コーラル";
+    if (mapId.includes('town_bazaar')) return "商都バザール";
+    if (mapId.includes('town_estoria_city')) return "エストリア城下町";
+    if (mapId.includes('town_oasis')) return "砂漠の町オアシス";
+    if (mapId.includes('town_south_port')) return "南海の港サンゴ礁";
+    if (mapId.includes('town_frost')) return "雪原の村フロスト";
+    if (mapId.includes('village_elfheim')) return "森の隠れ里エルフヘイム";
+    if (mapId.includes('town_salmon')) return "遺跡のほとりサルモン";
+    if (mapId.includes('cave_ice')) return "北の氷窟";
+    if (mapId.includes('cave_lava')) return "東の溶岩洞窟";
+    if (mapId.includes('ruin_ancient')) return "北海の古代遺跡";
+    if (mapId.includes('dungeon_east')) return "東の地下迷宮";
+    if (mapId.includes('cave_shadow')) return "南の影の洞窟";
+    if (mapId.includes('ruin_desert')) return "砂漠の遺跡";
+    if (mapId.includes('temple_sea')) return "海底神殿";
+    if (mapId.includes('fortress_dark')) return "深南の闇の要塞";
+    if (mapId.includes('cave_crystal')) return "西の水晶洞窟";
+    if (mapId.includes('dungeon_abyss')) return "深淵の迷宮";
+    if (mapId.includes('tower_magic')) return "魔法使いの塔";
+    if (mapId.includes('tower_darkspire')) return "闇の尖塔";
+    if (mapId.includes('town_01')) return "城下町グラマニア"; if (mapId.includes('castle_01')) return "グラマニア城"; if (mapId.includes('dungeon_1f')) return "試練の洞窟 1F"; if (mapId.includes('dungeon_b1f')) return "試練の洞窟 B1F"; if (mapId.includes('dungeon_b2f')) return "試練の洞窟 B2F"; if (mapId.includes('dungeon_b3f')) return "試練の洞窟 B3F"; if (mapId.includes('tower_1f')) return "天空の塔 1F"; if (mapId.includes('tower_2f')) return "天空の塔 2F"; if (mapId.includes('tower_3f')) return "天空の塔 3F"; if (mapId.includes('demon_castle_1f')) return "魔王城 1F"; if (mapId.includes('demon_castle_2f')) return "魔王城 2F"; if (mapId.includes('demon_castle_3f')) return "魔王城 3F"; if (mapId.includes('demon_castle_4f')) return "魔王城 4F"; if (mapId.includes('shrine')) return "ほこら"; if (mapId.includes('town') || mapId.includes('village') || mapId.includes('market')) return "街・村"; if (mapId.includes('dungeon') || mapId.includes('cave')) return "ダンジョン"; if (mapId.includes('field')) return "フィールド"; return "未知の場所"; }
 function getCurrentWorldPos() { let m = partyData.pos.map; let wx = -1, wy = -1; if (m.startsWith('map_field_') && m.split('_').length >= 4) { wx = parseInt(m.split('_')[2]); wy = parseInt(m.split('_')[3]); } else if (m.includes('town') || m.includes('castle')) { wx = 2; wy = 2; } else if (m.includes('dungeon') || m.includes('cave')) { wx = 2; wy = 0; } else if (m.includes('shrine')) { wx = 2; wy = 3; } else if (m.includes('north')) { wx = 2; wy = 0; } else if (m.includes('south')) { wx = 2; wy = 4; } else if (m.includes('east')) { wx = 4; wy = 2; } else if (m.includes('west')) { wx = 0; wy = 2; } if (wx === -1 || wy === -1) { wx = 2; wy = 2; } return {x: wx, y: wy}; }
 async function showWorldMap() {
     if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {};
@@ -1520,7 +1611,7 @@ function updateBGM() { let mapId = partyData.pos.map; if(!mapId) return; if (par
     if (_is2nd && !mapId.includes('demon') && !mapId.includes('tower') && !mapId.includes('dungeon') && !mapId.includes('fishing_village') && (mapId.includes('castle_01') || mapId.includes('town_01'))) { AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); return; }
     // 隠れ里エデン: 常に town BGM
     if(mapId.includes('eden')) { AudioManager.playBGM('town'); return; }
-    if (mapId.includes('castle')) { if(mapId.includes('demon') || mapId.includes('death')) AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); else if(mapId.includes('sky')) AudioManager.playBGM(AudioManager.db.bgm['sky_castle'] ? 'sky_castle' : 'castle'); else AudioManager.playBGM('castle'); } else if (mapId.includes('town') || mapId.includes('village')) { AudioManager.playBGM('town'); } else if (mapId.includes('market') || mapId.includes('bazaar')) { AudioManager.playBGM('market'); } else if (mapId.includes('shrine')) { AudioManager.playBGM('shrine'); } else if (mapId.includes('dungeon') || mapId.includes('cave')) { AudioManager.playBGM('dungeon'); } else if (mapId.includes('tower')) { AudioManager.playBGM('tower'); } else { if (mapId.includes('death') || mapId.includes('demon')) AudioManager.playBGM('field_late'); else AudioManager.playBGM('field_early'); } }
+    if (mapId.includes('castle')) { if(mapId.includes('demon') || mapId.includes('death')) AudioManager.playBGM(AudioManager.db.bgm['demon_castle'] ? 'demon_castle' : 'dungeon'); else if(mapId.includes('sky')) AudioManager.playBGM(AudioManager.db.bgm['sky_castle'] ? 'sky_castle' : 'castle'); else AudioManager.playBGM('castle'); } else if (mapId.includes('town') || mapId.includes('village')) { AudioManager.playBGM('town'); } else if (mapId.includes('market') || mapId.includes('bazaar')) { AudioManager.playBGM('market'); } else if (mapId.includes('shrine')) { AudioManager.playBGM('shrine'); } else if (mapId.includes('dungeon') || mapId.includes('cave') || mapId.includes('ruin') || mapId.includes('temple') || mapId.includes('fortress') || mapId.includes('darkspire')) { AudioManager.playBGM('dungeon'); } else if (mapId.includes('tower')) { AudioManager.playBGM('tower'); } else { if (mapId.includes('death') || mapId.includes('demon')) AudioManager.playBGM('field_late'); else AudioManager.playBGM('field_early'); } }
 
 async function playSpellEffect(spellData, targetObj, screenPos) {
     const layer = document.getElementById('global-effect-layer');
@@ -2426,8 +2517,8 @@ function findLand(mapId, cx, cy) {
     return null;
 }
 function generateFieldMapsForGravityQuest() {
-    // ワールドグリッド: 225x225タイル (5x5 x 45x45)
-    const GW = 225, GH = 225;
+    // ワールドグリッド: 405x405タイル (9x9 x 45x45)
+    const GW = 405, GH = 405;
     const world = new Array(GW * GH).fill(5);
 
     // 陸地塗り
@@ -2564,9 +2655,64 @@ function generateFieldMapsForGravityQuest() {
     fillEllCond(148, 105, 10,  7, 12);
 
     // ==================================================================
+    // ★ 拡張大陸群 (9x9グリッド / DQ4風 新大陸)
+    // ==================================================================
+
+    // ■ 北東大陸「ロザリーヒル大陸」(field 6-7, 0-2) — ローズ王国の地
+    fillEll(302, 68, 52, 38, 11); // 大陸核心
+    fillEll(348, 28, 26, 18, 11); // 北東岬 (ザーモ城)
+    fillEll(270, 32, 20, 15, 11); // 北西岬 (ノルド港)
+    fillEll(288, 108, 26, 18, 11); // 南方延伸
+    fillEll(252, 76, 16, 12, 11); // 西岸接続
+    fillEll(362, 82, 16, 12, 11); // 東岸 (コーラル)
+    fillEllCond(302, 74, 18, 12, 19); // 森
+    fillEllCond(350, 32, 12,  8, 19);
+    fillEllCond(308, 52, 14, 10, 20); // 山
+    fillEllCond(308, 50,  8,  6, 25); // 高山
+
+    // ■ 東大陸「エストリア大陸」(field 7-8, 3-5) — 東の王国
+    fillEll(368, 192, 32, 38, 11); // 大陸核心
+    fillEll(348, 152, 24, 20, 11); // 北部 (バザール方面)
+    fillEll(375, 242, 20, 16, 11); // 南延伸 (エストリア城下)
+    fillEll(340, 118, 20, 14, 11); // バザール島基部
+    fillEllCond(368, 198, 10,  7, 12); // 草地
+    fillEllCond(368, 190, 12,  8, 20); // 山
+
+    // ■ 東南群島 (field 7-8, 6-8) — 深淵の地
+    fillEll(372, 350, 26, 22, 11); // 深淵島
+
+    // ■ 南大陸「デセルタ大陸」(field 2-5, 6-8) — 砂漠の王国
+    fillEll(170, 328, 52, 38, 11); // 砂漠大陸核心
+    fillEll(128, 312, 28, 20, 11); // 西部 (フロスト接続方面)
+    fillEll(222, 320, 24, 18, 11); // 東部
+    fillEll(172, 386, 20, 14, 11); // 南端島
+    fillEll(258, 280, 22, 16, 11); // 東南前哨
+    fillEllCond(170, 330, 28, 20, 0); // 砂漠地帯
+    fillEllCond(222, 318, 14, 10, 0);
+    fillEllCond(175, 322, 16, 10, 20); // 砂漠山脈
+
+    // ■ 南西大陸「フロスト大陸」(field 0-2, 6-8) — 雪原の地
+    fillEll( 57, 340, 38, 28, 11); // 雪原大陸
+    fillEll( 28, 312, 22, 16, 11); // 北方延伸
+    fillEll( 48, 380, 20, 14, 11); // 南端
+    fillEllCond( 62, 332, 10,  7, 20); // 雪山
+
+    // ■ 中南連絡橋「影の渡り廊下」(field 3-5, 5) — 南大陸への橋渡し
+    fillEll(168, 248, 22, 12, 11);
+    fillEll(258, 258, 18, 10, 11);
+
+    // 外周水域強制（拡張分も）
+    for(let _j=0;_j<2;_j++) for(let _i=0;_i<GW;_i++){
+        if(world[_j*GW+_i]!==5) world[_j*GW+_i]=5;
+        if(world[(GH-1-_j)*GW+_i]!==5) world[(GH-1-_j)*GW+_i]=5;
+        if(world[_i*GW+_j]!==5) world[_i*GW+_j]=5;
+        if(world[_i*GW+(GW-1-_j)]!==5) world[_i*GW+(GW-1-_j)]=5;
+    }
+
+    // ==================================================================
     // BFS 陸地連結保証（孤立パッチを最大連結成分に接続）
     // ==================================================================
-    for(let gy=0;gy<5;gy++) for(let gx=0;gx<5;gx++){
+    for(let gy=0;gy<9;gy++) for(let gx=0;gx<9;gx++){
         const x0=gx*45, y0=gy*45;
         let mainComp=null, bestSz=0;
         const seen=new Set();
@@ -2591,25 +2737,23 @@ if(_bpx+1<x0+45&&world[_bpy*GW+_bpx+1]===5){world[_bpy*GW+_bpx+1]=12;mainComp.ad
         }
     }
 
-    // === 25マップ生成（各45×45） ===
+    // === 81マップ生成（各45×45 / 9x9グリッド） ===
     const _ef = id => masterData.monsters && masterData.monsters[id];
-    for(let gy=0;gy<5;gy++) for(let gx=0;gx<5;gx++){
+    for(let gy=0;gy<9;gy++) for(let gx=0;gx<9;gx++){
         const mapId = `map_field_${gx}_${gy}`;
         const tiles1D = [], exits = {};
         for(let ty=0;ty<45;ty++) for(let tx=0;tx<45;tx++)
             tiles1D.push(world[(gy*45+ty)*GW+(gx*45+tx)]);
         if(gy>0) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45)*GW+wx]!==5&&world[(gy*45)*GW+wx]!==25&&world[((gy-1)*45+44)*GW+wx]!==5&&world[((gy-1)*45+44)*GW+wx]!==25)exits[`${tx},0`]={map:`map_field_${gx}_${gy-1}`,x:tx,y:43};}
-        if(gy<4) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45+44)*GW+wx]!==5&&world[(gy*45+44)*GW+wx]!==25&&world[((gy+1)*45)*GW+wx]!==5&&world[((gy+1)*45)*GW+wx]!==25)exits[`${tx},44`]={map:`map_field_${gx}_${gy+1}`,x:tx,y:1};}
+        if(gy<8) for(let tx=1;tx<44;tx++){const wx=gx*45+tx;if(world[(gy*45+44)*GW+wx]!==5&&world[(gy*45+44)*GW+wx]!==25&&world[((gy+1)*45)*GW+wx]!==5&&world[((gy+1)*45)*GW+wx]!==25)exits[`${tx},44`]={map:`map_field_${gx}_${gy+1}`,x:tx,y:1};}
         if(gx>0) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45]!==5&&world[wy*GW+gx*45]!==25&&world[wy*GW+(gx-1)*45+44]!==5&&world[wy*GW+(gx-1)*45+44]!==25)exits[`0,${ty}`]={map:`map_field_${gx-1}_${gy}`,x:43,y:ty};}
-        if(gx<4) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45+44]!==5&&world[wy*GW+gx*45+44]!==25&&world[wy*GW+(gx+1)*45]!==5&&world[wy*GW+(gx+1)*45]!==25)exits[`44,${ty}`]={map:`map_field_${gx+1}_${gy}`,x:1,y:ty};}
+        if(gx<8) for(let ty=1;ty<44;ty++){const wy=gy*45+ty;if(world[wy*GW+gx*45+44]!==5&&world[wy*GW+gx*45+44]!==25&&world[wy*GW+(gx+1)*45]!==5&&world[wy*GW+(gx+1)*45]!==25)exits[`44,${ty}`]={map:`map_field_${gx+1}_${gy}`,x:1,y:ty};}
         const dist=Math.abs(gx-2)+Math.abs(gy-2);
-        // 試練の半島・西海岸(gx=0,gy>=2): 船入手前の序盤エリア → earlyMid固定
-        const isWestSouth = (gx===0 && gy>=2);
-        // 魔王島周辺(南東): 終盤
-        const isLate=(gx===4&&gy>=3)||(gx>=3&&gy===4);
-        // 中盤: 船で渡る島々・東の島・南の孤島など（西南半島を除く）
-        const isMid=!isLate&&!isWestSouth&&((gx===4)||(gy>=3&&gx>=1)||(dist>=3));
-        // 序盤中期: 中心から少し離れた陸続きエリア + 西南半島
+        const isWestSouth = (gx===0 && gy>=2 && gy<=4);
+        // 深部エリア: 既存魔王周辺 + 拡張南東 + 拡張南西果て
+        const isLate=(gx===4&&gy>=3&&gy<=4)||(gx>=3&&gy===4)||(gx>=7&&gy>=5)||(gx>=6&&gy>=7)||(gx<=1&&gy>=7);
+        // 中盤: 拡張エリア全体 + 既存中盤
+        const isMid=!isLate&&!isWestSouth&&((gx>=5)||(gy>=5)||(gx===4)||(gy>=3&&gx>=1)||(dist>=3));
         const isEarlyMid=!isLate&&!isMid&&(dist===2||isWestSouth);
         let enc;
         if(isLate) enc=["ancient_dragon","cyclops","vampire_lord","death_knight","behemoth","lich","archdemon","bahamut","hagure_gura"].filter(_ef);
@@ -2634,6 +2778,40 @@ if(_bpx+1<x0+45&&world[_bpy*GW+_bpx+1]===5){world[_bpy*GW+_bpx+1]=12;mainComp.ad
     placeBuilding("map_field_2_3", 22, 22, 22, "map_shrine_warp", 6,  9); // 祠（南島）
     placeBuilding("map_field_1_3", 25, 22, 21, "map_town_02",    10, 18); // 南西の村（SW島）
     placeBuilding("map_field_4_1", 28, 22, 21, "map_town_03",    11, 18); // 東の市場（東島・内陸）
+
+    // === 拡張世界: 新規目的地配置 (9x9グリッド) ===
+    // 【新お城3箇所】
+    placeBuilding("map_field_7_0", 22, 18, 21, "map_castle_zarmo",    8, 13); // 北東の古城ザーモ
+    placeBuilding("map_field_8_4", 22, 22, 21, "map_castle_estoria",  9, 14); // 東の王国城エストリア
+    placeBuilding("map_field_3_7", 22, 22, 21, "map_castle_deserta",  8, 13); // 南の砂漠城デセルタ
+
+    // 【新街・村 10箇所】
+    placeBuilding("map_field_5_0", 22, 28, 21, "map_town_nord",       10, 14); // 冒険者の港 ノルド
+    placeBuilding("map_field_6_1", 22, 22, 21, "map_town_rosalia",    10, 14); // 花の街 ロザリーヒル
+    placeBuilding("map_field_8_2", 22, 22, 21, "map_town_coral",      10, 14); // 海峡の街 コーラル
+    placeBuilding("map_field_6_3", 22, 22, 21, "map_town_bazaar",     10, 14); // 商都 バザール
+    placeBuilding("map_field_7_5", 22, 22, 21, "map_town_estoria_city", 10, 14); // エストリア城下町
+    placeBuilding("map_field_4_6", 22, 22, 21, "map_town_oasis",      10, 14); // 砂漠の町 オアシス
+    placeBuilding("map_field_6_7", 22, 22, 21, "map_town_south_port", 10, 14); // 南海の港 サンゴ礁
+    placeBuilding("map_field_1_6", 22, 22, 21, "map_town_frost",      10, 14); // 雪原の村 フロスト
+    placeBuilding("map_field_0_7", 22, 22, 21, "map_village_elfheim", 10, 14); // 森の隠れ里 エルフヘイム
+    placeBuilding("map_field_2_8", 22, 22, 21, "map_town_salmon",     10, 14); // 遺跡のほとり サルモン
+
+    // 【新ダンジョン 10箇所】
+    placeBuilding("map_field_5_1", 22, 22, 22, "map_cave_ice_1f",     6,  8); // 北の氷窟
+    placeBuilding("map_field_7_2", 22, 22, 22, "map_cave_lava_1f",    6,  8); // 東の溶岩洞窟
+    placeBuilding("map_field_8_0", 22, 22, 22, "map_ruin_ancient_1f", 6,  8); // 北海の古代遺跡
+    placeBuilding("map_field_8_3", 22, 22, 22, "map_dungeon_east_1f", 6,  8); // 東の地下迷宮
+    placeBuilding("map_field_5_5", 22, 22, 22, "map_cave_shadow_1f",  6,  8); // 南の影の洞窟
+    placeBuilding("map_field_3_6", 22, 22, 22, "map_ruin_desert_1f",  6,  8); // 砂漠の遺跡
+    placeBuilding("map_field_5_7", 22, 22, 22, "map_temple_sea_1f",   6,  8); // 海底神殿
+    placeBuilding("map_field_1_8", 22, 22, 22, "map_fortress_dark_1f",6,  8); // 深南の闇の要塞
+    placeBuilding("map_field_0_6", 22, 22, 22, "map_cave_crystal_1f", 6,  8); // 西の水晶洞窟
+    placeBuilding("map_field_8_8", 22, 22, 22, "map_dungeon_abyss_1f",6,  8); // 深淵の迷宮
+
+    // 【新塔 2箇所】
+    placeBuilding("map_field_5_3", 22, 22, 22, "map_tower_magic_1f",    6, 12); // 魔法使いの塔
+    placeBuilding("map_field_2_6", 22, 22, 22, "map_tower_darkspire_1f",6, 12); // 闇の尖塔
 
     // === 外部マップ接続 ===
     const forceExit = (mapId, tx, ty, destMap, dx, dy) => {
@@ -3193,6 +3371,384 @@ function generateDQStyleMaps() {
                     if (_f01p.tiles[_fpy*(_f01p.width||45)+_fpx]===22) _f01p.tiles[_fpy*(_f01p.width||45)+_fpx]=11;
                     delete _f01p.exits[_fek];
                 }
+            }
+        }
+    }
+
+    // ===================================================
+    // ★ 拡張世界 — DQ4風新規マップ群
+    // ===================================================
+
+    // ===== 北東の古城 ザーモ (map_castle_zarmo) — DQ4ザーモクスバ風 =====
+    if (!externalMapData['map_castle_zarmo']) {
+        externalMapData['map_castle_zarmo'] = mkMap(16, 14,
+            [[1,1,14,4],[2,6,5,6],[9,6,5,6],[5,4,6,8]],
+            [[7,4,7,11],[8,4,8,11]],
+            [], [[8,13],[7,13]],
+            {'8,13':{map:'map_field_7_0',x:22,y:19},'7,13':{map:'map_field_7_0',x:22,y:19}},
+            {'8,2':{id:'npc_zarmo_king_spirit',name:'ザーモ王の霊'},'2,8':{id:'npc_zarmo_knight',name:'古城の衛兵'},'13,8':{id:'npc_zarmo_sorceress',name:'闇の魔女'},'5,10':{id:'boss_zarmo_lich',name:'暗黒公リッチ'},'10,10':{id:'obj_chest_zarmo_key',name:'古びた宝箱'},'2,3':{id:'npc_priest',name:'神父'}},
+            [], '北東の古城ザーモ');
+    }
+
+    // ===== 東の王国城 エストリア (map_castle_estoria) — DQ4エンドー風 =====
+    if (!externalMapData['map_castle_estoria']) {
+        externalMapData['map_castle_estoria'] = mkMap(18, 16,
+            [[1,1,16,5],[2,7,6,7],[10,7,6,7],[6,5,6,9]],
+            [[8,5,8,13],[9,5,9,13]],
+            [], [[9,15],[8,15]],
+            {'9,15':{map:'map_field_8_4',x:22,y:23},'8,15':{map:'map_field_8_4',x:22,y:23}},
+            {'9,2':{id:'npc_estoria_king',name:'エストリア王'},'2,9':{id:'npc_estoria_knight',name:'近衛騎士'},'15,9':{id:'npc_estoria_herald',name:'伝令の使者'},'9,9':{id:'npc_estoria_queen',name:'王妃'},'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_estoria_sage',name:'宮廷賢者'}},
+            [], '東の王国城エストリア');
+    }
+
+    // ===== 南の砂漠城 デセルタ (map_castle_deserta) — DQ4砂漠城風 =====
+    if (!externalMapData['map_castle_deserta']) {
+        externalMapData['map_castle_deserta'] = mkMap(16, 14,
+            [[1,1,14,4],[2,6,5,6],[9,6,5,6],[5,4,6,8]],
+            [[7,4,7,11],[8,4,8,11]],
+            [], [[8,13],[7,13]],
+            {'8,13':{map:'map_field_3_7',x:22,y:23},'7,13':{map:'map_field_3_7',x:22,y:23}},
+            {'8,2':{id:'npc_deserta_king',name:'デセルタ王'},'2,8':{id:'npc_deserta_oracle',name:'砂漠の預言者'},'13,8':{id:'npc_deserta_soldier',name:'砂漠の衛兵'},'2,3':{id:'npc_priest',name:'神父'},'5,6':{id:'obj_chest_deserta_seal',name:'砂漠の宝箱'}},
+            [], '南の砂漠城デセルタ');
+    }
+
+    // ===== 新街・村 10箇所 =====
+
+    // 冒険者の港 ノルド (DQ4ラカナバ風)
+    if (!externalMapData['map_town_nord']) {
+        externalMapData['map_town_nord'] = mkMap(18, 16,
+            [[1,1,16,4],[1,6,16,4],[0,10,18,5]],
+            [[9,0,9,9],[9,10,9,15]],
+            [[9,15]],[],
+            {'9,15':{map:'map_field_5_0',x:22,y:29},'8,15':{map:'map_field_5_0',x:22,y:29}},
+            {'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_weapon_shop_nord',name:'武器屋'},'2,8':{id:'npc_item_shop_nord',name:'道具屋'},'15,8':{id:'npc_inn_nord',name:'宿屋'},'9,3':{id:'npc_nord_captain',name:'港の船長'},'5,12':{id:'npc_nord_sailor',name:'老水夫'},'13,12':{id:'npc_nord_merchant',name:'旅商人'}},
+            [], '冒険者の港ノルド');
+    }
+
+    // 花の街 ロザリーヒル (DQ4ロザリーヒル風)
+    if (!externalMapData['map_town_rosalia']) {
+        externalMapData['map_town_rosalia'] = mkMap(18, 16,
+            [[1,1,16,4],[1,6,16,4],[0,10,18,5]],
+            [[9,0,9,9],[9,10,9,15]],
+            [[9,15]],[],
+            {'9,15':{map:'map_field_6_1',x:22,y:23},'8,15':{map:'map_field_6_1',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_weapon_shop_ros',name:'武器屋'},'2,8':{id:'npc_item_shop_ros',name:'道具屋'},'15,8':{id:'npc_inn_ros',name:'宿屋'},'9,3':{id:'npc_rosalia_bard',name:'吟遊詩人'},'6,12':{id:'npc_rosalia_girl',name:'花売りの少女'},'12,12':{id:'npc_rosalia_elder',name:'花街の長老'}},
+            [], '花の街ロザリーヒル');
+    }
+
+    // 海峡の街 コーラル (DQ4ミントス風)
+    if (!externalMapData['map_town_coral']) {
+        externalMapData['map_town_coral'] = mkMap(18, 16,
+            [[1,1,16,4],[1,6,16,4],[0,10,18,5]],
+            [[9,0,9,9],[9,10,9,15]],
+            [[9,15]],[],
+            {'9,15':{map:'map_field_8_2',x:22,y:23},'8,15':{map:'map_field_8_2',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_weapon_shop_coral',name:'武器屋'},'2,8':{id:'npc_item_shop_coral',name:'道具屋'},'15,8':{id:'npc_inn_coral',name:'宿屋'},'9,3':{id:'npc_coral_captain',name:'海峡の船長'},'5,12':{id:'npc_coral_diver',name:'潜水士'},'12,12':{id:'npc_coral_scholar',name:'海の学者'}},
+            [], '海峡の街コーラル');
+    }
+
+    // 商都 バザール (DQ4ハバリー風)
+    if (!externalMapData['map_town_bazaar']) {
+        externalMapData['map_town_bazaar'] = mkMap(20, 16,
+            [[1,1,18,4],[1,6,18,4],[0,10,20,5]],
+            [[10,0,10,9],[10,10,10,15]],
+            [[10,15]],[],
+            {'10,15':{map:'map_field_6_3',x:22,y:23},'9,15':{map:'map_field_6_3',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'17,3':{id:'npc_weapon_shop_baz',name:'武器屋'},'2,8':{id:'npc_item_shop_baz',name:'道具屋'},'17,8':{id:'npc_inn_baz',name:'宿屋'},'10,3':{id:'npc_bazaar_chief',name:'商会長'},'6,3':{id:'npc_bazaar_merchant_a',name:'行商人A'},'14,3':{id:'npc_bazaar_merchant_b',name:'行商人B'},'5,12':{id:'npc_bazaar_thief',name:'怪しい商人'},'14,12':{id:'npc_bazaar_info',name:'情報屋'}},
+            [], '商都バザール');
+    }
+
+    // エストリア城下町
+    if (!externalMapData['map_town_estoria_city']) {
+        externalMapData['map_town_estoria_city'] = mkMap(18, 16,
+            [[1,1,16,4],[1,6,16,4],[0,10,18,5]],
+            [[9,0,9,9],[9,10,9,15]],
+            [[9,15]],[],
+            {'9,15':{map:'map_field_7_5',x:22,y:23},'8,15':{map:'map_field_7_5',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_weapon_shop_est',name:'武器屋（最高品質）'},'2,8':{id:'npc_item_shop_est',name:'道具屋'},'15,8':{id:'npc_inn_est',name:'宿屋'},'9,3':{id:'npc_estoria_herald_city',name:'王国の伝令'},'6,12':{id:'npc_estoria_citizen_a',name:'市民'},'12,12':{id:'npc_estoria_soldier',name:'衛兵'}},
+            [], 'エストリア城下町');
+    }
+
+    // 砂漠の町 オアシス (DQ4ハムリン風)
+    if (!externalMapData['map_town_oasis']) {
+        externalMapData['map_town_oasis'] = mkMap(18, 16,
+            [[1,1,16,4],[1,6,16,4],[0,10,18,5]],
+            [[9,0,9,9],[9,10,9,15]],
+            [[9,15]],[],
+            {'9,15':{map:'map_field_4_6',x:22,y:23},'8,15':{map:'map_field_4_6',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_weapon_shop_oasis',name:'武器屋（砂漠装備）'},'2,8':{id:'npc_item_shop_oasis',name:'道具屋'},'15,8':{id:'npc_inn_oasis',name:'宿屋'},'9,3':{id:'npc_oasis_guide',name:'砂漠の案内人'},'5,12':{id:'npc_oasis_merchant',name:'砂漠の商人'},'13,12':{id:'npc_oasis_elder',name:'老砂漠人'}},
+            [], '砂漠の町オアシス');
+    }
+
+    // 南海の港 サンゴ礁
+    if (!externalMapData['map_town_south_port']) {
+        externalMapData['map_town_south_port'] = mkMap(18, 16,
+            [[1,1,16,4],[1,6,16,4],[0,10,18,5]],
+            [[9,0,9,9],[9,10,9,15]],
+            [[9,15]],[],
+            {'9,15':{map:'map_field_6_7',x:22,y:23},'8,15':{map:'map_field_6_7',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_weapon_shop_sp',name:'武器屋'},'2,8':{id:'npc_item_shop_sp',name:'道具屋'},'15,8':{id:'npc_inn_sp',name:'宿屋'},'9,3':{id:'npc_south_port_captain',name:'南海の船長'},'5,12':{id:'npc_south_port_fisher',name:'漁師'},'12,12':{id:'npc_south_port_explorer',name:'探険家'}},
+            [], '南海の港サンゴ礁');
+    }
+
+    // 雪原の村 フロスト (DQ4ブランカ風)
+    if (!externalMapData['map_town_frost']) {
+        externalMapData['map_town_frost'] = mkMap(18, 16,
+            [[1,1,16,4],[1,6,16,4],[0,10,18,5]],
+            [[9,0,9,9],[9,10,9,15]],
+            [[9,15]],[],
+            {'9,15':{map:'map_field_1_6',x:22,y:23},'8,15':{map:'map_field_1_6',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_weapon_shop_frost',name:'武器屋（氷装備）'},'2,8':{id:'npc_item_shop_frost',name:'道具屋'},'15,8':{id:'npc_inn_frost',name:'宿屋'},'9,3':{id:'npc_frost_sage',name:'氷の賢者'},'5,12':{id:'npc_frost_hunter',name:'雪原の猟師'},'13,12':{id:'npc_frost_child',name:'雪国の子供'}},
+            [], '雪原の村フロスト');
+    }
+
+    // 森の隠れ里 エルフヘイム
+    if (!externalMapData['map_village_elfheim']) {
+        externalMapData['map_village_elfheim'] = mkMap(16, 14,
+            [[1,1,14,4],[1,6,14,4],[0,10,16,3]],
+            [[8,0,8,9],[8,10,8,13]],
+            [[8,13]],[],
+            {'8,13':{map:'map_field_0_7',x:22,y:23},'7,13':{map:'map_field_0_7',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'13,3':{id:'npc_item_shop_elf',name:'道具屋（精霊薬）'},'4,8':{id:'npc_elf_elder',name:'エルフの長老'},'11,8':{id:'npc_elf_archer',name:'森の弓士'},'8,3':{id:'npc_elf_sage',name:'精霊の賢者'},'4,11':{id:'npc_elf_fairy',name:'妖精'}},
+            [], '森の隠れ里エルフヘイム');
+    }
+
+    // 遺跡のほとり サルモン (DQ4ブレノール風)
+    if (!externalMapData['map_town_salmon']) {
+        externalMapData['map_town_salmon'] = mkMap(18, 16,
+            [[1,1,16,4],[1,6,16,4],[0,10,18,5]],
+            [[9,0,9,9],[9,10,9,15]],
+            [[9,15]],[],
+            {'9,15':{map:'map_field_2_8',x:22,y:23},'8,15':{map:'map_field_2_8',x:22,y:23}},
+            {'2,3':{id:'npc_priest',name:'神父'},'15,3':{id:'npc_weapon_shop_sal',name:'武器屋'},'2,8':{id:'npc_item_shop_sal',name:'道具屋（遺跡グッズ）'},'15,8':{id:'npc_inn_sal',name:'宿屋'},'9,3':{id:'npc_salmon_archaeologist',name:'考古学者'},'5,12':{id:'npc_salmon_guard',name:'遺跡の見張り'},'13,12':{id:'npc_salmon_scholar',name:'古代研究家'}},
+            [], '遺跡のほとりサルモン');
+    }
+
+    // ===== 新ダンジョン 10箇所 (各2F構成) =====
+
+    // 北の氷窟 1F
+    if (!externalMapData['map_cave_ice_1f']) {
+        externalMapData['map_cave_ice_1f'] = mkMap(14, 12,
+            [[1,1,6,4],[7,1,6,4],[1,6,12,4]],
+            [[6,4,6,9],[7,4,7,9]],
+            [[7,10]],[],
+            {'7,10':{map:'map_field_5_1',x:22,y:23},'6,10':{map:'map_field_5_1',x:22,y:23}},
+            {'7,2':{id:'npc_cave_ice_guide',name:'氷窟の霊'},'3,8':{id:'obj_chest_ice_a',name:'宝箱'},'10,8':{id:'obj_chest_ice_b',name:'光る台座'},'6,1':{id:'obj_stairs_ice_2f',name:'下り階段'}},
+            encD2, '北の氷窟1F');
+        externalMapData['map_cave_ice_1f'].exits['6,1'] = {map:'map_cave_ice_b1f', x:6, y:9};
+    }
+    if (!externalMapData['map_cave_ice_b1f']) {
+        externalMapData['map_cave_ice_b1f'] = mkMap(14, 12,
+            [[1,1,12,10]],
+            [],
+            [], [[6,10]],
+            {'6,10':{map:'map_cave_ice_1f',x:6,y:2}},
+            {'7,5':{id:'boss_ice_dragon',name:'氷竜アイスフロスト'},'3,3':{id:'obj_chest_ice_deep',name:'凍った宝箱'}},
+            encD2, '北の氷窟B1F');
+    }
+
+    // 東の溶岩洞窟 1F
+    if (!externalMapData['map_cave_lava_1f']) {
+        externalMapData['map_cave_lava_1f'] = mkMap(14, 12,
+            [[1,1,6,4],[7,1,6,4],[1,6,12,4]],
+            [[6,4,6,9],[7,4,7,9]],
+            [[7,10]],[],
+            {'7,10':{map:'map_field_7_2',x:22,y:23},'6,10':{map:'map_field_7_2',x:22,y:23}},
+            {'7,2':{id:'npc_lava_spirit',name:'炎の精霊'},'3,8':{id:'obj_chest_lava_a',name:'宝箱'},'10,8':{id:'obj_chest_lava_b',name:'光る台座'},'6,1':{id:'obj_stairs_lava_2f',name:'下り階段'}},
+            encD3, '東の溶岩洞窟1F');
+        externalMapData['map_cave_lava_1f'].exits['6,1'] = {map:'map_cave_lava_b1f', x:6, y:9};
+    }
+    if (!externalMapData['map_cave_lava_b1f']) {
+        externalMapData['map_cave_lava_b1f'] = mkMap(14, 12,
+            [[1,1,12,10]],
+            [],
+            [], [[6,10]],
+            {'6,10':{map:'map_cave_lava_1f',x:6,y:2}},
+            {'7,5':{id:'boss_lava_titan',name:'溶岩大魔神'},'3,3':{id:'obj_chest_lava_deep',name:'溶岩の宝箱'}},
+            encD3, '東の溶岩洞窟B1F');
+    }
+
+    // 北海の古代遺跡 1F
+    if (!externalMapData['map_ruin_ancient_1f']) {
+        externalMapData['map_ruin_ancient_1f'] = mkMap(14, 12,
+            [[1,1,12,10]],
+            [],
+            [[7,10]],[],
+            {'7,10':{map:'map_field_8_0',x:22,y:23},'6,10':{map:'map_field_8_0',x:22,y:23}},
+            {'7,2':{id:'boss_ancient_guardian',name:'古代の守護者'},'3,5':{id:'obj_chest_ancient_a',name:'遺跡の宝箱'},'10,5':{id:'obj_chest_ancient_b',name:'石碑'}},
+            encD2, '北海の古代遺跡');
+        externalMapData['map_ruin_ancient_1f'].exits['7,10'] = {map:'map_field_8_0',x:22,y:24};
+        externalMapData['map_ruin_ancient_1f'].exits['6,10'] = {map:'map_field_8_0',x:22,y:24};
+    }
+
+    // 東の地下迷宮 1F
+    if (!externalMapData['map_dungeon_east_1f']) {
+        externalMapData['map_dungeon_east_1f'] = mkMap(16, 14,
+            [[1,1,6,4],[9,1,6,4],[1,6,14,6]],
+            [[6,4,9,4],[6,4,6,11],[9,4,9,11]],
+            [[8,12]],[],
+            {'8,12':{map:'map_field_8_3',x:22,y:23},'7,12':{map:'map_field_8_3',x:22,y:23}},
+            {'8,2':{id:'boss_dungeon_lord',name:'迷宮の覇者'},'3,9':{id:'obj_chest_east_a',name:'宝箱'},'12,9':{id:'obj_chest_east_b',name:'宝箱'}},
+            encD3, '東の地下迷宮');
+    }
+
+    // 南の影の洞窟 1F
+    if (!externalMapData['map_cave_shadow_1f']) {
+        externalMapData['map_cave_shadow_1f'] = mkMap(14, 12,
+            [[1,1,12,10]],
+            [],
+            [[7,10]],[],
+            {'7,10':{map:'map_field_5_5',x:22,y:23},'6,10':{map:'map_field_5_5',x:22,y:23}},
+            {'7,3':{id:'boss_shadow_knight',name:'影の騎士'},'4,7':{id:'obj_chest_shadow_a',name:'宝箱'},'9,7':{id:'obj_chest_shadow_b',name:'宝箱'}},
+            encM1, '南の影の洞窟');
+        externalMapData['map_cave_shadow_1f'].exits['7,10'] = {map:'map_field_5_5',x:22,y:24};
+        externalMapData['map_cave_shadow_1f'].exits['6,10'] = {map:'map_field_5_5',x:22,y:24};
+    }
+
+    // 砂漠の遺跡 1F (2F構成)
+    if (!externalMapData['map_ruin_desert_1f']) {
+        externalMapData['map_ruin_desert_1f'] = mkMap(14, 12,
+            [[1,1,12,5],[3,7,8,3]],
+            [[7,5,7,9]],
+            [[7,10]],[],
+            {'7,10':{map:'map_field_3_6',x:22,y:23},'6,10':{map:'map_field_3_6',x:22,y:23}},
+            {'7,2':{id:'npc_desert_spirit',name:'砂漠の亡霊'},'3,4':{id:'obj_chest_ruin_a',name:'砂の宝箱'},'10,4':{id:'obj_chest_ruin_b',name:'石棺'},'7,8':{id:'boss_desert_mummy',name:'砂漠のミイラ王'}},
+            encD3, '砂漠の遺跡');
+        externalMapData['map_ruin_desert_1f'].exits['7,10'] = {map:'map_field_3_6',x:22,y:24};
+        externalMapData['map_ruin_desert_1f'].exits['6,10'] = {map:'map_field_3_6',x:22,y:24};
+    }
+
+    // 海底神殿 1F
+    if (!externalMapData['map_temple_sea_1f']) {
+        externalMapData['map_temple_sea_1f'] = mkMap(16, 14,
+            [[1,1,14,4],[3,6,10,6]],
+            [[8,4,8,11],[7,4,7,11]],
+            [[8,12]],[],
+            {'8,12':{map:'map_field_5_7',x:22,y:23},'7,12':{map:'map_field_5_7',x:22,y:23}},
+            {'8,2':{id:'boss_sea_god_statue',name:'海神像'},'3,9':{id:'obj_chest_sea_a',name:'宝箱'},'12,9':{id:'obj_chest_sea_b',name:'珊瑚の台座'},'5,9':{id:'npc_sea_spirit',name:'海の精霊'}},
+            encM1, '海底神殿');
+    }
+
+    // 深南の闇の要塞 1F
+    if (!externalMapData['map_fortress_dark_1f']) {
+        externalMapData['map_fortress_dark_1f'] = mkMap(14, 12,
+            [[1,1,12,10]],
+            [],
+            [[7,10]],[],
+            {'7,10':{map:'map_field_1_8',x:22,y:23},'6,10':{map:'map_field_1_8',x:22,y:23}},
+            {'7,3':{id:'boss_dark_disciple',name:'魔将の使徒'},'3,6':{id:'obj_chest_dark_a',name:'宝箱'},'10,6':{id:'obj_chest_dark_b',name:'宝箱'}},
+            encM2, '深南の闇の要塞');
+        externalMapData['map_fortress_dark_1f'].exits['7,10'] = {map:'map_field_1_8',x:22,y:24};
+        externalMapData['map_fortress_dark_1f'].exits['6,10'] = {map:'map_field_1_8',x:22,y:24};
+    }
+
+    // 西の水晶洞窟
+    if (!externalMapData['map_cave_crystal_1f']) {
+        externalMapData['map_cave_crystal_1f'] = mkMap(14, 12,
+            [[1,1,12,10]],
+            [],
+            [[7,10]],[],
+            {'7,10':{map:'map_field_0_6',x:22,y:23},'6,10':{map:'map_field_0_6',x:22,y:23}},
+            {'7,3':{id:'boss_crystal_golem',name:'水晶ゴーレム'},'3,6':{id:'obj_chest_crystal_a',name:'水晶の宝箱'},'10,6':{id:'obj_chest_crystal_b',name:'水晶の祭壇'}},
+            encM1, '西の水晶洞窟');
+        externalMapData['map_cave_crystal_1f'].exits['7,10'] = {map:'map_field_0_6',x:22,y:24};
+        externalMapData['map_cave_crystal_1f'].exits['6,10'] = {map:'map_field_0_6',x:22,y:24};
+    }
+
+    // 深淵の迷宮 1F
+    if (!externalMapData['map_dungeon_abyss_1f']) {
+        externalMapData['map_dungeon_abyss_1f'] = mkMap(16, 14,
+            [[1,1,14,4],[1,6,14,6]],
+            [[8,4,8,11]],
+            [[8,12]],[],
+            {'8,12':{map:'map_field_8_8',x:22,y:23},'7,12':{map:'map_field_8_8',x:22,y:23}},
+            {'8,2':{id:'boss_chaos_dragon',name:'混沌竜カオスドレイク'},'3,9':{id:'obj_chest_abyss_a',name:'深淵の宝箱'},'12,9':{id:'obj_chest_abyss_b',name:'深淵の祭壇'}},
+            encM2, '深淵の迷宮');
+    }
+
+    // ===== 新塔 2箇所 (各3F) =====
+
+    // 魔法使いの塔 (DQ4取引の塔風) 1F-3F
+    if (!externalMapData['map_tower_magic_1f']) {
+        externalMapData['map_tower_magic_1f'] = mkMap(12, 14,
+            [[1,1,10,12]],
+            [],
+            [[6,1]],[],
+            {'6,13':{map:'map_field_5_3',x:22,y:23},'5,13':{map:'map_field_5_3',x:22,y:23}},
+            {'6,11':{id:'npc_magic_tower_keeper',name:'塔の番人'},'3,5':{id:'npc_magic_tower_mage_a',name:'魔法使い研究生'},'8,5':{id:'npc_magic_tower_mage_b',name:'高位魔術師'},'3,9':{id:'obj_chest_magic_1f',name:'宝箱'}},
+            [], '魔法使いの塔1F');
+        externalMapData['map_tower_magic_1f'].exits['6,1'] = {map:'map_tower_magic_2f', x:6, y:11};
+        externalMapData['map_tower_magic_1f'].npcs['6,13'] = {id:'npc_magic_tower_exit', name:'出口'};
+    }
+    if (!externalMapData['map_tower_magic_2f']) {
+        externalMapData['map_tower_magic_2f'] = mkMap(12, 14,
+            [[1,1,10,12]],
+            [],
+            [[6,1]],[[6,12]],
+            {'6,12':{map:'map_tower_magic_1f',x:6,y:2}},
+            {'6,11':{id:'npc_magic_tower_archmage',name:'大魔導士'},'5,5':{id:'obj_chest_magic_2f',name:'宝箱'},'8,3':{id:'obj_chest_magic_2f_b',name:'宝箱'}},
+            [], '魔法使いの塔2F');
+        externalMapData['map_tower_magic_2f'].exits['6,1'] = {map:'map_tower_magic_3f', x:6, y:11};
+    }
+    if (!externalMapData['map_tower_magic_3f']) {
+        externalMapData['map_tower_magic_3f'] = mkMap(12, 14,
+            [[1,1,10,12]],
+            [],
+            [],[[6,12]],
+            {'6,12':{map:'map_tower_magic_2f',x:6,y:2}},
+            {'6,3':{id:'boss_archmage',name:'魔法王アルカノス'},'3,8':{id:'obj_chest_magic_3f',name:'宝箱'},'8,8':{id:'obj_chest_magic_3f_b',name:'光の宝珠台座'}},
+            [], '魔法使いの塔3F');
+    }
+
+    // 闇の尖塔 1F-3F
+    if (!externalMapData['map_tower_darkspire_1f']) {
+        externalMapData['map_tower_darkspire_1f'] = mkMap(12, 14,
+            [[1,1,10,12]],
+            [],
+            [[6,1]],[],
+            {'6,13':{map:'map_field_2_6',x:22,y:23},'5,13':{map:'map_field_2_6',x:22,y:23}},
+            {'6,11':{id:'npc_darkspire_guard',name:'闇の衛兵'},'3,5':{id:'npc_darkspire_spirit',name:'幽閉された魂'},'8,5':{id:'obj_chest_darkspire_1f',name:'宝箱'}},
+            encM1, '闇の尖塔1F');
+        externalMapData['map_tower_darkspire_1f'].exits['6,1'] = {map:'map_tower_darkspire_2f', x:6, y:11};
+    }
+    if (!externalMapData['map_tower_darkspire_2f']) {
+        externalMapData['map_tower_darkspire_2f'] = mkMap(12, 14,
+            [[1,1,10,12]],
+            [],
+            [[6,1]],[[6,12]],
+            {'6,12':{map:'map_tower_darkspire_1f',x:6,y:2}},
+            {'5,4':{id:'npc_darkspire_prisoner',name:'囚われの騎士'},'8,8':{id:'obj_chest_darkspire_2f',name:'宝箱'}},
+            encM1, '闇の尖塔2F');
+        externalMapData['map_tower_darkspire_2f'].exits['6,1'] = {map:'map_tower_darkspire_3f', x:6, y:11};
+    }
+    if (!externalMapData['map_tower_darkspire_3f']) {
+        externalMapData['map_tower_darkspire_3f'] = mkMap(12, 14,
+            [[1,1,10,12]],
+            [],
+            [],[[6,12]],
+            {'6,12':{map:'map_tower_darkspire_2f',x:6,y:2}},
+            {'6,3':{id:'boss_demon_avatar',name:'魔王の化身'},'4,8':{id:'obj_chest_darkspire_3f',name:'宝箱'},'8,8':{id:'obj_chest_darkspire_3f_b',name:'黒の宝珠台座'}},
+            encM2, '闇の尖塔3F');
+    }
+
+    // ===== 廃屋 (map_abandoned_house) — sq_07 暗黒の魔将 =====
+    if (!externalMapData['map_abandoned_house']) {
+        externalMapData['map_abandoned_house'] = mkMap(12, 10,
+            [[1,1,10,8]],
+            [],
+            [], [[6,8],[5,8]],
+            {'6,8':{map:'map_field_3_0',x:25,y:39},'5,8':{map:'map_field_3_0',x:25,y:39}},
+            {'6,2':{id:'boss_dark_general',name:'暗黒の魔将'},'3,5':{id:'obj_chest_haiya_axe',name:'古びた宝箱'}},
+            [], '廃屋');
+        // 北東フィールド (map_field_3_0) に廃屋の入口を配置
+        const _f30 = externalMapData['map_field_3_0'];
+        if (_f30) {
+            let _hp = findLand('map_field_3_0', 25, 38);
+            if (_hp) {
+                _f30.tiles[_hp.y * (_f30.width || 45) + _hp.x] = 22;
+                _f30.exits[_hp.k] = { map: 'map_abandoned_house', x: 6, y: 7 };
+                externalMapData['map_abandoned_house'].exits['6,8'] = { map: 'map_field_3_0', x: _hp.x, y: _hp.y + 1 };
+                externalMapData['map_abandoned_house'].exits['5,8'] = { map: 'map_field_3_0', x: _hp.x, y: _hp.y + 1 };
             }
         }
     }
@@ -4612,7 +5168,12 @@ function getEnemyImageHtml(enemyId) {
     let mData = masterData.monsters[enemyId];
     let isLarge = enemyId.includes('master_dragon') || enemyId.includes('hidden_boss') || enemyId.includes('dragon_god') ||
                   enemyId.includes('_final') || enemyId.includes('demon') || enemyId.includes('maou') ||
-                  enemyId === 'npc_boss_maou' || enemyId === 'boss_desert_killer' || enemyId === 'boss_trial_phantom' || enemyId === 'boss_secret_traveler' || enemyId === 'boss_sky' || enemyId === 'boss_dungeon' || enemyId === 'boss_pirate_king' || enemyId === 'possessed_guard_2nd';
+                  enemyId === 'npc_boss_maou' || enemyId === 'boss_desert_killer' || enemyId === 'boss_trial_phantom' || enemyId === 'boss_secret_traveler' || enemyId === 'boss_sky' || enemyId === 'boss_dungeon' || enemyId === 'boss_pirate_king' || enemyId === 'boss_dark_general' || enemyId === 'possessed_guard_2nd' ||
+                  enemyId === 'boss_zarmo_lich' || enemyId === 'boss_ice_dragon' || enemyId === 'boss_lava_titan' ||
+                  enemyId === 'boss_ancient_guardian' || enemyId === 'boss_dungeon_lord' || enemyId === 'boss_shadow_knight' ||
+                  enemyId === 'boss_desert_mummy' || enemyId === 'boss_sea_god_statue' || enemyId === 'boss_dark_disciple' ||
+                  enemyId === 'boss_crystal_golem' || enemyId === 'boss_chaos_dragon' || enemyId === 'boss_archmage' ||
+                  enemyId === 'boss_demon_avatar';
     if (mData && (mData.name.includes('グラ王') || mData.name.includes('最終形態'))) isLarge = true;
     if (isLarge) cls = "enemy-img enemy-img-large";
 
@@ -4620,6 +5181,7 @@ function getEnemyImageHtml(enemyId) {
 
     // 海賊王: canvas処理失敗時のCSS白背景除去バックアップ
     if (enemyId === 'boss_pirate_king') extraStyle += 'mix-blend-mode: multiply;';
+    if (enemyId === 'boss_dark_general') extraStyle += 'mix-blend-mode: multiply;';
 
     let tk = 'enemy_' + enemyId;
     if (externalImages[tk]?.src) return `<img src="${externalImages[tk].src}" class="${cls}" style="${extraStyle}" />`;
@@ -5412,7 +5974,7 @@ function drawMap() {
                 else if (_dm2.includes('shrine')) _bt2 = 'shrine';
                 else if (_dm2.includes('tower') && !_dm2.includes('demon')) _bt2 = 'tower';
                 else if (_dm2.includes('castle') && !_dm2.includes('demon') && !_dm2.includes('death')) _bt2 = 'castle';
-                else if (_dm2.includes('dungeon') || _dm2.includes('cave')) _bt2 = 'dungeon';
+                else if (_dm2.includes('dungeon') || _dm2.includes('cave') || _dm2.includes('ruin') || _dm2.includes('temple') || _dm2.includes('fortress') || _dm2.includes('darkspire')) _bt2 = 'dungeon';
                 else if (_dm2.includes('dharma')) _bt2 = 'dharma';
                 else if (_dm2.includes('demon') || _dm2.includes('death') || _dm2.includes('maou')) _bt2 = 'demon';
                 if (_bt2) _drawFieldBuilding(_dc, _bt2, _epx2, _epy2);
@@ -7193,6 +7755,317 @@ async function checkAction() {
                 await typeMessage("古い 祭壇に 地図が 刻まれていた！\n『北西の 島鎖 に 海賊の 洞窟あり……\n海賊王が 守る 宝を 奪え者は\n真に 海の 覇者と なる 者のみ……』");
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
+            // ===== 拡張世界: 新お城NPCイベント =====
+
+            // ── ザーモ城: 古城NPCたち ──
+            if (npc.id === "npc_zarmo_king_spirit") {
+                if (!getSQ('sq_11')) {
+                    startSQ('sq_11');
+                    await typeMessage("【ザーモ王の霊】\nよくぞ……来てくれた……\nこの 城は 数百年前……\n暗黒公リッチに 乗っ取られた……");
+                    await typeMessage("【ザーモ王の霊】\n地下に 封印の鍵が 眠っている……\nリッチを 倒し……この 城を\n解放してくれ……！\n（ふしぎな台帳に 記録された）");
+                } else if (getSQ('sq_11') === 1) {
+                    await typeMessage("【ザーモ王の霊】\n地下に 封印の鍵が あるはずだ……\nリッチに 気をつけてくれ……！");
+                } else if (getSQ('sq_11') >= 3 && !isSQDone('sq_11')) {
+                    await typeMessage("【ザーモ王の霊】\nリッチを 倒してくれたか……！\nありがとう……心より 感謝する……");
+                    advanceSQ('sq_11', 4);
+                    await grantSQReward('sq_11');
+                    await typeMessage("【ザーモ王の霊】\nこの 王冠を 受け取ってくれ……\n長い 眠りに つく 前に……\nありがとう……\n（「封印の古城ザーモ」達成！）");
+                } else if (isSQDone('sq_11')) {
+                    await typeMessage("【ザーモ王の霊】\n……ありがとう。\nもう 思い残す ことは ない……");
+                } else {
+                    await typeMessage("【ザーモ王の霊】\n……誰かが 来た……\nここは 古城ザーモじゃ……");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_zarmo_sorceress") {
+                await typeMessage("【闇の魔女】\nこの 城は 私たちの ものよ……\n邪魔者は 消えなさい！！");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "obj_chest_zarmo_key") {
+                if (partyData.flags.chest_zarmo_key) { await typeMessage("（宝箱は からっぽだ）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                if (getSQ('sq_11') < 1) { await typeMessage("（古びた宝箱が ある）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                partyData.flags.chest_zarmo_key = true;
+                advanceSQ('sq_11', 2);
+                await typeMessage("宝箱から 封印の鍵を 見つけた！\nリッチを 倒せば 封印が 解けるかもしれない……\n（ふしぎな台帳に 記録された）");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "boss_zarmo_lich") {
+                if (partyData.flags.flag_zarmo_lich_cleared) {
+                    await typeMessage("（……暗黒公リッチは 既に 倒された。\n城に 平和が 戻りつつある……）");
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                await typeMessage("【暗黒公リッチ】\nぐふふ……！ よくぞ ここまで 来た人間よ！\nこの 城は 永遠に 我が 支配下……\nそなたを 塵にしてくれるわ！！");
+                const _yn = await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { await typeMessage("（リッチの 圧倒的な 魔力……\n今は まだ 無理だ……！）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_zarmo_lich"]); showGoldWindow(); updateGoldWindow();
+                if (_w) {
+                    partyData.flags.flag_zarmo_lich_cleared = true;
+                    AudioManager.playBGM('victory');
+                    await typeMessage("【暗黒公リッチ】\nばかな……！ 人間ごときに……\n私が……敗れる……だと……！！");
+                    await typeMessage("暗黒公リッチが 消え去った！\n古城に 光が 戻りつつある……！");
+                    advanceSQ('sq_11', 3);
+                    await typeMessage("（ふしぎな台帳に 記録された）\nザーモ王の 霊に 報告しよう。");
+                    delete currentMap.npcs[key];
+                } else { return; }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ── エストリア城: 王国NPCたち ──
+            if (npc.id === "npc_estoria_king") {
+                if (!getSQ('sq_12')) {
+                    startSQ('sq_12');
+                    await typeMessage("【エストリア王】\nよくぞ 東の王国 エストリアへ。\n余は 真の 覇者を 探しておる。\n東の 地下迷宮と 魔法使いの塔……\nこの 二つを 制した 者こそ\n真の 覇者と 認めよう！\n（ふしぎな台帳に 記録された）");
+                } else if (getSQ('sq_12') === 1) {
+                    await typeMessage("【エストリア王】\n東の 地下迷宮と 魔法使いの塔を\n制してくるのじゃ。\n両方を 制した 者にのみ……\n王国の 全権を 与えよう。");
+                } else if (getSQ('sq_12') === 3 && !isSQDone('sq_12')) {
+                    await typeMessage("【エストリア王】\nなんと……両方を 制したか！！\n真の 覇者よ……！");
+                    advanceSQ('sq_12', 4);
+                    await grantSQReward('sq_12');
+                    await typeMessage("【エストリア王】\nエストリアの 覇剣を 授けよう。\nこれは 王国 最強の 剣じゃ……\nよく ぞ やり遂げた！\n（「エストリアの覇者」達成！）");
+                } else if (isSQDone('sq_12')) {
+                    await typeMessage("【エストリア王】\n覇者よ……これからも\nエストリア王国を よろしく 頼む！");
+                } else {
+                    await typeMessage("【エストリア王】\n……まだ 両方は 制してないな。\n地下迷宮と 魔法の塔……\n頑張って くれ！");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_estoria_sage") {
+                await typeMessage("【宮廷賢者】\n東の 地下迷宮には 恐ろしい 覇者が……\n魔法使いの塔には 魔法王が 君臨しておる。\n両方を 倒せた 者こそ\n真の エストリアの 覇者と なれる！");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ── デセルタ城: 砂漠王国NPCたち ──
+            if (npc.id === "npc_deserta_king") {
+                if (!getSQ('sq_13')) {
+                    startSQ('sq_13');
+                    await typeMessage("【デセルタ王】\nようこそ 砂漠の王国 デセルタへ。\nこの 国は 古より 砂嵐の 呪いに\n苦しんでいる……。");
+                    await typeMessage("【デセルタ王】\n砂漠の 遺跡に ミイラ王が 眠り\n封印の 宝箱を 守っている……\nミイラ王を 倒し 封印を 解いてくれ！\n（ふしぎな台帳に 記録された）");
+                } else if (getSQ('sq_13') === 2 && !isSQDone('sq_13')) {
+                    await typeMessage("【デセルタ王】\nミイラ王を 倒したか……！\n次は 預言者から 封印の印を 受け取り\n砂漠の 封印を 完成させてくれ。");
+                } else if (getSQ('sq_13') === 3 && !isSQDone('sq_13')) {
+                    await typeMessage("【デセルタ王】\n印を 手に入れたか！\nいよいよ 封印を 完成させる 時が 来た！");
+                    advanceSQ('sq_13', 4);
+                    await grantSQReward('sq_13');
+                    await typeMessage("【デセルタ王】\n砂嵐が……消えていく……！\nよく やってくれた 勇者よ！\n賢者の 法衣を 受け取ってくれ。\n（「砂漠の封印」達成！）");
+                } else if (isSQDone('sq_13')) {
+                    await typeMessage("【デセルタ王】\n砂嵐が 消えて……\nデセルタに 平和が 戻った。\nありがとう 勇者よ！");
+                } else {
+                    await typeMessage("【デセルタ王】\nようこそ デセルタへ。\n砂漠の 遺跡で ミイラ王を 倒してくれ。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_deserta_oracle") {
+                if (getSQ('sq_13') === 2) {
+                    await typeMessage("【砂漠の預言者】\nミイラ王を 倒した……！\nではこれを……封印の印じゃ。\nデセルタ王に 届けよ。");
+                    advanceSQ('sq_13', 3);
+                    await typeMessage("（ふしぎな台帳に 記録された）");
+                } else if (getSQ('sq_13') >= 3) {
+                    await typeMessage("【砂漠の預言者】\n封印の印は 渡した。\nデセルタ王の もとへ 行くが良い。");
+                } else {
+                    await typeMessage("【砂漠の預言者】\n砂漠の 遺跡に 眠る ミイラ王……\nそれを 倒した 者にのみ\n封印の 印を 授けよう……。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "obj_chest_deserta_seal") {
+                if (partyData.flags.chest_deserta_seal) { await typeMessage("（宝箱は からっぽだ）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                partyData.flags.chest_deserta_seal = true;
+                await typeMessage("（砂漠の宝箱から 古い 巻物を 見つけた！\n砂漠封印の 手がかりに なるかもしれない……）");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ===== 拡張世界: 新ダンジョンボス =====
+
+            // 北の氷窟ボス
+            if (npc.id === "boss_ice_dragon") {
+                if (partyData.flags.flag_ice_dragon_cleared) { await typeMessage("（氷竜は 既に 倒された……）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【氷竜アイスフロスト】\nグォォォ……！！\nこの 氷窟に 踏み込んだか……\n永遠の 氷に 閉じ込めてやる！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { await typeMessage("（氷の 息吹が……逃げた）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_ice_dragon"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_ice_dragon_cleared=true; AudioManager.playBGM('victory'); await typeMessage("氷竜アイスフロストを 倒した！\n氷窟の 氷が 溶け始めた……！"); delete currentMap.npcs[key]; if(getSQ('sq_12')===1){advanceSQ('sq_12',2);} } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 東の溶岩洞窟ボス
+            if (npc.id === "boss_lava_titan") {
+                if (partyData.flags.flag_lava_titan_cleared) { await typeMessage("（溶岩大魔神は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【溶岩大魔神】\nガアアア……！ 溶岩の 怒りを 受けよ！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { await typeMessage("（灼熱の 空気……逃げた）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_lava_titan"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_lava_titan_cleared=true; AudioManager.playBGM('victory'); await typeMessage("溶岩大魔神を 倒した！"); delete currentMap.npcs[key]; } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 古代遺跡ボス
+            if (npc.id === "boss_ancient_guardian") {
+                if (partyData.flags.flag_ancient_guardian_cleared) { await typeMessage("（守護者は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【古代の守護者】\nここに 立ち入った者は……排除する！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_ancient_guardian"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_ancient_guardian_cleared=true; AudioManager.playBGM('victory'); await typeMessage("古代の守護者を 倒した！\n遺跡の 扉が 開いた……！"); delete currentMap.npcs[key]; } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 東の地下迷宮ボス
+            if (npc.id === "boss_dungeon_lord") {
+                if (partyData.flags.flag_dungeon_lord_cleared) { await typeMessage("（迷宮の覇者は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【迷宮の覇者】\nこの 迷宮の 支配者は 余だ！\nかかってくるが良い！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_dungeon_lord"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_dungeon_lord_cleared=true; AudioManager.playBGM('victory'); await typeMessage("迷宮の覇者を 倒した！"); delete currentMap.npcs[key]; if(getSQ('sq_12')===1){advanceSQ('sq_12',2);await typeMessage("（ふしぎな台帳に 記録された）\n東の 地下迷宮を 制した！（1/2）");} } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 影の洞窟ボス
+            if (npc.id === "boss_shadow_knight") {
+                if (partyData.flags.flag_shadow_knight_cleared) { await typeMessage("（影の騎士は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【影の騎士】\n貴様ごときが……この 影の 洞窟に……！\n消えろ！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_shadow_knight"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_shadow_knight_cleared=true; AudioManager.playBGM('victory'); await typeMessage("影の騎士を 倒した！"); delete currentMap.npcs[key]; } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 砂漠の遺跡ボス
+            if (npc.id === "boss_desert_mummy") {
+                if (partyData.flags.flag_desert_mummy_cleared) { await typeMessage("（ミイラ王は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【砂漠のミイラ王】\nウゴゴ……！ この 遺跡を 荒らす者は……\n我の 呪いで 封印するのだ！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_desert_mummy"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_desert_mummy_cleared=true; AudioManager.playBGM('victory'); await typeMessage("砂漠のミイラ王を 倒した！\n砂漠の 呪縛が 弱まった……！"); delete currentMap.npcs[key]; advanceSQ('sq_13',2); await typeMessage("（ふしぎな台帳に 記録された）\n砂漠の 預言者に 報告しよう。"); } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 海底神殿ボス
+            if (npc.id === "boss_sea_god_statue") {
+                if (partyData.flags.flag_sea_god_cleared) { await typeMessage("（海神像は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【海神像】\nゴゴゴ……この 海底神殿を 汚す者よ……\n海の 怒りを 受けよ！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_sea_god_statue"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_sea_god_cleared=true; AudioManager.playBGM('victory'); await typeMessage("海神像を 破壊した！\n海底神殿の 封印が 解けた……！"); delete currentMap.npcs[key]; } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 闇の要塞ボス
+            if (npc.id === "boss_dark_disciple") {
+                if (partyData.flags.flag_dark_disciple_cleared) { await typeMessage("（魔将の使徒は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【魔将の使徒】\nくくく……！ ここまで 来たか 人間よ……\n魔将様の 意志を 継ぐ 私が\nここで 終わりにしてやる！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_dark_disciple"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_dark_disciple_cleared=true; AudioManager.playBGM('victory'); await typeMessage("魔将の使徒を 倒した！\n闇の要塞の 力が 消えていく……！"); delete currentMap.npcs[key]; } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 水晶洞窟ボス
+            if (npc.id === "boss_crystal_golem") {
+                if (partyData.flags.flag_crystal_golem_cleared) { await typeMessage("（水晶ゴーレムは 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【水晶ゴーレム】\nグオオオ……！ 水晶の 守護者……\n侵入者を 許さぬ！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_crystal_golem"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_crystal_golem_cleared=true; AudioManager.playBGM('victory'); await typeMessage("水晶ゴーレムを 倒した！\n美しい 水晶が 光を 放っている……"); delete currentMap.npcs[key]; } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // 深淵の迷宮ボス
+            if (npc.id === "boss_chaos_dragon") {
+                if (partyData.flags.flag_chaos_dragon_cleared) { await typeMessage("（混沌竜は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【混沌竜カオスドレイク】\nシャアアア……！ 深淵に 踏み込んだ 愚か者よ……\n世界の 混沌を 知れ！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_chaos_dragon"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_chaos_dragon_cleared=true; AudioManager.playBGM('victory'); await typeMessage("混沌竜カオスドレイクを 倒した！\n深淵の 暗闇が 少しだけ 晴れた……\nこの 世界で 最強の 一つを 倒した……！！"); delete currentMap.npcs[key]; } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ===== 新塔ボス =====
+            if (npc.id === "boss_archmage") {
+                if (partyData.flags.flag_archmage_cleared) { await typeMessage("（魔法王は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【魔法王アルカノス】\nふふ……よくぞ 3階まで 辿り着いた。\nだが この 私 アルカノスを 倒せると\n思うておるか……？ 試してみるが 良い！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_archmage"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_archmage_cleared=true; AudioManager.playBGM('victory'); await typeMessage("【魔法王アルカノス】\n……信じられぬ……\nこの 私が 敗れるとは……\n若者よ……貴様は 本物だ……！"); delete currentMap.npcs[key]; if(getSQ('sq_12')===2){advanceSQ('sq_12',3);await typeMessage("（ふしぎな台帳に 記録された）\n魔法使いの塔を 制した！（2/2）\nエストリア王に 報告しよう。");} } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "boss_demon_avatar") {
+                if (partyData.flags.flag_demon_avatar_cleared) { await typeMessage("（魔王の化身は 既に 倒された）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("【魔王の化身】\nクカカカ……！ ここまで 来た 者がいるとは……\n我は 魔王の 意志の 化身……\nこの 世界に 闇を もたらす ために 存在する！！");
+                const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
+                if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _w=await executeBattle(["boss_demon_avatar"]); showGoldWindow(); updateGoldWindow();
+                if (_w) { partyData.flags.flag_demon_avatar_cleared=true; AudioManager.playBGM('victory'); await typeMessage("魔王の化身を 倒した！\n闇の 尖塔の 力が 消えていく……！\n魔王の 力が 弱まった……！！"); delete currentMap.npcs[key]; } else return;
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ===== 新規町NPC (ヒント・サブストーリー) =====
+            if (npc.id === "npc_rosalia_bard") {
+                if (!getSQ('sq_11')) await typeMessage("【吟遊詩人】\n北東の 古城ザーモには\n数百年前から 暗黒公リッチが 君臨し……\n王の 霊が 囚われているという。\n誰か 勇気ある 者が 解放してくれれば……");
+                else await typeMessage("【吟遊詩人】\n古城ザーモの 呪いが 解けたと 聞いた。\n真の 勇者よ……感謝する！");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_coral_captain") {
+                await typeMessage("【海峡の船長】\n南の 海底に 古代神殿が 眠っていると 聞く。\n海底神殿には 海神の 怒りが 宿っておるらしい……\nまあ 私には 関係ないがな！");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_frost_sage") {
+                await typeMessage("【氷の賢者】\n西の 水晶洞窟には 古代の 水晶ゴーレムが……\n氷と 水晶……同じ 冷たき 力を 持つ 者よ。\n水晶の 宝を 狙うなら\n相応の 覚悟を 持って 行くが 良い。");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_elf_elder") {
+                await typeMessage("【エルフの長老】\nこの 森の 隠れ里へ ようこそ。\n我々 エルフは 長く この 大陸の 西を 守ってきた。\n闇の 尖塔が 近くに 現れてから\n森の 精霊たちが 不安がっている……。");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_salmon_archaeologist") {
+                await typeMessage("【考古学者】\n南の 砂漠遺跡の 調査を しているが……\nミイラ王が 怖くて 近づけない！\n誰か 倒してくれないか……？\n（南の デセルタ城の 王からも 依頼が 来ていると いう……）");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bazaar_thief" || npc.id === "npc_bazaar_info") {
+                await typeMessage("【情報屋】\nヘヘ……少し 耳に 入ってきた 話だがよ……\n東の エストリア王が 覇者を 探してるらしいぜ。\n地下迷宮と 魔法の塔を 制した 者に\n王国 最強の 剣を 授けると いうじゃないか！");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_oasis_elder") {
+                await typeMessage("【老砂漠人】\nこの オアシスは 砂嵐が 来るたびに\n砂に 埋まりそうになる……。\nデセルタ王が 封印の 呪いを 解こうと しているが\nミイラ王が 邪魔しておる……。\n英雄よ……頼む！");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_nord_captain") {
+                await typeMessage("【港の船長】\nノルド港へ ようこそ！\nここは 冒険者が 集まる 北東の 玄関口じゃ。\n東には エストリア王国、\n北東には ザーモ古城、\n南には 砂漠の デセルタ王国がある。\n船で 各地を 旅するが いい！");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            if (npc.id === "obj_chest_haiya_axe") {
+                if (partyData.flags.chest_haiya_axe) { await typeMessage("（宝箱は からっぽだ……）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                if (getSQ('sq_07') < 1) { await typeMessage("（古びた 宝箱が ある。\n今は 関係ない か……）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                await typeMessage("（宝箱を 開けると……\n漆黒に 輝く 斧が 眠っていた！\nすさまじい 呪いの 気配が 漂っている……！）");
+                partyData.flags.chest_haiya_axe = true;
+                advanceSQ('sq_07', 2);
+                await typeMessage("（ふしぎな台帳に 記録された）\nダーマの 神殿で 呪いを 解いてもらおう。");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "boss_dark_general") {
+                if (partyData.flags.flag_dark_general_cleared) {
+                    await typeMessage("（……この 廃屋には もう 何も ない。\n呪いの 源は 既に 消え去った……）");
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                if (getSQ('sq_07') < 3) {
+                    await typeMessage("（……漆黒の 気配が 満ちている。\n何か 邪悪な 存在が 奥に 潜んでいる……！\nまだ 立ち向かえる 状態では ない……）");
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                await typeMessage("暗い 光が あふれ出し……！\n人影が 現れた！");
+                await typeMessage("【暗黒の魔将】\nくくく……人間ごときが\nこの 廃屋に 踏み込んできたか。\n斧の 呪いを 解こうと……\nそうは させぬ！！");
+                const _dgYn = await selectMenu(["戦う！", "逃げる"], 'cmd-window', 0, true);
+                if (_dgYn === 1) { await typeMessage("（暗黒の 力に 圧倒されて……\n今は まだ 無理だと 判断した）"); state='FIELD'; hideAllWindows(); drawMap(); return; }
+                hideGoldWindow(); let _dgW = await executeBattle(["boss_dark_general"]); showGoldWindow(); updateGoldWindow();
+                if (_dgW) {
+                    partyData.flags.flag_dark_general_cleared = true;
+                    AudioManager.playBGM('victory');
+                    await typeMessage("【暗黒の魔将】\nば……馬鹿な……！\n人間ごときに……この 我が……\n敗れるとは……！！");
+                    await typeMessage("暗黒の 魔将が 消え去った……！\n呪いの 源が 絶たれた！\n魔人の斧の 呪いが 解け……\n本来の 力が 目覚めた！");
+                    advanceSQ('sq_07', 4);
+                    await grantSQReward('sq_07');
+                    await typeMessage("（ふしぎな台帳に 記録された）\n「呪われた魔斧の行方」が 完了した！");
+                    delete currentMap.npcs[key];
+                } else { return; }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
             if (npc.id === "boss_pirate_king") {
                 if (!partyData.flags.has_ship) { await typeMessage("【海賊王バルゴ】\nて……テメエ！ 船もなしに ここまで 来やがった？！"); }
                 if (partyData.flags.flag_pirate_king_cleared) {
@@ -7702,10 +8575,19 @@ async function checkAction() {
                     } else { await typeMessage("またの おこしを おまちしております！"); }
                 }
                 else if (npc.id === 'npc_dharma_monk_l' || npc.id === 'npc_dharma_monk_r') {
-                    let _dm_msg = npc.id === 'npc_dharma_monk_l'
-                        ? "【修道士】\nダーマ神殿へ ようこそ。\n奥にいる 神父様に お話しください。\nきっと 新たなる 道が ひらけるでしょう。"
-                        : "【修道士】\nここは 転職の 聖地。\n2周目以降の 勇者のみが\nその 力を 試せると いいます。\n神父様に お会いしてみてください。";
-                    await typeMessage(_dm_msg);
+                    if (getSQ('sq_07') === 2 && !isSQDone('sq_07')) {
+                        await typeMessage("【修道士】\nおお……その 斧から\n恐ろしい 呪いの 気配が！\n神父様に ご相談 いたしましょう！");
+                        await typeMessage("【神父】\nこれは……暗黒の 魔将の 呪術！\n呪いを 完全に 解くには\nその 源を 絶やすしか ありません。\n廃屋へ 戻り 魔将を 倒してきてください！");
+                        advanceSQ('sq_07', 3);
+                        await typeMessage("（ふしぎな台帳に 記録された）");
+                    } else if (getSQ('sq_07') === 3 && !isSQDone('sq_07')) {
+                        await typeMessage("【修道士】\n廃屋の 暗黒の 魔将を 倒してください。\n呪いの 源を 絶てば 斧は 解放されます。");
+                    } else {
+                        let _dm_msg = npc.id === 'npc_dharma_monk_l'
+                            ? "【修道士】\nダーマ神殿へ ようこそ。\n奥にいる 神父様に お話しください。\nきっと 新たなる 道が ひらけるでしょう。"
+                            : "【修道士】\nここは 転職の 聖地。\n2周目以降の 勇者のみが\nその 力を 試せると いいます。\n神父様に お会いしてみてください。";
+                        await typeMessage(_dm_msg);
+                    }
                 }
                 else if (npc.id === 'npc_tower_sage') { await typeMessage("【塔の番人】\nここは 天空の塔の 1階。\n太古の 守護者が 頂に 眠っておる……\nその 力を 受け継ぐに ふさわしい 者のみが\n先へ 進めると いうぞ。\nご武運を！"); }
                 else if (npc.id === 'npc_sky_guard') {
