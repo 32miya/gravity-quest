@@ -3349,11 +3349,23 @@ async function loadExternalData(id) {
                 if(partyData.flags.flag_has_star_fragment) { let sKey = Object.keys(mapCopy.npcs).find(k => mapCopy.npcs[k].id === "obj_chest_star_frag"); if(sKey) delete mapCopy.npcs[sKey]; }
                 // 船入手済みなら係留船NPCを非表示
                 if(partyData.flags.has_ship) { Object.keys(mapCopy.npcs).forEach(k => { if(mapCopy.npcs[k]?.id === 'obj_ship_waiting') delete mapCopy.npcs[k]; }); }
-                // 2周目ラスボス撃破後: 城下町・城の暗黒兵士フラグを除去して通常状態に戻す
-                if(partyData.flags.is_second_loop && partyData.flags.last_boss_defeated) {
+                // 2周目: 城下町・城の暗黒兵士処理
+                if(partyData.flags.is_second_loop) {
                     const _is2ndDark=rawId.includes('town_01')||(rawId.includes('castle_01')&&!rawId.includes('demon'));
                     if(_is2ndDark) {
-                        Object.keys(partyData.flags).filter(k=>k.startsWith('2nd_guard_'+rawId)).forEach(k=>delete partyData.flags[k]);
+                        const _g2Ids=['guard','soldier','knight','veteran','npc_story_citizen'];
+                        if(!partyData.flags.last_boss_defeated) {
+                            // 戦闘に勝った兵士をマップコピーから除去（フラグで永続管理）
+                            Object.keys(mapCopy.npcs).forEach(k => {
+                                const _n=mapCopy.npcs[k];
+                                if(_n&&_n.id&&_g2Ids.some(g=>_n.id.includes(g))) {
+                                    if(partyData.flags['2nd_guard_'+rawId+'_'+k]) delete mapCopy.npcs[k];
+                                }
+                            });
+                        } else {
+                            // ラスボス撃破後: 暗黒兵士フラグを除去して通常状態に戻す
+                            Object.keys(partyData.flags).filter(k=>k.startsWith('2nd_guard_'+rawId)).forEach(k=>delete partyData.flags[k]);
+                        }
                     }
                 }
 
@@ -4906,7 +4918,7 @@ function drawMap() {
         _mapsToRender.push({ map: currentMap, mapId: _mapId, offX: 0, offY: 0 });
     }
 
-    const _sCacheKey = `${_mapId}|${Math.round(camX)}|${Math.round(camY)}|${cWidth}|${cHeight}`;
+    const _sCacheKey = `${_mapId}|${Math.round(camX)}|${Math.round(camY)}|${cWidth}|${cHeight}|${_is2ndDarkMap?'d':'n'}`;
     const _sCacheHit = _staticCacheKey === _sCacheKey && _staticTileCache && _staticTileCache.width === cWidth && _staticTileCache.height === cHeight;
     let _dc;
     if (!_sCacheHit) {
@@ -4929,16 +4941,19 @@ function drawMap() {
             if (_sCacheHit || tile === 5 || tile === 8 || tile === 23) continue;
             let bgImg = null; let fgImg = null; let color = getTileColor(tile);
             // 文脈別フォールバックカラー（外部画像が読めない時の補正）
+            // 2周目暗黒化中の城は城下町と同じタイルスタイルで描画
+            const _tileIsCastle = isCastle && !_is2ndDarkMap;
+            const _tileIsTown = isTown || (isCastle && _is2ndDarkMap);
             if (tile === 0 || tile === 23) {
-                if (isCastle) color = '#778'; else if (isTown) color = '#cba'; else if (isCave) color = '#445'; else if (isMountain) color = '#665';
+                if (_tileIsCastle) color = '#778'; else if (_tileIsTown) color = '#cba'; else if (isCave) color = '#445'; else if (isMountain) color = '#665';
             } else if (tile === 1 || tile === 4 || tile === 15) {
-                if (isCastle) color = '#445'; else if (isTown) color = '#764'; else if (isCave) color = '#222'; else if (isMountain) color = '#333';
+                if (_tileIsCastle) color = '#445'; else if (_tileIsTown) color = '#764'; else if (isCave) color = '#222'; else if (isMountain) color = '#333';
             }
-            let floorKeys = isCastle ? ['castleFloor', 'floor'] : (isTown ? ['townFloor', 'floor', 'townPath'] : (isCave ? ['caveFloor', 'ground', 'floor'] : ['fieldGrass', 'grass'])); if(isMountain) floorKeys = ['northMountainFloor', 'mountainFloor', 'plainRock', 'rock'];
+            let floorKeys = _tileIsCastle ? ['castleFloor', 'floor'] : (_tileIsTown ? ['townFloor', 'floor', 'townPath'] : (isCave ? ['caveFloor', 'ground', 'floor'] : ['fieldGrass', 'grass'])); if(isMountain) floorKeys = ['northMountainFloor', 'mountainFloor', 'plainRock', 'rock'];
             for(let k of floorKeys) { if(externalImages[k] && externalImages[k].complete && externalImages[k].naturalHeight > 0) { bgImg = externalImages[k]; break; } }
-            if (tile === 1 || tile === 4) { 
-               let wallKeys = isCastle ? ['castleWall', 'wall'] : (isTown ? ['townWall', 'wall', 'brickWall'] : (isCave ? ['caveWall', 'rockWall', 'wall'] : ['plainRock', 'rock', 'mountainWall'])); if(isMountain) wallKeys = ['northMountainWall', 'mountainWall', 'plainRock', 'rock'];
-               bgImg = null; for(let k of wallKeys) { if(externalImages[k] && externalImages[k].complete && externalImages[k].naturalHeight > 0) { bgImg = externalImages[k]; break; } } if (tile === 1 && isCastle) color = '#555';
+            if (tile === 1 || tile === 4) {
+               let wallKeys = _tileIsCastle ? ['castleWall', 'wall'] : (_tileIsTown ? ['townWall', 'wall', 'brickWall'] : (isCave ? ['caveWall', 'rockWall', 'wall'] : ['plainRock', 'rock', 'mountainWall'])); if(isMountain) wallKeys = ['northMountainWall', 'mountainWall', 'plainRock', 'rock'];
+               bgImg = null; for(let k of wallKeys) { if(externalImages[k] && externalImages[k].complete && externalImages[k].naturalHeight > 0) { bgImg = externalImages[k]; break; } } if (tile === 1 && _tileIsCastle) color = '#555';
             } else if (tile === 2) { let k = externalImages['townCounter'] ? 'townCounter' : 'counter'; if(externalImages[k]) fgImg = externalImages[k]; else { bgImg = null; color = '#3366ff'; } 
             } else if (tile === 3 || tile === 6 || tile === 7 || tile === 8) { bgImg = null; if (tile === 3) color = '#cccc00'; if (tile === 6 || tile === 7) color = '#800080'; if (tile === 8) color = '#ff00ff';
             } else if (tile === 5) { bgImg = null; color = '#33ccff'; 
@@ -6114,13 +6129,31 @@ async function checkAction() {
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
 
+            // ===== 2周目クリア後: 解放された兵士の凱旋セリフ =====
+            if (partyData.flags.is_second_loop && partyData.flags.last_boss_defeated) {
+                const _in2ndClr = partyData.pos.map.includes('town_01') || (partyData.pos.map.includes('castle') && !partyData.pos.map.includes('demon'));
+                const _g2CIds = ['guard','soldier','knight','veteran','npc_story_citizen'];
+                if (_in2ndClr && _g2CIds.some(g => npc.id.includes(g))) {
+                    const _ci = (parseInt(key.split(',')[0]||0) + parseInt(key.split(',')[1]||0)) % 4;
+                    const _cm = [
+                        "【解放された兵士】\nや……やっと 光が 戻った！\n闇に 操られていた 間の 記憶が\nほんの少し 残っていて……悔しい。\nでも……皆さんが 救ってくれた！\nほんとうに ありがとう！！",
+                        "【騎士】\n凱旋！ 凱旋じゃ！！\n真の 英雄たちが 帰ってきた！！\n百年の 呪縛が 解かれ\nこの国に 本当の 夜明けが 来た……！",
+                        "【兵士】\nゆめを 見ていたような 気がします。\n闇の 霧の 中で もがいていたのに\nあなたたちの 光が 届いたんです！\nほんとうに……ありがとうございます！",
+                        "【老騎士】\nわしは 長年 グラマニアに 仕えてきた……\nまさか 自分が 闇に 染まる とは。\n勇者よ……お前たちを 誇りに 思う。\n凱旋じゃ！ 共に 祝おうぞ！",
+                    ];
+                    await typeMessage(_cm[_ci]);
+                    state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                }
+            }
+
             // ===== 2周目: 城下町・城の兵士を倒すイベント =====
             if (partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated) {
                 const _in2ndDark = partyData.pos.map.includes('town_01') || (partyData.pos.map.includes('castle') && !partyData.pos.map.includes('demon'));
                 if (_in2ndDark && (npc.id.includes('guard') || npc.id.includes('soldier') || npc.id.includes('knight') || npc.id.includes('veteran') || npc.id === 'npc_story_citizen')) {
                     const _gFlag = '2nd_guard_' + partyData.pos.map + '_' + key;
                     if (partyData.flags[_gFlag]) {
-                        await typeMessage("【解放された兵士】\n……（力なく 虚ろな 瞳で 立っている）\nわ……わしは 何を していたんだ……？");
+                        // フラグあり（倒し済み）: loadExternalDataで除去済みのため通常は到達しない
+                        await typeMessage("【解放された兵士】\n……（虚ろな 瞳で 立っている）\nわ……わしは 何を していたんだ……？");
                     } else {
                         await typeMessage("【暗黒化した兵士】\nガ……アアア……！！\n来るな……来るな！！！\n（漆黒の 炎が 体を 包んでいる……！）");
                         const _gMId = 'possessed_guard_2nd';
@@ -6129,10 +6162,18 @@ async function checkAction() {
                         if(_gW) {
                             partyData.flags[_gFlag] = true; delete currentMap.npcs[key];
                             await typeMessage("【兵士】\nは……？ 気が……ついたら……\nわ、わしは 何を……！\nすまない……体が 勝手に 動いて……！");
-                            // 全員解放チェック → グラ王最終形態召喚
+                            // 全員解放チェック → 真決戦フラグ
                             _checkAndSpawnGuraFinal();
                         }
                     }
+                    state = 'FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 2周目: 城の王様 - 兵士討伐前の挙動不審セリフ
+                const _in2ndKCastle = partyData.pos.map.includes('castle') && !partyData.pos.map.includes('demon');
+                if (_in2ndKCastle && !partyData.flags.flag_2nd_maou_cleared && npc.id.includes('king') && npc.id !== 'boss_pirate_king') {
+                    const _gleft = _countRemainingGuards();
+                    await typeMessage("【偽の国王グラード】\nなぜ そんな 目で 見る……？\nわしは 正当な グラマニアの 王じゃぞ。\n（……その眼、何かに 気づいているのか？）");
+                    if (_gleft > 0) await typeMessage(`【偽の国王グラード】\n……まだ 闇の 兵士が ${_gleft}人 残っておる。\n（笑みが ゆがんでいる……）\n……勇者よ、城の 兵士に 会ったか？`);
                     state = 'FIELD'; hideAllWindows(); drawMap(); return;
                 }
             }
