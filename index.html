@@ -5226,7 +5226,15 @@ function drawMap() {
                 // ⚠ 倒すべき敵マーカー
                 drawNpcSign(ctx, px+TILE_SIZE/2, py-4, '⚠', '暗黒', '#cc0044');
                 return;
-            } else if(npc.id === 'obj_ship_waiting') {
+            }
+            // 2周目: 倒し済み兵士（フラグあり・暗黒アニメなし）は完全非表示
+            if(partyData.flags?.is_second_loop && !partyData.flags?.last_boss_defeated
+                && (_rMapId.includes('town_01')||(_rMapId.includes('castle_01')&&!_rMapId.includes('demon')))
+                && (npc.id.includes('guard')||npc.id.includes('soldier')||npc.id.includes('knight')||npc.id.includes('veteran')||npc.id==='npc_story_citizen')
+                && partyData.flags['2nd_guard_'+_stripMapPfx(_rMapId)+'_'+key]) {
+                return; // 倒し済み → 描画しない
+            }
+            if(npc.id === 'obj_ship_waiting') {
                 // 停泊中の船: 洞窟クリア後に西岸に出現、乗ると has_ship 取得
                 const _shipImg = externalImages['shipSprite'];
                 const _sw = Date.now();
@@ -6305,7 +6313,11 @@ async function checkAction() {
                         if(!masterData.monsters[_gMId]) masterData.monsters[_gMId]={name:'暗黒化した兵士',max_hp:250,atk:50,def:28,spd:22,exp:500,gold:250,traits:['undead']};
                         hideGoldWindow(); const _gW = await executeBattle([_gMId]); showGoldWindow(); updateGoldWindow();
                         if(_gW) {
-                            partyData.flags[_gFlag] = true; delete currentMap.npcs[key];
+                            partyData.flags[_gFlag] = true;
+                            delete currentMap.npcs[key];
+                            // externalMapDataからも削除（_countRemainingGuards・再入場時の整合性確保）
+                            const _extMapK=Object.keys(externalMapData||{}).find(k=>k===partyData.pos.map||_stripMapPfx(k)===_stripMapPfx(partyData.pos.map));
+                            if(_extMapK&&externalMapData[_extMapK]?.npcs) delete externalMapData[_extMapK].npcs[key];
                             await typeMessage("【兵士】\nは……？ 気が……ついたら……\nわ、わしは 何を……！\nすまない……体が 勝手に 動いて……！");
                             // 全員解放チェック → 真決戦フラグ
                             _checkAndSpawnGuraFinal();
