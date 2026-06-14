@@ -7760,7 +7760,11 @@ async function openMainMenu() {
 async function executeBattle(fixedEnemies = null) {
     state = 'BATTLE'; partyData.members.forEach(m => { m._zenryokuUsed = false; }); document.getElementById('screen').style.display = 'none'; const bScreen = document.getElementById('battle-screen'); bScreen.style.display = 'flex';
     let mapId = partyData.pos.map || ""; let bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/81d36868-2c8b-4bee-aaae-28d51fab8810.jpeg";
-    if (mapId.includes('demon') || mapId.includes('death') || mapId.includes('maou')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/2afa8b0a-bae3-41ce-9603-c4aeffb287b0.jpeg"; } else if (mapId.includes('dungeon') || mapId.includes('cave')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5c2cab8a-3220-4176-ab5d-e82bbd10a455.jpeg"; } else if (mapId.includes('tower') || mapId.includes('shrine')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5d96c8b0-7b34-40a5-aef8-e4ee76069d52.jpeg"; } else if (/^map_field_/.test(mapId) && currentMap && currentMap.tiles) {
+    const _demonBg = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/2afa8b0a-bae3-41ce-9603-c4aeffb287b0.jpeg";
+    // 2周目: グラ城・城下グラマニアは魔王城と同じバトル背景
+    if (partyData.flags && partyData.flags.is_second_loop && !partyData.flags.last_boss_defeated
+        && (mapId.includes('town_01') || (mapId.includes('castle_01') && !mapId.includes('demon')))) { bgUrl = _demonBg; }
+    if (mapId.includes('demon') || mapId.includes('death') || mapId.includes('maou')) { bgUrl = _demonBg; } else if (mapId.includes('dungeon') || mapId.includes('cave')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5c2cab8a-3220-4176-ab5d-e82bbd10a455.jpeg"; } else if (mapId.includes('tower') || mapId.includes('shrine')) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/5d96c8b0-7b34-40a5-aef8-e4ee76069d52.jpeg"; } else if (/^map_field_/.test(mapId) && currentMap && currentMap.tiles) {
         const _bt = currentMap.tiles[partyData.pos.y * currentMap.width + partyData.pos.x];
         if (_bt === 5) { bgUrl = window._SEA_BG_URL || bgUrl; } // 海上
         else if (_bt === 0) { bgUrl = "https://cdn.gravity.place/aiugc/game/material/2026-04-17/c7ffe62e-dfb7-4de1-9068-2c22160b7384.jpeg"; }
