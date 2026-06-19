@@ -1736,6 +1736,7 @@ const bossPhantomImg = new Image(); bossPhantomImg.crossOrigin = "Anonymous"; bo
         'decoStatueK':    'deco/statue_knight.png',
         'decoStatueW':    'deco/statue_woman.png',
         'decoStatueLion': 'deco/statue_lion.png',
+        'decoStatueA':    'deco/statue_angel.png',
         'decoFountainL':  'deco/fountain_large.png',
         'decoFountainS':  'deco/fountain_large.png',
         'decoFlowerS':    'deco/flower_wild_a.png',
@@ -8186,11 +8187,27 @@ function drawMap() {
                 const T=TILE_SIZE;
                 if(_himg&&_himg.complete&&_himg.naturalHeight>0){drawSpriteLocal(ctx,_himg,px,py,T*0.85);}
                 else{ctx.fillStyle='#a0522d';ctx.beginPath();ctx.ellipse(px+T/2,py+T*0.7,T*0.3,T*0.22,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#2d8b20';ctx.beginPath();ctx.moveTo(px+T/2,py+T*0.5);ctx.bezierCurveTo(px+T*0.3,py+T*0.1,px+T*0.1,py+T*0.35,px+T*0.2,py+T*0.5);ctx.fill();ctx.beginPath();ctx.moveTo(px+T/2,py+T*0.5);ctx.bezierCurveTo(px+T*0.7,py+T*0.1,px+T*0.9,py+T*0.35,px+T*0.8,py+T*0.5);ctx.fill();}
-            } else if(npc.id==='obj_bed_royal') {
+            } else if(npc.id==='obj_bed_royal'||npc.id==='obj_bed'||npc.id==='obj_bed_inn') {
                 const _bdimg = externalImages['decoBed'];
                 const T=TILE_SIZE;
                 if(_bdimg&&_bdimg.complete&&_bdimg.naturalHeight>0){drawSpriteLocal(ctx,_bdimg,px,py,T*0.85);}
-                else{ctx.fillStyle='#5a3520';ctx.fillRect(px+T*0.05,py+T*0.2,T*0.9,T*0.72);ctx.fillStyle='#1a4a8a';ctx.fillRect(px+T*0.08,py+T*0.28,T*0.84,T*0.42);ctx.fillStyle='#eee8d0';ctx.fillRect(px+T*0.06,py+T*0.18,T*0.88,T*0.16);}
+                else{
+                    // ベッド: 木枠(茶)＋布団(青/白)
+                    const _bc=npc.id==='obj_bed_inn'?'#2a4a7a':'#1a4a8a';
+                    ctx.fillStyle='#5a3520';ctx.fillRect(px+T*0.05,py+T*0.2,T*0.9,T*0.72);
+                    ctx.fillStyle=_bc;ctx.fillRect(px+T*0.08,py+T*0.28,T*0.84,T*0.42);
+                    ctx.fillStyle='#eee8d0';ctx.fillRect(px+T*0.06,py+T*0.18,T*0.88,T*0.16);
+                    ctx.fillStyle='#fff0e0';ctx.fillRect(px+T*0.55,py+T*0.22,T*0.35,T*0.1);
+                }
+            } else if(npc.id==='obj_counter') {
+                const T=TILE_SIZE;
+                // カウンター: 木目テーブル（横幅いっぱい）
+                ctx.fillStyle='#7a5030';ctx.fillRect(px+T*0.04,py+T*0.35,T*0.92,T*0.55);
+                ctx.fillStyle='#9a6840';ctx.fillRect(px+T*0.04,py+T*0.28,T*0.92,T*0.12);
+                ctx.strokeStyle='#5a3820';ctx.lineWidth=1.5;
+                [0.3,0.55,0.8].forEach(r=>{ctx.beginPath();ctx.moveTo(px+T*0.06,py+T*r);ctx.lineTo(px+T*0.94,py+T*r);ctx.stroke();});
+                // 前面の飾り板
+                ctx.fillStyle='#6a4428';ctx.fillRect(px+T*0.04,py+T*0.82,T*0.92,T*0.08);
             } else if(npc.id==='obj_vanity') {
                 const T=TILE_SIZE;
                 ctx.fillStyle='#5a3520';ctx.fillRect(px+T*0.1,py+T*0.4,T*0.8,T*0.55);ctx.fillStyle='#b0c8e0';ctx.fillRect(px+T*0.2,py+T*0.08,T*0.6,T*0.36);ctx.strokeStyle='#8a7060';ctx.lineWidth=2;ctx.strokeRect(px+T*0.2,py+T*0.08,T*0.6,T*0.36);
