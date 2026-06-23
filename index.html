@@ -9256,7 +9256,13 @@ async function checkAction() {
                 await typeMessage(`（ふしぎな台帳：第${_tNum}の断章を 発見！ ${_tNum}/4）`);
                 const _allTaken = partyData.flags.tome_arc_1_taken && partyData.flags.tome_arc_2_taken && partyData.flags.tome_arc_3_taken && partyData.flags.tome_arc_4_taken;
                 if (_allTaken && !isSQDone('sq_08')) {
-                    await typeMessage("全ての 断章が 揃った！\n大賢者アークの 遺訓が 解き明かされた……！\n（ふしぎな台帳：「大賢者アークの遺訓」完了！）");
+                    await typeMessage("全ての 断章が 揃った……！\nその 瞬間、古い 声が 響いてきた——");
+                    await typeMessage("【ラムダスの声】\n……よく 集めてくれた。\nわしが ラムダスだ。\nアーク師の 言葉を この 断章に 遺したのは わしじゃ。\n百年間……誰かが 読んでくれるのを 待っていた。");
+                    await typeMessage("【ラムダスの声】\nアーク師は 気づいていた——\n「王の 旅は 出来レースだ」と。\n英雄を 使い捨てにし\n自分は 安全な 場所で 支配し続ける……\nその 仕組みを 告発しようとして\n王に 消された。");
+                    await typeMessage("【ラムダスの声】\nわしも 同じ 道を 歩みかけた。\nだが……ある 若者に 出会い 生き延びた。\n海賊と 呼ばれていたが\n本物の 勇気を 持つ 男じゃった。\n名は バルゴ——\n君たちも 会ったことが あるかもしれぬ。");
+                    await typeMessage("【ラムダスの声】\nバルゴも かつて 君たちと 同じ 旅をした。\n「英雄」と 呼ばれ 使い捨てられそうに なり……\n自らの 力で 運命を 塗り替えた。\nその 話を 聞いてから わしは 悟った。\n出来レースの 旅でも\n本物の 絆は 本物だと。");
+                    await typeMessage("【ラムダスの声】\nこれが 大賢者アークの 遺訓じゃ——\n「自分の 足で 歩け。\n誰かの 筋書きに 乗るな。\n汝が 感じた 絆が 汝の 真実だ」\n……この 断章を 集めた 君たちなら\nその 意味が わかるはずだ。");
+                    await typeMessage("大賢者アークの 遺訓が 解き明かされた……！\n（ふしぎな台帳：「大賢者アークの遺訓」完了！）");
                     await grantSQReward('sq_08');
                 }
                 checkSQ10Unlock();
@@ -9426,9 +9432,14 @@ async function checkAction() {
                     } else if(_memC>0){
                         await typeMessage(`【長老ガルドス】\n記憶が ${_memC}個 戻りましたね。\n10年前……あの日\nグラ王様は 本当の姿で\n世界を 救おうとしていた……。`);
                         await typeMessage("【長老ガルドス】\n私は 10年間 この里を 守ってきた。\nグラ王様の 末裔が 必ず 来ると\n信じていたから……。\nあなたたちが その人たちです！");
+                        if(_memC>=2){
+                            await typeMessage("【長老ガルドス】\nラムダスという 賢者を 知っていますか……？\n彼は かつて バルゴと 共に\n「英雄の 使い捨て」の 仕組みを\n暴こうとした 人物です。\n大賢者アークの 遺訓を 各地に 残したのも\n彼でした。\n今は どこに いるのか……");
+                        }
                     } else {
                         await typeMessage("【長老ガルドス】\nここが 「隠れ里 エデン」です。\n偽王の 支配が 始まって……\n城下町を 逃げ出した 人々が\n力を 合わせて 作った 街です。");
                         await typeMessage("【長老ガルドス】\n王に「使い捨て」られ\n消えていった 者たちの 怒りが\n魔王城に 集まっています。\nその 怨念を 浄化し\n偽王を 暴いてください……！");
+                        await typeMessage("【長老ガルドス】\nこの里には 昔から 伝わる 話がある。\n20年前……バルゴという 男が\n王に 送られた 英雄だったが\n使い捨てられそうに なり 生き延びた。\nそして ラムダスという 賢者と 出会い\n真実を 広めようとした……。");
+                        await typeMessage("【長老ガルドス】\nその バルゴが この エデンの 地図を\nこっそり 残してくれたんじゃ。\n「次の 英雄が 迷ったとき\nここへ 辿り着けるように」と……。\nあなたたちが その 英雄たちです！");
                         if(getSQ('sq_09')===1) { advanceSQ('sq_09', 2); await typeMessage("（ふしぎな台帳に 「隠れ里エデンに到達し、長老ガルドスと話した」が 記録された）"); }
                     }
                     state='FIELD'; hideAllWindows(); drawMap(); return;
@@ -9456,9 +9467,11 @@ async function checkAction() {
                 if(npc.id==='npc_eden_poet'){
                     if(_fin){
                         await typeMessage("【吟遊詩人カルロ】\nそれは 伝説の始まり……\n闇の 10年を 乗り越えた\n英雄たちの 詩を 歌わせてくれ！\n────これが 歌われる日が 来るとは！");
+                        await typeMessage("【吟遊詩人カルロ】\n♪ バルゴの 拳が 嵐を 砕き\nラムダスの 声が 暗闇に 響いた\n20年の 旅を 経て 帰ってきた あの男\n今の 英雄たちに 証明した——\n出来レースでも 本物の 絆は 本物だと ♪");
                     } else {
                         await typeMessage("【吟遊詩人カルロ】\n♪ 百年前の 王の 嘆きよ……\n奪われた 体と 魂 悲しみよ……\n10年後の 英雄よ……届けておくれ\n真実の光を 闇の城へと ♪");
                         await typeMessage("【吟遊詩人カルロ】\n……この歌は 10年前から\n語り継がれている 詩です。\n「英雄が 時を 越えて 来る」という\n予言が 込められているそうです。");
+                        await typeMessage("【吟遊詩人カルロ】\n20年前……バルゴという 海賊が いましてね。\n王に 送り込まれた 英雄だったのに\n生き延びて 戻ってきた……。\n「出来レースでも 旅は 本物だ」と\n言い残して 海へ 去ったそうです。\nそれを 聞いた ラムダスという 賢者が\nここ エデンへの 地図を 残してくれたんです。");
                     }
                     state='FIELD'; hideAllWindows(); drawMap(); return;
                 }
@@ -9549,22 +9562,27 @@ async function checkAction() {
             if (npc.id === "npc_sub_2ndloop") {
                 if (!partyData.flags.flag_beaten_secret_boss) {
                     if(getSQ('sq_10')===3) { await typeMessage("（ふしぎな台帳に 「旅人の 目撃情報を 全て 集めた（3/3）」が 記録された）"); }
-                    await typeMessage("【異世界の旅人】\n……来たか。\nわしは 別の 世界から ここに 流れ着いた 旅人だ。\n六つの 物語を 集めた 者だけが 見つけられる 存在……。\nお前たちの 覚悟、見せてもらおう！");
+                    await typeMessage("【異世界の旅人】\n……来たか。\nわしは 別の 世界から ここに 流れ着いた 旅人だ。\n各地の 噂を 辿って わしを 見つけられたか。\n大した 執念じゃ。");
+                    await typeMessage("【異世界の旅人】\nわしが 旅した 世界は いくつもある。\nどの 世界にも 決まって 同じ 仕組みが あった——\n英雄を 仕立てて 送り込み\n使い捨てにして 自分は 安全な 場所で 支配する……\n「出来レースの 旅」じゃ。");
+                    await typeMessage("【異世界の旅人】\nだが この 世界には 違うものが あった。\n使い捨てられながら 生き延びた 者たちが\n次の 世代に 真実を 伝えていた。\nバルゴも ラムダスも そうだ。\n君たちを ここまで 導いたのは\nその 連鎖じゃ。");
+                    await typeMessage("【異世界の旅人】\nわしは その 強さを 確かめに 来た。\n六つの 物語を 歩んだ 者だけが\nわしを 見つけられる……\nそれを 証明した 君たちの 覚悟\n最後に 試させてもらおう！");
                     let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
                     if(yesno === 0) {
                         hideGoldWindow();
                         let isWin = await executeBattle(["boss_secret_traveler"]);
                         showGoldWindow(); updateGoldWindow();
                         if(isWin) {
-                            await typeMessage("【異世界の旅人】\n見事だ……！\n君たちこそが 真の英雄だ。\nこれを 授けよう……！"); AudioManager.playSE('item_get');
+                            await typeMessage("【異世界の旅人】\n……見事じゃ。\nこれほどの 強さ、わしも 久しぶりに 感じた。\nこれを 受け取れ——\n「アルテマソード」。\n次元をも 切り裂く 究極の 剣じゃ。"); AudioManager.playSE('item_get');
                             let target = partyData.members[0]; if(target.inventory.length < 8) target.inventory.push("w_star_sword"); else target.inventory[0] = "w_star_sword";
-                            await typeMessage("『星砕きの剣』を てにいれた！"); partyData.flags.flag_beaten_secret_boss = true;
+                            await typeMessage("『星砕きの剣』を てにいれた！");
+                            await typeMessage("【異世界の旅人】\n……一つだけ 言おう。\n偽王を 倒しても 終わりでは ない。\n本当の 旅は そこから 始まる。\n「出来レース」の 後を\n自分の 足で 歩き続けるのが\n本当の 英雄じゃ。");
+                            partyData.flags.flag_beaten_secret_boss = true;
                             if(!isSQDone('sq_10')) await grantSQReward('sq_10');
                             delete currentMap.npcs[key];
                         }
-                    } else { await typeMessage("【異世界の旅人】\n準備ができたら また 来るがいい。"); }
+                    } else { await typeMessage("【異世界の旅人】\n準備ができたら また 来るがいい。\nわしは 逃げも 隠れも せぬ。"); }
                 } else {
-                    await typeMessage("【異世界の旅人】\n君たちの 強さは 本物だ！\n偽の王の 元への 道は 開いた……！\n自分の 足で 歩き続けるのじゃ！");
+                    await typeMessage("【異世界の旅人】\n……偽王を 倒したか。\n君たちは 出来レースを 生き抜いて\n本物の 絆を 証明した。\nバルゴも ラムダスも きっと 喜んでいるじゃろう。\n自分の 足で 歩き続けるのじゃ！");
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
@@ -9817,6 +9835,7 @@ async function checkAction() {
                     if (!getSQ('sq_08')) {
                         startSQ('sq_08');
                         await typeMessage("【旅の僧侶】\nそうだ……この 祠で\n大賢者 アークという 人物の 記述を\n発見しました。\n各地に 遺された 古文書の 断章を\n集めると 伝説の 隠れ里への 道が\n開くとか……\n（ふしぎな台帳に 記録された）");
+                        await typeMessage("【旅の僧侶】\n……もう一つ 気になることが。\n断章を 書き記したのは\nアーク師の 弟子「ラムダス」という\n賢者らしいのです。\n百年前、王の 陰謀を 暴こうとして\n追放された という……\nその 人物が 何を 伝えたかったのか。\n断章が 語って くれるかもしれません。");
                     }
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
@@ -10486,6 +10505,7 @@ async function checkAction() {
                     if (!getSQ('sq_03')) {
                         startSQ('sq_03');
                         await typeMessage("【海賊王バルゴ】\nそうだ……最後に ひとつ。\n俺の 部下が 「古い 海図」を 持ってる。\nそいつに 話しかけてみな……\nあの 海図には 伝説の 宝が 眠る 場所が\n記されているはずだ……\n（ふしぎな台帳に 記録された）");
+                        await typeMessage("【海賊王バルゴ】\n……もう一つだけ。\n「ラムダス」って 賢者を 知ってるか？\n俺が 若い頃 世話になった 爺さんでな……\n王の 陰謀を 暴こうとして 追われてた。\n各地に 大賢者アークの 遺訓を 残してるはずだ。\nいつか 見つけてみな。必ず 役に立つ。");
                     }
                     delete currentMap.npcs[key];
                 } else { return; }
