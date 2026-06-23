@@ -394,7 +394,7 @@ window.MONSTER_DATABASE = [
 
             // --- ボス ---
             { id: "king_gura", name: "グラ王", hp: 1500, attack: 220, defense: 150, speed: 130, exp: 2000, gold: 1500, drop_item_id: "royal_crown", drop_rate: 1.0, traits: ["boss", "all_element_resist", "two_actions"], image: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/291be42cda496b96812054da69f12481_1775641490488648278.png" },
-            { id: "king_gura_final", name: "グラ王最終形態", hp: 3000, attack: 300, defense: 200, speed: 160, exp: 0, gold: 0, drop_item_id: null, drop_rate: 0, traits: ["final_boss", "status_immunity", "three_actions", "ultimate_attack"], image: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/66702cc932ad3c00a7e95c9b0ca0f5b6_1775641336199819685.png" }
+            { id: "king_gura_final", name: "グラ王最終形態", hp: 3000, attack: 270, defense: 180, speed: 155, exp: 0, gold: 0, drop_item_id: null, drop_rate: 0, traits: ["final_boss", "status_immunity", "three_actions", "ultimate_attack"], image: "https://aigcap.cdn.sfmji.com/tti-img/segment/synclut_pulsar_mcp/image/66702cc932ad3c00a7e95c9b0ca0f5b6_1775641336199819685.png" }
         ];
 </script>
 <script>
@@ -1176,23 +1176,23 @@ function injectSubStoryData() {
     masterData.monsters["boss_desert_killer"] = { name: "デザートキラー", max_hp: 350, atk: 40, def: 15, spd: 30, exp: 800, gold: 500 };
     masterData.monsters["boss_trial_phantom"] = { name: "試練の幻影", max_hp: 450, atk: 55, def: 20, spd: 40, exp: 1500, gold: 1000 };
     masterData.spells["spl_ultima"] = { id: "spl_ultima", name: "アルテマ", type: "attack", target: "enemies", mp: 40, value: 480, desc: "敵全体に究極の光属性ダメージ。いかなる敵にも等しく降り注ぐ", element: "light" };
-    masterData.monsters["boss_secret_traveler"] = { name: "異世界の旅人", max_hp: 5500, atk: 250, def: 150, spd: 200, exp: 50000, gold: 10000 };
+    masterData.monsters["boss_secret_traveler"] = { name: "異世界の旅人", max_hp: 3500, atk: 250, def: 120, spd: 200, exp: 50000, gold: 10000, traits: ["boss", "status_immunity", "two_actions"] };
     masterData.monsters["boss_pirate_king"] = { name: "海賊王バルゴ", max_hp: 2800, atk: 150, def: 90, spd: 110, exp: 12000, gold: 8000, traits: ["boss", "water_element", "two_actions"] };
     masterData.monsters["boss_dark_general"] = { name: "暗黒の魔将", max_hp: 1200, atk: 180, def: 120, spd: 90, exp: 8000, gold: 5000, traits: ["boss", "dark_element", "magic_attack", "two_actions", "weak_light"] };
     // ★ 拡張世界ボス・アイテム
-    masterData.monsters["boss_zarmo_lich"]      = { name: "暗黒公リッチ",        max_hp: 1800, atk: 200, def: 140, spd: 120, exp: 15000, gold: 8000, traits: ["boss","undead","magic_attack","dark_attack","two_actions","weak_light"] };
+    masterData.monsters["boss_zarmo_lich"]      = { name: "暗黒公リッチ",        max_hp: 2600, atk: 235, def: 165, spd: 130, exp: 22000, gold: 12000, traits: ["boss","undead","magic_attack","dark_attack","two_actions","weak_light"] };
     masterData.monsters["boss_ice_dragon"]      = { name: "氷竜アイスフロスト",  max_hp: 1600, atk: 190, def: 130, spd: 100, exp: 12000, gold: 6000, traits: ["boss","ice_element","breath","two_actions"] };
     masterData.monsters["boss_lava_titan"]      = { name: "溶岩大魔神",          max_hp: 2000, atk: 220, def: 150, spd: 80,  exp: 16000, gold: 9000, traits: ["boss","fire_element","resist_fire","two_actions"] };
-    masterData.monsters["boss_ancient_guardian"]= { name: "古代の守護者",        max_hp: 1400, atk: 170, def: 160, spd: 70,  exp: 11000, gold: 7000, traits: ["boss","high_defense","status_immunity"] };
+    masterData.monsters["boss_ancient_guardian"]= { name: "古代の守護者",        max_hp: 2500, atk: 240, def: 180, spd: 75,  exp: 20000, gold: 11000, traits: ["boss","high_defense","status_immunity","two_actions"] };
     masterData.monsters["boss_dungeon_lord"]    = { name: "迷宮の覇者",          max_hp: 1700, atk: 195, def: 145, spd: 110, exp: 13000, gold: 7500, traits: ["boss","all_element_resist","two_actions"] };
     masterData.monsters["boss_shadow_knight"]   = { name: "影の騎士",            max_hp: 1500, atk: 185, def: 135, spd: 140, exp: 12500, gold: 7000, traits: ["boss","dark_attack","high_speed","weak_light"] };
     masterData.monsters["boss_desert_mummy"]    = { name: "砂漠のミイラ王",      max_hp: 1300, atk: 175, def: 120, spd: 60,  exp: 10000, gold: 6500, traits: ["boss","undead","status_attack","weak_fire"] };
-    masterData.monsters["boss_sea_god_statue"]  = { name: "海神像",              max_hp: 2200, atk: 210, def: 170, spd: 90,  exp: 18000, gold: 10000,traits: ["boss","water_element","high_defense","status_immunity","two_actions"] };
+    masterData.monsters["boss_sea_god_statue"]  = { name: "海神像",              max_hp: 1800, atk: 195, def: 140, spd: 90,  exp: 16000, gold: 10000,traits: ["boss","water_element","status_immunity","two_actions"] };
     masterData.monsters["boss_dark_disciple"]   = { name: "魔将の使徒",          max_hp: 1900, atk: 215, def: 155, spd: 105, exp: 17000, gold: 9500, traits: ["boss","dark_element","magic_attack","two_actions","weak_light"] };
-    masterData.monsters["boss_crystal_golem"]   = { name: "水晶ゴーレム",        max_hp: 2400, atk: 180, def: 200, spd: 50,  exp: 19000, gold: 11000,traits: ["boss","high_defense","resist_physical","magic_immunity"] };
-    masterData.monsters["boss_chaos_dragon"]    = { name: "混沌竜カオスドレイク",max_hp: 3800, atk: 280, def: 190, spd: 155, exp: 45000, gold: 20000,traits: ["boss","all_element_resist","three_actions","status_immunity","ultimate_attack"] };
-    masterData.monsters["boss_archmage"]        = { name: "魔法王アルカノス",    max_hp: 2800, atk: 260, def: 160, spd: 170, exp: 35000, gold: 15000,traits: ["boss","magic_attack","all_element","two_actions","magic_immunity"] };
-    masterData.monsters["boss_demon_avatar"]    = { name: "魔王の化身",          max_hp: 3200, atk: 270, def: 180, spd: 145, exp: 40000, gold: 18000,traits: ["boss","dark_element","status_immunity","three_actions","ultimate_attack"] };
+    masterData.monsters["boss_crystal_golem"]   = { name: "水晶ゴーレム",        max_hp: 2000, atk: 175, def: 180, spd: 55,  exp: 17000, gold: 11000,traits: ["boss","magic_immunity","two_actions"] };
+    masterData.monsters["boss_chaos_dragon"]    = { name: "混沌竜カオスドレイク",max_hp: 3000, atk: 250, def: 170, spd: 150, exp: 50000, gold: 25000,traits: ["boss","two_actions","status_immunity"] };
+    masterData.monsters["boss_archmage"]        = { name: "魔法王アルカノス",    max_hp: 2200, atk: 215, def: 130, spd: 170, exp: 32000, gold: 15000,traits: ["boss","two_actions","magic_immunity"] };
+    masterData.monsters["boss_demon_avatar"]    = { name: "魔王の化身",          max_hp: 2600, atk: 235, def: 160, spd: 145, exp: 38000, gold: 18000,traits: ["boss","dark_element","status_immunity","two_actions"] };
     // 魔王城 四天王
     masterData.monsters["boss_dc_warden_left"]    = { name:"暗黒剣士カイン",  max_hp:1800, atk:220, def:155, spd:95,  exp:9000,  gold:5500, traits:["boss","dark_element","two_actions","weak_light"] };
     masterData.monsters["boss_dc_warden_right"]   = { name:"妖術師リリス",    max_hp:1600, atk:200, def:140, spd:115, exp:9000,  gold:5500, traits:["boss","magic_attack","two_actions","weak_light"] };
@@ -1212,6 +1212,7 @@ function injectSubStoryData() {
     masterData.items["acc_sea_ring"] = { id: "acc_sea_ring", name: "波濤の指輪（指輪）", type: "accessory", price: 8000, power: 0, effect: "mp_regen", desc: "海の精霊が宿った指輪。戦闘中に毎ターン少量のMPが回復する不思議な力を持つ。" };
     masterData.items["w_arc_staff"]  = { id: "w_arc_staff",  name: "大賢者アークの魔杖（杖）", type: "weapon", price: 0, power: 150, element: "light", desc: "百年前の大賢者アークが生涯をかけて完成させた究極の魔杖。あらゆる呪文の威力を底上げする。" };
     masterData.items["acc_arc_grimoire"] = { id: "acc_arc_grimoire", name: "アークの魔道書（装飾品）", type: "accessory", price: 0, power: 0, effect: "mp_regen", desc: "大賢者アークが残した全知の魔道書。装備すると戦闘中に毎ターンMPが自然回復する。" };
+    masterData.items["acc_chaos_eye"]    = { id: "acc_chaos_eye",    name: "混沌竜の眼（装飾品）",   type: "accessory", price: 0, power: 30, effect: "atk_up_crit", desc: "深淵に棲む混沌竜カオスドレイクの眼。世界の混沌を宿し、会心の一撃が大幅に増加する。" };
     // ===== 偽王討伐編 専用NPC: 各マップに追加 =====
     // 城下町グラマニア: 元騎士（偽王の支配を逃れた生き残り）
     if(masterData.monsters) {
@@ -2982,7 +2983,15 @@ async function loadExternalGrowthDatabase(url) {
                 });
             }
         }
-    } catch(e) { console.error("Growth DB load error", e); } 
+    } catch(e) { console.error("Growth DB load error", e); }
+    // CDN失敗フォールバック: ページ内のローカルcharacterDataを使用
+    if (!masterData.growth || Object.keys(masterData.growth).length === 0) {
+        if (typeof characterData !== 'undefined' && characterData.length > 0 && characterData[0].growth.length > 0) {
+            masterData.growth = {};
+            characterData.forEach(char => { masterData.growth[char.job] = char.growth; });
+            console.log('[Growth] CDN失敗: ローカルcharacterDataを使用');
+        }
+    }
 }
 
 async function loadExtraMonsters() {
@@ -5948,6 +5957,7 @@ function getAtk(char) {
     if(char.equipment && char.equipment.accessory && masterData.items[char.equipment.accessory]) {
         let acc = masterData.items[char.equipment.accessory];
         if(acc.effect === 'str_up') atk += 40;
+        if(acc.effect === 'all_stats_up') atk += 35;
     }
     return Math.max(0, atk);
 }
@@ -5960,6 +5970,7 @@ function getDef(char) {
         if(char.equipment.accessory && masterData.items[char.equipment.accessory]) {
             let acc = masterData.items[char.equipment.accessory];
             if(acc.effect === 'atk_up_crit') return 0; // 魔神の指輪: 守備力0
+            if(acc.effect === 'all_stats_up') def += 35;
             def += acc.power || 0;
         }
     }
@@ -5972,6 +5983,7 @@ function getSpd(char) {
         if(acc.effect === 'speed_double' || acc.effect === 'agi_double') spd *= 2;
         else if(acc.effect === 'speed_up' || acc.id === 'acc_star_bracelet') spd += 50;
         else if(acc.effect === 'agi_up') spd += 30;
+        else if(acc.effect === 'all_stats_up') spd += 35;
     }
     return Math.max(0, spd);
 }
@@ -10141,7 +10153,14 @@ async function checkAction() {
                 const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
                 if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
                 hideGoldWindow(); let _w=await executeBattle(["boss_chaos_dragon"]); showGoldWindow(); updateGoldWindow();
-                if (_w) { partyData.flags.flag_chaos_dragon_cleared=true; AudioManager.playBGM('victory'); await typeMessage("混沌竜カオスドレイクを 倒した！\n深淵の 暗闇が 少しだけ 晴れた……\nこの 世界で 最強の 一つを 倒した……！！"); delete currentMap.npcs[key]; } else return;
+                if (_w) {
+                    partyData.flags.flag_chaos_dragon_cleared=true; AudioManager.playBGM('victory');
+                    await typeMessage("混沌竜カオスドレイクを 倒した！\n深淵の 暗闇が 少しだけ 晴れた……\nこの 世界で 最強の 一つを 倒した……！！");
+                    AudioManager.playSE('item_get');
+                    const _ceTgt = partyData.members.find(m=>m.inventory.length<8 && m.hp>0)||partyData.members[0];
+                    if(_ceTgt && _ceTgt.inventory.length<8){ _ceTgt.inventory.push('acc_chaos_eye'); await typeMessage(`${_ceTgt.name}は 混沌竜の眼 を てにいれた！\n（装備すると 会心の一撃が 大幅に 増加する）`); }
+                    delete currentMap.npcs[key];
+                } else return;
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
 
@@ -11145,9 +11164,9 @@ async function eventCasino() {
 async function eventInn(npcId) {
     let aliveCount = partyData.members.filter(m=>m.hp>0).length; if(aliveCount === 0) { await typeMessage("しきばね は とまれませんよ..."); return; }
     let pricePerPerson = 10; let mId = partyData.pos.map || "";
-    if(mId.includes('town_02') || mId.includes('village_02') || mId.includes('bazaar')) pricePerPerson = 20;
-    else if(mId.includes('town_03') || mId.includes('market_02') || mId.includes('desert') || mId.includes('mountain')) pricePerPerson = 30;
-    else if(mId.includes('port') || mId.includes('snow')) pricePerPerson = 40;
+    if(mId.includes('town_02') || mId.includes('village_02') || mId.includes('bazaar') || mId.includes('nord') || mId.includes('rosalia')) pricePerPerson = 20;
+    else if(mId.includes('town_03') || mId.includes('market_02') || mId.includes('desert') || mId.includes('mountain') || mId.includes('coral') || mId.includes('oasis') || mId.includes('elfheim')) pricePerPerson = 30;
+    else if(mId.includes('port') || mId.includes('snow') || mId.includes('frost') || mId.includes('estoria_city')) pricePerPerson = 40;
     else if(mId.includes('last') || mId.includes('end') || mId.includes('demon')) pricePerPerson = 50;
     let cost = aliveCount * pricePerPerson;
     await typeMessage(`たびの やどやへ ようこそ。\n１ぱく ひとり ${pricePerPerson}G です。\n（${aliveCount}人で ${cost}G）\nおとまりに なりますか？`); let yesno = await selectMenu(["はい", "いいえ"], 'cmd-window', 1, true);
@@ -11212,10 +11231,35 @@ async function eventWeaponShop(npcId) {
         if (mainChoice === 0) {
             let allEquip = Object.values(masterData.items).filter(i => i.price > 0 && !_SQ_EXCL.has(i.id) && i.type !== 'tool').sort((a, b) => a.price - b.price);
             let shopIds;
-            if (npcId === "npc_strong_weapon_shop") { shopIds = allEquip.filter(i => i.price >= 3000).map(i => i.id).slice(-6); }
-            else if (partyData.pos.map.includes('bazaar') || partyData.pos.map.includes('market')) { shopIds = allEquip.filter(i => i.price >= 300 && i.price <= 3000).map(i => i.id).slice(0, 7); }
-            else if (partyData.pos.map.includes('town_01') || partyData.pos.map.includes('castle_01')) { shopIds = allEquip.filter(i => i.price < 500).map(i => i.id).slice(0, 6); }
-            else { let maxP = Math.max(200, partyData.gold * 1.5); let cands = allEquip.filter(i => i.price <= maxP); if (cands.length === 0) cands = allEquip; shopIds = cands.slice(-6).map(i => i.id); }
+            const _pm = partyData.pos.map || '';
+            if (npcId === "npc_strong_weapon_shop") {
+                // 強化武器屋（特定NPC）: 高級品のみ
+                shopIds = allEquip.filter(i => i.price >= 3000).map(i => i.id).slice(-6);
+            } else if (_pm.includes('town_01') || _pm.includes('castle_01')) {
+                // グラマニア城下町: 序盤品
+                shopIds = allEquip.filter(i => i.price < 500).map(i => i.id).slice(0, 6);
+            } else if (_pm.includes('bazaar') || _pm.includes('market')) {
+                // バザール/バルカ: 中級品
+                shopIds = allEquip.filter(i => i.price >= 300 && i.price <= 3000).map(i => i.id).slice(0, 7);
+            } else if (_pm.includes('nord') || _pm.includes('rosalia')) {
+                // ノルド・ロザリーヒル: 初中級品（冒険の入口エリア）
+                shopIds = allEquip.filter(i => i.price >= 500 && i.price <= 2500).map(i => i.id).slice(0, 6);
+            } else if (_pm.includes('coral') || _pm.includes('south_port') || _pm.includes('oasis')) {
+                // コーラル・サンゴ礁・オアシス: 中級品（中盤エリア）
+                shopIds = allEquip.filter(i => i.price >= 1500 && i.price <= 6000).map(i => i.id).slice(0, 6);
+            } else if (_pm.includes('estoria_city') || _pm.includes('estoria_castle')) {
+                // エストリア城下町/城: 高級品（東の強国）
+                shopIds = allEquip.filter(i => i.price >= 5000 && i.price <= 15000).map(i => i.id).slice(0, 6);
+            } else if (_pm.includes('frost') || _pm.includes('elfheim') || _pm.includes('salmon')) {
+                // フロスト・エルフヘイム・サルモン: 最高級品（終盤秘境エリア）
+                shopIds = allEquip.filter(i => i.price >= 8000).map(i => i.id).slice(0, 6);
+            } else {
+                // その他: プレイヤーの所持金に応じた動的選択
+                let maxP = Math.max(200, partyData.gold * 1.5);
+                let cands = allEquip.filter(i => i.price <= maxP);
+                if (cands.length === 0) cands = allEquip;
+                shopIds = cands.slice(-6).map(i => i.id);
+            }
             if (shopIds.length === 0) shopIds = allEquip.slice(0, 3).map(i => i.id);
             shopIds = shopIds.filter(id => masterData.items[id]);
             let buyOpts = shopIds.map(id => { let it = masterData.items[id]; return `${it.name}(${it.price}G)`; }); buyOpts.push("やめる");
@@ -11766,10 +11810,14 @@ async function executeBattle(fixedEnemies = null) {
                 if(!act.target) continue;
             }
 
-            // mp_regen: プレイヤーターン開始時にMPを少量回復
+            // mp_regen: プレイヤーターン開始時にMPを少量回復（防具・装飾品スロット両方を確認）
             if (act.actor.job) {
-                const _accId = act.actor.equipment && act.actor.equipment.accessory;
-                if (_accId && masterData.items[_accId] && masterData.items[_accId].effect === 'mp_regen') {
+                const _eq = act.actor.equipment || {};
+                const _mpRegenSlots = ['accessory', 'armor'].filter(sl => {
+                    const _id = _eq[sl];
+                    return _id && masterData.items[_id] && masterData.items[_id].effect === 'mp_regen';
+                });
+                if (_mpRegenSlots.length > 0) {
                     const _rAmt = Math.max(1, Math.floor(act.actor.max_mp * 0.05));
                     act.actor.mp = Math.min(act.actor.max_mp, act.actor.mp + _rAmt);
                 }
