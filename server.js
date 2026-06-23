@@ -15,6 +15,9 @@ const MIME = {
   '.jpeg':'image/jpeg',
   '.json':'application/json',
   '.ico' :'image/x-icon',
+  '.mp3' :'audio/mpeg',
+  '.ogg' :'audio/ogg',
+  '.wav' :'audio/wav',
 };
 // 正しいMIMEに修正
 MIME['.html'] = 'text/html; charset=utf-8';
