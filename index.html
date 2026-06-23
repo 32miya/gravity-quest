@@ -51,7 +51,7 @@
     .btn-mute { width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5); color: white; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; user-select: none; }
     .btn-mute:active { background: rgba(255,255,255,0.5); }
     #volume-slider-container { display: none; position: absolute; bottom: 60px; background: rgba(0,0,0,0.8); border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 15px 5px; width: 36px; height: 120px; box-sizing: border-box; z-index: 100; }
-    #volume-slider { -webkit-appearance: slider-vertical; appearance: slider-vertical; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+    #volume-slider { writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; margin: 0; cursor: pointer; }
     .action-buttons { display: flex; gap: 15px; } .btn-action { width: 65px; height: 65px; border-radius: 50%; font-weight: bold; font-size: 24px; }
     #loading-indicator { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border: 1px solid #ff0; border-radius: 4px; color: #ff0; font-size: 14px; z-index: 100; display: none; }
     #loading-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000910; z-index: 998; flex-direction: column; justify-content: center; align-items: center; }
@@ -2949,17 +2949,46 @@ async function loadExternalItemDatabase(url) {
 async function loadExternalMagicDatabase(url) { try { let targetUrl = url; if (url.includes('id=36496')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260408/game_1775649727189791640.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); let scriptFound = false; doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('window.MAGIC_DATABASE')) { injectSafeScript(s.textContent, 'Magic DB'); scriptFound = true; } }); if (scriptFound) { await new Promise(r => setTimeout(r, 100)); if (window.MAGIC_DATABASE) window.MAGIC_DATABASE.forEach(m => { masterData.spells[m.id] = { id: m.id, name: m.name, type: m.type, target: m.target, mp: m.mp_cost, value: m.power, desc: m.description, element: m.element }; }); } } catch(e) { console.error(e); } }
 async function loadExternalEnemyDatabase(url) { try { let targetUrl = url; if (url.includes('id=36489')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260408/game_1775648238161000123.html"; const res2 = await fetch(targetUrl); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); let scriptFound = false; doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('window.MONSTER_DATABASE')) { injectSafeScript(s.textContent, 'Enemy DB'); scriptFound = true; } }); if (scriptFound) { await new Promise(r => setTimeout(r, 100)); if (window.MONSTER_DATABASE) { window.MONSTER_DATABASE.forEach(m => { masterData.monsters[m.id] = { name: m.name, max_hp: m.hp, atk: m.attack, def: m.defense, spd: m.speed, exp: m.exp, gold: m.gold }; if (m.image && m.image.startsWith('http')) { let img = new Image(); img.crossOrigin = "Anonymous"; img.src = m.image; externalImages['enemy_' + m.id] = img; } }); if (masterData.monsters['slime']) masterData.monsters['m01'] = masterData.monsters['slime']; if (masterData.monsters['ghost']) masterData.monsters['m02'] = masterData.monsters['ghost']; if (externalImages['enemy_slime']) externalImages['enemy_m01'] = externalImages['enemy_slime']; if (externalImages['enemy_ghost']) externalImages['enemy_m02'] = externalImages['enemy_ghost']; } } } catch(e) { console.error(e); } }
 
-async function loadExternalGrowthDatabase(url) { 
-    try { 
-        let targetUrl = url; 
-        if (url.includes('gravity.place/share')) { 
-            try { const r = await fetch(url); const t = await r.text(); const m = t.match(/"game_file_url"\s*:\s*"(https:\/\/cdn\.gravity\.place\/aiugc\/game\/file\/[^"]+)"/); if(m) targetUrl = m[1]; } catch(e) {} 
+async function loadExternalGrowthDatabase(url) {
+    // ローカルのcharacterDataが利用可能な場合はCDNをスキップ（エラー抑制）
+    if (typeof characterData !== 'undefined' && characterData.length > 0 && characterData[0].growth && characterData[0].growth.length > 0) {
+        masterData.growth = {};
+        characterData.forEach(char => { masterData.growth[char.job] = char.growth; });
+        console.log('[Growth] ローカルcharacterDataを使用');
+        // CDNからスプライト画像だけ非同期で取得を試みる
+        (async () => { try {
+            let targetUrl = url;
+            if (url.includes('gravity.place/share')) { try { const r = await fetch(url); const t = await r.text(); const m = t.match(/"game_file_url"\s*:\s*"(https:\/\/cdn\.gravity\.place\/aiugc\/game\/file\/[^"]+)"/); if(m) targetUrl = m[1]; } catch(e) {} }
+            if (targetUrl === url && url.includes('id=38430')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260419/game_1776586577962592384.html";
+            const res2 = await fetch(targetUrl, {signal: AbortSignal.timeout(5000)}); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html");
+            doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('characterData') && s.textContent.includes('sprites')) {
+                const uiIdx = s.textContent.search(/const\s+tabContainer\s*=\s*document|function\s+initTabs/);
+                const dataCode = uiIdx > 0 ? s.textContent.substring(0, uiIdx) : s.textContent;
+                try {
+                    const fn = new Function(dataCode + '\nreturn typeof characterData !== "undefined" ? characterData : null;');
+                    const extChars = fn();
+                    if (extChars) extChars.forEach(char => {
+                        if (char.sprites) {
+                            const loadImg = (src) => { if (!src) return null; let img = new Image(); img.src = src; img.onload = () => { if ((state === 'FIELD' || state === 'MSG') && !_drawMapRafId) _drawMapRafId = requestAnimationFrame(_scheduledDrawMap); }; return img; };
+                            const _imgD = loadImg(char.sprites.down); if (_imgD) externalImages['sprite_' + char.id + '_down'] = _imgD;
+                            const _imgU = loadImg(char.sprites.up); if (_imgU) externalImages['sprite_' + char.id + '_up'] = _imgU;
+                            const _imgL = loadImg(char.sprites.left); if (_imgL) externalImages['sprite_' + char.id + '_left'] = _imgL;
+                        }
+                    });
+                } catch(e2) { /* スプライト取得失敗は無視 */ }
+            }});
+        } catch(e) { /* CDN不達は無視 */ } })();
+        return;
+    }
+    // ローカルデータなし: CDNから取得を試みる（レガシーパス）
+    try {
+        let targetUrl = url;
+        if (url.includes('gravity.place/share')) {
+            try { const r = await fetch(url); const t = await r.text(); const m = t.match(/"game_file_url"\s*:\s*"(https:\/\/cdn\.gravity\.place\/aiugc\/game\/file\/[^"]+)"/); if(m) targetUrl = m[1]; } catch(e) {}
         }
         if (targetUrl === url && url.includes('id=38430')) targetUrl = "https://cdn.gravity.place/aiugc/game/file/20260419/game_1776586577962592384.html";
-        
-        const res2 = await fetch(targetUrl); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html"); 
-        let scriptData = null; doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('characterData') && s.textContent.includes('baseStats')) scriptData = s.textContent; }); 
-        
+        const res2 = await fetch(targetUrl); const html2 = await res2.text(); const parser = new DOMParser(); const doc = parser.parseFromString(html2, "text/html");
+        let scriptData = null; doc.querySelectorAll('script').forEach(s => { if (s.textContent.includes('characterData') && s.textContent.includes('baseStats')) scriptData = s.textContent; });
         if (scriptData) {
             const uiIdx = scriptData.search(/\/\/\s*---\s*UI|const\s+tabContainer\s*=\s*document|function\s+initTabs\s*\(/);
             const dataCode = uiIdx > 0 ? scriptData.substring(0, uiIdx) : scriptData;
@@ -2967,32 +2996,22 @@ async function loadExternalGrowthDatabase(url) {
                 const fn = new Function(dataCode + '\nreturn { characterData, baseStats, magicTable };');
                 window.EXT_GROWTH = fn();
             } catch(e2) {
-                console.error('Growth DB new Function failed:', e2);
                 let safeCode = scriptData + `\nwindow.EXT_GROWTH = { characterData, baseStats, magicTable };`;
                 injectSafeScript(safeCode, 'Growth DB');
                 await new Promise(r => setTimeout(r, 100));
             }
-
             if (window.EXT_GROWTH) {
                 const ext = window.EXT_GROWTH; masterData.growth = {};
-                ext.characterData.forEach(char => {
-                    masterData.growth[char.job] = char.growth;
-                    if (char.sprites) {
-                        const loadImg = (src) => { if (!src) return null; let img = new Image(); img.src = src; img.onload = () => { if ((state === 'FIELD' || state === 'MSG') && !_drawMapRafId) _drawMapRafId = requestAnimationFrame(_scheduledDrawMap); }; return img; };
-                        const _imgD = loadImg(char.sprites.down); if (_imgD) externalImages['sprite_' + char.id + '_down'] = _imgD;
-                        const _imgU = loadImg(char.sprites.up); if (_imgU) externalImages['sprite_' + char.id + '_up'] = _imgU;
-                        const _imgL = loadImg(char.sprites.left); if (_imgL) externalImages['sprite_' + char.id + '_left'] = _imgL;
-                    }
-                });
+                ext.characterData.forEach(char => { masterData.growth[char.job] = char.growth; });
             }
         }
     } catch(e) { console.error("Growth DB load error", e); }
-    // CDN失敗フォールバック: ページ内のローカルcharacterDataを使用
+    // 最終フォールバック
     if (!masterData.growth || Object.keys(masterData.growth).length === 0) {
-        if (typeof characterData !== 'undefined' && characterData.length > 0 && characterData[0].growth.length > 0) {
+        if (typeof characterData !== 'undefined' && characterData.length > 0) {
             masterData.growth = {};
             characterData.forEach(char => { masterData.growth[char.job] = char.growth; });
-            console.log('[Growth] CDN失敗: ローカルcharacterDataを使用');
+            console.log('[Growth] フォールバック: ローカルcharacterDataを使用');
         }
     }
 }
