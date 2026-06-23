@@ -1176,7 +1176,7 @@ function injectSubStoryData() {
     masterData.monsters["boss_desert_killer"] = { name: "デザートキラー", max_hp: 350, atk: 40, def: 15, spd: 30, exp: 800, gold: 500 };
     masterData.monsters["boss_trial_phantom"] = { name: "試練の幻影", max_hp: 450, atk: 55, def: 20, spd: 40, exp: 1500, gold: 1000 };
     masterData.spells["spl_ultima"] = { id: "spl_ultima", name: "アルテマ", type: "attack", target: "enemies", mp: 40, value: 480, desc: "敵全体に究極の光属性ダメージ。いかなる敵にも等しく降り注ぐ", element: "light" };
-    masterData.monsters["boss_secret_traveler"] = { name: "異世界の旅人", max_hp: 3500, atk: 250, def: 120, spd: 200, exp: 50000, gold: 10000, traits: ["boss", "status_immunity", "two_actions"] };
+    masterData.monsters["boss_secret_traveler"] = { name: "異世界の旅人", max_hp: 3500, atk: 250, def: 120, spd: 200, exp: 50000, gold: 10000, traits: ["boss", "status_immunity"] };
     masterData.monsters["boss_pirate_king"] = { name: "海賊王バルゴ", max_hp: 2800, atk: 150, def: 90, spd: 110, exp: 12000, gold: 8000, traits: ["boss", "water_element", "two_actions"] };
     masterData.monsters["boss_dark_general"] = { name: "暗黒の魔将", max_hp: 1200, atk: 180, def: 120, spd: 90, exp: 8000, gold: 5000, traits: ["boss", "dark_element", "magic_attack", "two_actions", "weak_light"] };
     // ★ 拡張世界ボス・アイテム
@@ -10123,7 +10123,13 @@ async function checkAction() {
                 const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
                 if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
                 hideGoldWindow(); let _w=await executeBattle(["boss_sea_god_statue"]); showGoldWindow(); updateGoldWindow();
-                if (_w) { partyData.flags.flag_sea_god_cleared=true; AudioManager.playBGM('victory'); await typeMessage("海神像を 破壊した！\n海底神殿の 封印が 解けた……！"); delete currentMap.npcs[key]; } else return;
+                if (_w) {
+                    partyData.flags.flag_sea_god_cleared=true; AudioManager.playBGM('victory');
+                    await typeMessage("海神像を 破壊した！\n海底神殿の 封印が 解けた……！\n深海の 静寂が 戻ってくる……。");
+                    partyData.gold+=8000; updateGoldWindow(); AudioManager.playSE('item_get');
+                    await typeMessage("海底神殿の 宝箱から 8000G を てにいれた！");
+                    delete currentMap.npcs[key];
+                } else return;
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
             // 闇の要塞ボス
@@ -10180,7 +10186,14 @@ async function checkAction() {
                 const _yn=await selectMenu(["戦う！","逃げる"],'cmd-window',0,true);
                 if (_yn===1) { state='FIELD'; hideAllWindows(); drawMap(); return; }
                 hideGoldWindow(); let _w=await executeBattle(["boss_demon_avatar"]); showGoldWindow(); updateGoldWindow();
-                if (_w) { partyData.flags.flag_demon_avatar_cleared=true; AudioManager.playBGM('victory'); await typeMessage("魔王の化身を 倒した！\n闇の 尖塔の 力が 消えていく……！\n魔王の 力が 弱まった……！！"); delete currentMap.npcs[key]; } else return;
+                if (_w) {
+                    partyData.flags.flag_demon_avatar_cleared=true; AudioManager.playBGM('victory');
+                    await typeMessage("魔王の化身を 倒した！\n闇の 尖塔の 力が 消えていく……！\n魔王の 力が 弱まった……！！");
+                    await typeMessage("（魔王の意志の残滓が 消えていく……\nこの 塔に 秘められた 力が\nあなたたちに 宿った気がした）");
+                    partyData.gold+=12000; updateGoldWindow(); AudioManager.playSE('item_get');
+                    await typeMessage("尖塔の 秘宝 12000G を てにいれた！");
+                    delete currentMap.npcs[key];
+                } else return;
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
 
@@ -11584,7 +11597,9 @@ async function executeBattle(fixedEnemies = null) {
             let isGK = (d.name.includes("グラ王") || d.name.includes("大魔王") || type.includes("maou") || type.includes("demon"));
             let isFinal = (d.name.includes("最終形態") || type.includes("final"));
             if(isGK) hasGuraKing = true;
-            enemies.push({ ...d, max_hp: d.max_hp * diff, hp: d.max_hp * diff, atk: d.atk * diff, def: d.def * diff, exp: d.exp * diff, gold: d.gold * diff, letter: String.fromCharCode(64+counts[type]), id: type, isGuraKing: isGK, isFinalForm: isFinal, voidBarrierUsed: false, voidBarrierTurns: 0 });
+            // 真ボス・ストーリーボスはdiff倍率を適用しない（2x難度増はポストゲーム専用）
+            let eDiff = (type === 'boss_gura_final' || type === 'boss_maou' || type === 'boss_maou_final') ? 1 : diff;
+            enemies.push({ ...d, max_hp: d.max_hp * eDiff, hp: d.max_hp * eDiff, atk: d.atk * eDiff, def: d.def * eDiff, exp: d.exp * eDiff, gold: d.gold * eDiff, letter: String.fromCharCode(64+counts[type]), id: type, isGuraKing: isGK, isFinalForm: isFinal, voidBarrierUsed: false, voidBarrierTurns: 0 });
         });
     } else {
         let eTypes = currentMap.encounters; if (!eTypes || eTypes.length === 0) eTypes = ["m01", "m02"];
@@ -12418,6 +12433,51 @@ ${act.actor.name}の ちからが すいとられた！`); }
                         }
                         updatePartyStatus();
 
+                    } else if (_eId==='boss_chaos_dragon' && _alive.length>0) {
+                        const _r=Math.random();
+                        if(_r<0.45){
+                            await typeMessage(`${act.actor.displayName}の 混沌の咆哮！！`);
+                            playCriticalEffect('#8800ff'); AudioManager.playSE('magic_cast');
+                            for(const _m of _alive){const _d=Math.max(1,Math.floor(act.actor.atk*1.3*(0.8+Math.random()*0.4)-_m.def*0.05));_m.hp=Math.max(0,_m.hp-_d);await typeMessage(`${_m.name}に ${_d}の ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        } else if(_r<0.7){
+                            await typeMessage(`${act.actor.displayName}の カオスブレス！！`);
+                            playCriticalEffect('brightness(4)'); AudioManager.playSE('magic_cast');
+                            for(const _m of _alive){const _d=Math.max(1,Math.floor(act.actor.atk*1.1*(0.85+Math.random()*0.3)));_m.hp=Math.max(0,_m.hp-_d);if(!_m.isPoisoned&&Math.random()<0.35){_m.isPoisoned=true;await typeMessage(`${_m.name}に ${_d}の ダメージ！ どくに おかされた！`);}else{await typeMessage(`${_m.name}に ${_d}の ダメージ！`);} if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        } else {
+                            await typeMessage(`${act.actor.displayName}が 力を 溜めている……！`);
+                            act.actor.tmpPower=(act.actor.tmpPower||0)+1;
+                        }
+                        updatePartyStatus();
+                    } else if (_eId==='boss_archmage' && _alive.length>0) {
+                        const _r=Math.random();
+                        if(_r<0.5){
+                            await typeMessage(`${act.actor.displayName}の 禁断の魔法陣！！`);
+                            playCriticalEffect('#ffaa00'); AudioManager.playSE('magic_cast');
+                            for(const _m of _alive){const _d=Math.max(1,Math.floor(act.actor.atk*1.25*(0.8+Math.random()*0.4)-_m.def*0.08));_m.hp=Math.max(0,_m.hp-_d);await typeMessage(`${_m.name}に ${_d}の 魔法ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        } else {
+                            await typeMessage(`${act.actor.displayName}の マジックフォース！`);
+                            AudioManager.playSE('magic_cast');
+                            const _tgt=_alive[Math.floor(Math.random()*_alive.length)];
+                            const _d=Math.max(1,Math.floor(act.actor.atk*1.5*(0.85+Math.random()*0.3)));
+                            _tgt.hp=Math.max(0,_tgt.hp-_d); await typeMessage(`${_tgt.name}に ${_d}の 超集中魔法ダメージ！`);
+                            if(_tgt.hp<=0){_tgt.isPoisoned=false;await typeMessage(`${_tgt.name}は しんでしまった！`);}
+                        }
+                        updatePartyStatus();
+                    } else if (_eId==='boss_demon_avatar' && _alive.length>0) {
+                        const _r=Math.random();
+                        if(_r<0.5){
+                            await typeMessage(`${act.actor.displayName}の 魔王の呪縛！！`);
+                            playCriticalEffect('#660000'); AudioManager.playSE('magic_cast');
+                            for(const _m of _alive){_m.tmpSilence=(_m.tmpSilence||0)+2;const _d=Math.max(1,Math.floor(act.actor.atk*1.1*(0.8+Math.random()*0.4)-_m.def*0.1));_m.hp=Math.max(0,_m.hp-_d);await typeMessage(`${_m.name}に ${_d}の ダメージ！ じゅもんを ふうじられた！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        } else {
+                            await typeMessage(`${act.actor.displayName}の 闇の奔流！！`);
+                            playCriticalEffect('#330055'); AudioManager.playSE('magic_cast');
+                            const _tgt=_alive[Math.floor(Math.random()*_alive.length)];
+                            const _d=Math.max(1,Math.floor(act.actor.atk*1.6*(0.85+Math.random()*0.3)-_tgt.def*0.05));
+                            _tgt.hp=Math.max(0,_tgt.hp-_d); await typeMessage(`${_tgt.name}に ${_d}の 闇の力が 降り注いだ！`);
+                            if(_tgt.hp<=0){_tgt.isPoisoned=false;await typeMessage(`${_tgt.name}は しんでしまった！`);}
+                        }
+                        updatePartyStatus();
                     } else { _handled=false; }
 
                     if(_handled) { updatePartyStatus(); continue; }
