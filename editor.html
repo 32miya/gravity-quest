@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Gravity Quest マップエディタ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#d8d0c0;font:13px/1.4 "Segoe UI",Meiryo,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+#toolbar{background:#2a2520;border-bottom:1px solid #4a4030;padding:4px 8px;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
+#toolbar select{background:#1a1810;color:#d8d0c0;border:1px solid #5a4830;padding:3px 6px;border-radius:3px;font-size:12px}
+#toolbar button{background:#3a3020;color:#d8d0c0;border:1px solid #5a4830;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px}
+#toolbar button:hover{background:#4a4030}
+.sep{width:1px;background:#5a4830;height:22px;margin:0 4px}
+#main{display:flex;flex:1;overflow:hidden}
+/* タイルパレット: やや広め */
+#left-panel{width:160px;min-width:160px;background:#211e18;border-right:1px solid #3a3020;display:flex;flex-direction:column;flex-shrink:0}
+/* 装飾パネル: 大きいグリッド用に幅を拡張 */
+#right-panel{width:240px;min-width:240px;background:#211e18;border-left:1px solid #3a3020;display:flex;flex-direction:column;flex-shrink:0}
+.panel-title{background:#2a2520;padding:4px 8px;font-size:11px;color:#a09070;letter-spacing:1px;border-bottom:1px solid #3a3020;flex-shrink:0}
+.scroll-area{overflow-y:auto;flex:1}
+/* タイルパレット: リスト形式 */
+.tile-palette-item{display:flex;align-items:center;gap:6px;padding:3px 6px;cursor:pointer;border-bottom:1px solid #1e1b15;font-size:11px;user-select:none}
+.tile-palette-item:hover{background:#2a2520}
+.tile-palette-item.active{background:#3a2c18;outline:1px solid #c0800a}
+.tile-swatch{width:32px;height:32px;border:1px solid rgba(255,255,255,0.15);flex-shrink:0;border-radius:2px;image-rendering:pixelated}
+/* 装飾パレット: グリッド表示 */
+#deco-palette{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px}
+.deco-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 4px;cursor:pointer;border-radius:4px;border:1px solid #2a2520;background:#1a1710;font-size:10px;user-select:none;text-align:center;min-height:76px;justify-content:center}
+.deco-item:hover{background:#2a2520;border-color:#4a3820}
+.deco-item.active{background:#3a2c18;border-color:#c0800a;outline:1px solid #c0800a}
+.deco-thumb{width:56px;height:56px;object-fit:contain;image-rendering:pixelated}
+.deco-emoji-box{width:56px;height:56px;background:#3a2c18;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:4px;flex-shrink:0}
+.deco-sep{grid-column:1/-1;padding:3px 4px;font-size:10px;color:#a09070;background:#1e1b15;border-top:1px solid #3a3020;border-bottom:1px solid #2a2520;letter-spacing:1px;margin-top:2px}
+.tab-bar{display:flex;flex-shrink:0;border-bottom:1px solid #3a3020}
+.tab{flex:1;padding:4px 2px;text-align:center;cursor:pointer;font-size:11px;background:#1a1810;border-right:1px solid #2a2520}
+.tab:last-child{border-right:none}
+.tab.active{background:#2a2520;color:#d8a060}
+.tab-content{display:none;flex:1;overflow-y:auto}
+.tab-content.active{display:block}
+#canvas-wrap{flex:1;overflow:hidden;position:relative;background:#111;cursor:crosshair}
+#map-canvas{position:absolute;top:0;left:0;image-rendering:pixelated}
+#statusbar{background:#1a1710;border-top:1px solid #3a3020;padding:3px 10px;font-size:11px;color:#807060;display:flex;gap:16px;flex-shrink:0}
+.prop-row{display:flex;align-items:center;padding:3px 7px;gap:5px;font-size:11px;border-bottom:1px solid #1e1b15}
+.prop-row label{color:#a09070;width:38px;flex-shrink:0;font-size:10px}
+.prop-row input{background:#1a1810;color:#d8d0c0;border:1px solid #4a3820;padding:2px 4px;width:100%;font-size:11px;border-radius:2px}
+.section-label{padding:3px 8px;font-size:10px;color:#706050;background:#1a1710;border-bottom:1px solid #1e1b15}
+.npc-item{padding:3px 8px;cursor:pointer;font-size:11px;border-bottom:1px solid #1e1b15}
+.npc-item:hover{background:#2a2520}
+.npc-item.active{background:#3a2c18;color:#d8a060}
+#load-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#2a2218;border:1px solid #7a5030;border-radius:6px;padding:20px;width:390px;z-index:10;max-height:90%;overflow-y:auto}
+#load-panel h2{font-size:14px;color:#d8a060;margin-bottom:12px}
+.step-box{background:#1a1710;border:1px solid #4a3820;border-radius:4px;padding:10px;margin-bottom:10px;font-size:12px;line-height:1.7}
+.step-box code{background:#111;padding:1px 5px;border-radius:2px;color:#a0d080;font-family:monospace}
+.btn-primary{background:#5a3820;color:#d8d0c0;border:1px solid #9a6030;padding:7px 14px;border-radius:4px;cursor:pointer;font-size:12px;width:100%;margin-top:6px}
+.btn-primary:hover{background:#6a4830}
+#paste-area{width:100%;height:60px;background:#111;color:#a0d080;border:1px solid #4a3820;border-radius:3px;padding:6px;font-size:11px;font-family:monospace;margin-top:6px;resize:none}
+#load-err{color:#e06040;font-size:11px;margin-top:6px;display:none}
+#exit-form{padding:8px;border-bottom:1px solid #2a2520}
+#exit-form input{width:100%;margin-bottom:4px;background:#1a1810;color:#d8d0c0;border:1px solid #4a3820;padding:2px 5px;font-size:11px;border-radius:2px}
+#exit-apply{background:#3a2820;color:#d8d0c0;border:1px solid #7a4830;padding:4px;cursor:pointer;border-radius:2px;font-size:11px;width:100%;margin-top:4px}
+#new-map-form{padding:6px 8px;border-bottom:1px solid #3a3020;display:none;background:#1e1b15}
+#new-map-form input{background:#1a1810;color:#d8d0c0;border:1px solid #4a3820;padding:2px 5px;font-size:11px;border-radius:2px;margin-right:4px}
+.btn-sm{background:#2a2018;color:#d8d0c0;border:1px solid #5a4030;padding:3px 8px;cursor:pointer;border-radius:2px;font-size:11px}
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <strong style="color:#d8a060;font-size:13px">GQ Map Editor</strong>
+  <div class="sep"></div>
+  <select id="map-select" style="min-width:200px"><option value="">-- マップ選択 --</option></select>
+  <button id="btn-new-map">新規マップ</button>
+  <div class="sep"></div>
+  <button id="btn-load-open">ゲームデータ読込</button>
+  <button id="btn-copy-js" style="background:#2a1a3a;border-color:#8040c0;color:#c080ff;font-size:13px;padding:5px 14px" title="マップデータをクリップボードにコピー">📋 コピー</button>
+  <button id="btn-apply-override" style="background:#1a2a3a;border-color:#2080c0;color:#80c8ff" title="今すぐゲームに反映（F5リロード後に有効）">⚡ 今すぐ反映</button>
+  <button id="btn-save-direct" style="background:#1a3a10;border-color:#50a020;color:#a0f060" title="gravity-quest/maps_override.js を選んで上書き (Ctrl+S)">💾 ファイル上書き</button>
+  <button id="btn-write-override" style="background:#2a2010;border-color:#806020;color:#c0a040" title="ダウンロード → 手動でフォルダに移動">▼ DL保存</button>
+  <button id="btn-export-json">JSONダウンロード</button>
+  <button id="btn-import-json">JSONインポート</button>
+  <div class="sep"></div>
+  <button id="btn-undo">↩ 元に戻す</button>
+  <div class="sep"></div>
+  <button id="btn-zoom-in" title="ズームイン (+)">＋</button>
+  <button id="btn-zoom-fit" title="全体表示">⊞</button>
+  <button id="btn-zoom-out" title="ズームアウト (-)">－</button>
+  <div class="sep"></div>
+  <span style="font-size:11px;color:#a09070">回転:</span>
+  <button id="btn-rot-ccw" title="左90°回転 ([)">↺</button>
+  <span id="rot-display" style="font-size:11px;color:#d8a060;min-width:30px;text-align:center">0°</span>
+  <button id="btn-rot-cw" title="右90°回転 (])">↻</button>
+  <div class="sep"></div>
+  <span style="font-size:11px;color:#a09070">サイズ:</span>
+  <button id="btn-scale-down" title="縮小 ({)">▼</button>
+  <span id="scale-display" style="font-size:11px;color:#d8a060;min-width:36px;text-align:center">1.0×</span>
+  <button id="btn-scale-up" title="拡大 (})">▲</button>
+  <span id="dirty-indicator" style="color:#e07040;display:none;font-size:12px;margin-left:6px">● 未保存</span>
+</div>
+
+<div id="new-map-form">
+  <span style="font-size:11px;color:#a09070">新規マップ: </span>
+  <input id="nm-id" placeholder="マップID (例: map_mytown)" style="width:180px"/>
+  <input id="nm-name" placeholder="名前" style="width:100px"/>
+  <input id="nm-w" type="number" value="20" min="4" max="200" style="width:44px"/>×
+  <input id="nm-h" type="number" value="20" min="4" max="200" style="width:44px"/>
+  <button class="btn-sm" id="nm-create">作成</button>
+  <button class="btn-sm" id="nm-cancel">×</button>
+</div>
+
+<div id="main">
+  <div id="left-panel">
+    <div class="panel-title">タイルパレット</div>
+    <div class="scroll-area" id="tile-palette"></div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="map-canvas"></canvas>
+    <div id="load-panel">
+      <h2>マップデータの読み込み</h2>
+      <div class="step-box">
+        <b>方法1: ゲームから自動読み込み</b><br>
+        ① ゲーム (<code>index.html</code>) を同じブラウザで開く<br>
+        ② ゲーム内で <code>Ctrl+Shift+E</code> を押す<br>
+        ③ 「書き出しました」アラートが出たら↓を押す
+        <button class="btn-primary" id="lp-btn-load">ゲームデータを読み込む</button>
+      </div>
+      <div class="step-box">
+        <b>方法2: JSONファイルを貼り付け</b><br>
+        以前ダウンロードした JSON の内容を貼り付け:
+        <textarea id="paste-area" placeholder='{"map_town_01": {...}, ...}'></textarea>
+        <button class="btn-primary" id="lp-btn-paste">JSONを読み込む</button>
+      </div>
+      <div class="step-box">
+        <b>方法3: 新規作成</b>
+        <button class="btn-primary" id="lp-btn-close" style="background:#2a2018;border-color:#5a4030">データなしで開始（空マップを新規作成）</button>
+      </div>
+      <div id="load-err"></div>
+    </div>
+  </div>
+
+  <div id="right-panel">
+    <div class="tab-bar">
+      <div class="tab active" data-tab="deco">装飾</div>
+      <div class="tab" data-tab="npc">NPC</div>
+      <div class="tab" data-tab="exit">出口</div>
+    </div>
+    <div class="tab-content active scroll-area" id="tab-deco">
+      <div id="deco-palette"></div>
+    </div>
+    <div class="tab-content scroll-area" id="tab-npc">
+      <div class="prop-row"><label>ID</label><input id="npc-id-input" placeholder="npc_guard"/></div>
+      <div class="prop-row"><label>名前</label><input id="npc-name-input" placeholder="衛兵"/></div>
+      <div class="section-label">よく使うNPC一覧</div>
+      <div id="npc-list"></div>
+    </div>
+    <div class="tab-content" id="tab-exit">
+      <div id="exit-form">
+        <div style="padding:0 0 4px;font-size:10px;color:#a09070">マップ上クリック→出口設定</div>
+        <input id="exit-dest-map" placeholder="遷移先マップID"/>
+        <div style="display:flex;gap:4px">
+          <input id="exit-dest-x" type="number" placeholder="X" style="width:50%"/>
+          <input id="exit-dest-y" type="number" placeholder="Y" style="width:50%"/>
+        </div>
+        <button id="exit-apply">この位置に出口を置く</button>
+      </div>
+      <div id="exit-list" style="padding:6px;font-size:10px;color:#706050"></div>
+    </div>
+  </div>
+</div>
+
+<div id="statusbar">
+  <span id="st-pos">X:- Y:-</span>
+  <span id="st-tile">-</span>
+  <span id="st-mode">モード: タイル</span>
+  <span id="st-map" style="margin-left:auto;color:#a09070">マップ: (未選択)</span>
+  <span style="color:#403830">Wheel=ズーム | Space+ドラッグ=スクロール | 右クリック=消去 | Ctrl+Z=戻す</span>
+</div>
+
+<input type="file" id="file-input" accept=".json" style="display:none">
+
+<script>
+// ============================================================
+// タイル定義 (ゲームの getTileColor / drawProceduralTile 準拠)
+// ============================================================
+const TILE_DEFS = {
+  0:  {name:'床(基本)',     color:'#3a823f', desc:'石床・フロア。城=灰青、町=茶、洞窟=暗青に変化'},
+  1:  {name:'壁',           color:'#8b4513', desc:'壁。城=濃紺、町=茶れんが、洞窟=黒', solid:true},
+  2:  {name:'カウンター台', color:'#3366ff', desc:'店カウンター・受付台（青）', solid:true},
+  3:  {name:'床(黄)',       color:'#cccc00', desc:'黄色い床・特殊マーカー'},
+  4:  {name:'壁(灰)',       color:'#778877', desc:'灰色の壁', solid:true},
+  5:  {name:'水',           color:'#33ccff', desc:'水・池・噴水池'},
+  6:  {name:'床(紫)',       color:'#800080', desc:'紫の特殊床'},
+  7:  {name:'(未使用7)',    color:'#555555', desc:'未使用タイル'},
+  8:  {name:'ワープ床',     color:'#cc22cc', desc:'ワープポイント・魔法陣床'},
+  9:  {name:'カーペット',   color:'#cc0000', desc:'赤カーペット'},
+  10: {name:'石畳/道',      color:'#d2b48c', desc:'石畳・通路・廊下'},
+  11: {name:'草',           color:'#48a038', desc:'草地・芝生'},
+  12: {name:'草(濃)',       color:'#1a6611', desc:'濃い草'},
+  13: {name:'砂地',         color:'#e6cc80', desc:'砂・砂漠の床'},
+  14: {name:'(未使用14)',   color:'#554433', desc:'未使用タイル'},
+  15: {name:'城壁',         color:'#777788', desc:'城の外壁（バナー付き）', solid:true},
+  16: {name:'柱',           color:'#aaaaaa', desc:'柱', solid:true},
+  17: {name:'木/森',        color:'#1a5511', desc:'木・森・障害物', solid:true},
+  18: {name:'花/茂み',      color:'#dd22dd', desc:'花・茂み・サボテン', solid:true},
+  19: {name:'深い森',       color:'#004400', desc:'深い森・密林', solid:true},
+  20: {name:'山',           color:'#443322', desc:'山・岩山', solid:true},
+  21: {name:'扉/階段(上)',  color:'#dd5555', desc:'扉・上り階段・出口　※exitsと組み合わせ'},
+  22: {name:'扉/階段(下)',  color:'#888888', desc:'扉・下り階段・入口　※exitsと組み合わせ'},
+  23: {name:'特殊出口',     color:'#aaeeff', desc:'特殊な出口・ワープ先'},
+  24: {name:'暗い床2',      color:'#585060', desc:'暗い床バリエーション'},
+  25: {name:'暗い床(魔)',   color:'#3c3a52', desc:'魔王城等の暗い床'},
+};
+
+// ============================================================
+// 装飾オブジェクト定義
+// ============================================================
+const DECO_DEFS = [
+  // ─── 建物の装飾 ─────────────────────────────────────────
+  {sep:'建物の装飾'},
+  {id:'deco_banner_cross',    name:'旗(十字)',      img:'deco/banner_cross.png'},
+  {id:'deco_banner_crest',    name:'旗(紋章)',      img:'deco/banner_crest.png'},
+  {id:'deco_banner_gold',     name:'旗(金)',        img:'deco/banner_gold.png'},
+  {id:'deco_banner_heraldic', name:'旗(紋章B)',     img:'deco/banner_heraldic.png'},
+  {id:'deco_door_wood',       name:'扉(木)',        img:'deco/door_wood.png'},
+  {id:'deco_door_iron_gate',  name:'鉄格子扉',      img:'deco/door_iron_gate.png'},
+  {id:'deco_door_ornate',     name:'扉(豪華)',      img:'deco/door_ornate.png'},
+  {id:'deco_door_iron',       name:'鉄扉',          img:'deco/door_iron.png'},
+  {id:'deco_door_wood_a',     name:'扉A',           img:'deco/door_wood_a.png'},
+  {id:'deco_door_wood_b',     name:'扉B',           img:'deco/door_wood_b.png'},
+  {id:'deco_door_wood_c',     name:'扉C',           img:'deco/door_wood_c.png'},
+  {id:'deco_window_wood',     name:'窓(木)',        img:'deco/window_wood.png'},
+  {id:'deco_window_iron',     name:'窓(鉄格子)',    img:'deco/window_iron.png'},
+  {id:'deco_window_stained',  name:'ステンドG',     img:'deco/window_stained.png'},
+  {id:'deco_window_stone',    name:'窓(石)',        img:'deco/window_stone.png'},
+  {id:'deco_window_flower',   name:'窓(花)',        img:'deco/window_flower.png'},
+  {id:'obj_deco_sign_inn',    name:'宿屋看板',      img:'deco/sign_inn.png'},
+  {id:'obj_deco_sign_shop',   name:'店看板',        img:'deco/sign_board.png'},
+  {id:'obj_deco_sign_potion', name:'薬屋看板',      img:'deco/sign_potion.png'},
+  {id:'obj_deco_sign_shield', name:'武具看板',      img:'deco/sign_shield.png'},
+  {id:'deco_sign_animal',     name:'看板(動物)',    img:'deco/sign_animal.png'},
+  {id:'deco_sign_boot',       name:'看板(靴)',      img:'deco/sign_boot.png'},
+  // ─── 照明・燭台 ─────────────────────────────────────────
+  {sep:'照明・燭台'},
+  {id:'deco_torch_fire',      name:'松明(火)',      img:'deco/torch_fire.png'},
+  {id:'deco_torch_stand',     name:'松明台',        img:'deco/torch_stand.png'},
+  {id:'deco_torch_brazier',   name:'篝火',          img:'deco/torch_brazier.png'},
+  {id:'deco_lantern_hang',    name:'提灯(吊)',      img:'deco/lantern_hang.png'},
+  {id:'deco_lantern_wall',    name:'壁燭台',        img:'deco/lantern_wall.png'},
+  {id:'deco_lantern_hang_a',  name:'提灯A',         img:'deco/lantern_hang_a.png'},
+  {id:'deco_lantern_hang_b',  name:'提灯B',         img:'deco/lantern_hang_b.png'},
+  {id:'deco_lantern_hang_c',  name:'提灯C',         img:'deco/lantern_hang_c.png'},
+  {id:'deco_brazier',         name:'台篝火',        img:'deco/brazier.png'},
+  {id:'deco_candelabra_lg',   name:'燭台(大)',      img:'deco/candelabra_lg.png'},
+  {id:'deco_candelabra_3',    name:'三又燭台',      img:'deco/candelabra_3.png'},
+  {id:'deco_candelabra_floor',name:'床燭台',        img:'deco/candelabra_floor.png'},
+  {id:'deco_candelabra_gold', name:'金燭台',        img:'deco/candelabra_gold.png'},
+  {id:'deco_candelabra_silver',name:'銀燭台',       img:'deco/candelabra_silver.png'},
+  {id:'deco_candelabra_tbl',  name:'卓上燭台',      img:'deco/candelabra_tbl.png'},
+  {id:'deco_candle_pair',     name:'ろうそく(対)',  img:'deco/candle_pair.png'},
+  {id:'deco_candle_tall',     name:'ろうそく(高)',  img:'deco/candle_tall.png'},
+  {id:'deco_candle_small',    name:'ろうそく(小)',  img:'deco/candle_small.png'},
+  {id:'deco_candle_tiny',     name:'ろうそく(極)',  img:'deco/candle_tiny.png'},
+  {id:'deco_candle_single',   name:'ろうそく1本',   img:'deco/candle_single.png'},
+  {id:'deco_candle_wall',     name:'壁ろうそく',    img:'deco/candle_wall.png'},
+  {id:'deco_candle_stand_a',  name:'スタンドA',     img:'deco/candle_stand_a.png'},
+  {id:'deco_candle_stand_b',  name:'スタンドB',     img:'deco/candle_stand_b.png'},
+  {id:'deco_sconce_a',        name:'壁燈A',         img:'deco/sconce_a.png'},
+  {id:'deco_sconce_b',        name:'壁燈B',         img:'deco/sconce_b.png'},
+  {id:'obj_deco_lamp_post',   name:'街灯',          img:'deco/lamp_post.png'},
+  {id:'deco_lamp_ornate',     name:'装飾街灯',      img:'deco/lamp_ornate.png'},
+  // ─── 床・壁の装飾 ────────────────────────────────────────
+  {sep:'床・壁の装飾'},
+  {id:'deco_pot_flower',      name:'花瓶',          img:'deco/pot_flower.png'},
+  {id:'deco_painting_land',   name:'絵(風景)',      img:'deco/painting_land.png'},
+  {id:'deco_painting_port',   name:'絵(肖像)',      img:'deco/painting_port.png'},
+  {id:'deco_painting_landscape',name:'風景画B',     img:'deco/painting_landscape.png'},
+  {id:'deco_painting_portrait',name:'肖像画B',      img:'deco/painting_portrait.png'},
+  {id:'deco_shield_wall',     name:'盾(壁掛)',      img:'deco/shield_wall.png'},
+  {id:'deco_swords_cross',    name:'交差剣',        img:'deco/swords_cross.png'},
+  {id:'deco_mirror_round',    name:'丸鏡',          img:'deco/mirror_round.png'},
+  {id:'deco_wall_mirror',     name:'壁掛鏡',        img:'deco/wall_mirror.png'},
+  {id:'deco_wall_shield',     name:'壁飾盾',        img:'deco/wall_shield.png'},
+  {id:'deco_wall_swords',     name:'壁飾剣',        img:'deco/wall_swords.png'},
+  {id:'obj_deco_rug_red',     name:'絨毯(赤)',      img:'deco/rug_red.png'},
+  {id:'obj_deco_rug_blue',    name:'絨毯(青)',      img:'deco/rug_blue.png'},
+  {id:'deco_rug_gold',        name:'絨毯(金)',      img:'deco/rug_gold.png'},
+  // ─── 自然・緑 ────────────────────────────────────────────
+  {sep:'自然・緑'},
+  {id:'tree',                 name:'木(群)',         img:'deco/tree_pine_group.png'},
+  {id:'deco_tree_pine_lg',    name:'松(大)',         img:'deco/tree_pine_lg.png'},
+  {id:'deco_tree_pine_md',    name:'松(中)',         img:'deco/tree_pine_md.png'},
+  {id:'deco_tree_pine_sm',    name:'松(小)',         img:'deco/tree_pine_sm.png'},
+  {id:'deco_tree_pine_group', name:'松(群)',         img:'deco/tree_pine_group.png'},
+  {id:'deco_tree_oak_lg',     name:'樫(大)',         img:'deco/tree_oak_lg.png'},
+  {id:'deco_tree_oak_sm',     name:'樫(小)',         img:'deco/tree_oak_sm.png'},
+  {id:'deco_tree_oak_group',  name:'樫(群)',         img:'deco/tree_oak_group.png'},
+  {id:'deco_tree_round',      name:'丸木',           img:'deco/tree_round.png'},
+  {id:'deco_bush_lg',         name:'茂み(大)',       img:'deco/bush_lg.png'},
+  {id:'deco_bush_sm',         name:'茂み(小)',       img:'deco/bush_sm.png'},
+  {id:'deco_bush_tiny',       name:'茂み(極)',       img:'deco/bush_tiny.png'},
+  {id:'deco_bush_round',      name:'丸茂み',         img:'deco/bush_round.png'},
+  {id:'deco_bush_flower',     name:'花茂み',         img:'deco/bush_flower.png'},
+  {id:'deco_bush_trimmed',    name:'刈込み',         img:'deco/bush_trimmed.png'},
+  {id:'obj_deco_flower_s',    name:'花(小)',         img:'deco/flower_wild_a.png'},
+  {id:'deco_flower_wild_a',   name:'野花A',          img:'deco/flower_wild_a.png'},
+  {id:'deco_flower_wild_b',   name:'野花B',          img:'deco/flower_wild_b.png'},
+  {id:'deco_flower_wild_c',   name:'野花C',          img:'deco/flower_wild_c.png'},
+  {id:'deco_flower_wild_d',   name:'野花D',          img:'deco/flower_wild_d.png'},
+  {id:'obj_deco_flower_m',    name:'花壇(中)',       img:'deco/flower_bed_a.png'},
+  {id:'deco_flower_bed_a',    name:'花壇A',          img:'deco/flower_bed_a.png'},
+  {id:'deco_flower_bed_b',    name:'花壇B',          img:'deco/flower_bed_b.png'},
+  {id:'obj_deco_flower_l',    name:'花壇(大)',       img:'deco/flower_bed_stone.png'},
+  {id:'deco_flower_bed_stone',name:'石花壇',         img:'deco/flower_bed_stone.png'},
+  {id:'deco_flower_box_a',    name:'プランターA',    img:'deco/flower_box_a.png'},
+  {id:'deco_flower_box_b',    name:'プランターB',    img:'deco/flower_box_b.png'},
+  {id:'deco_flower_box_c',    name:'プランターC',    img:'deco/flower_box_c.png'},
+  {id:'deco_flower_corner',   name:'花コーナー',     img:'deco/flower_corner.png'},
+  {id:'deco_flower_garlic',   name:'花(ニンニク)',   img:'deco/flower_garlic.png'},
+  {id:'deco_flower_small_a',  name:'小花A',          img:'deco/flower_small_a.png'},
+  {id:'deco_flower_small_b',  name:'小花B',          img:'deco/flower_small_b.png'},
+  {id:'obj_flower_large',     name:'大花壇',         img:'deco/flower_bed_stone.png'},
+  {id:'obj_herb_pot',         name:'薬草鉢',         img:'deco/flower_pot_large.png'},
+  {id:'deco_flower_pot_lg',   name:'花鉢(大)',       img:'deco/flower_pot_lg.png'},
+  {id:'deco_flower_pot_sm',   name:'花鉢(小)',       img:'deco/flower_pot_small.png'},
+  {id:'deco_plant_pot',       name:'植物鉢',         img:'deco/plant_pot.png'},
+  {id:'deco_plant_pot_sm',    name:'植物鉢(小)',     img:'deco/plant_pot_sm.png'},
+  {id:'deco_plant_indoor',    name:'観葉植物',       img:'deco/plant_indoor.png'},
+  {id:'deco_rock_pile',       name:'岩山',           img:'deco/rock_pile.png'},
+  // ─── 彫像・石像 ──────────────────────────────────────────
+  {sep:'彫像・石像'},
+  {id:'obj_deco_statue_knight',name:'騎士像',        img:'deco/statue_knight.png'},
+  {id:'obj_deco_statue_woman',name:'女神像',         img:'deco/statue_woman.png'},
+  {id:'obj_deco_statue_angel',name:'天使像',         img:'deco/statue_angel.png'},
+  {id:'obj_deco_statue_lion', name:'獅子像',         img:'deco/statue_lion.png'},
+  {id:'deco_statue_bust',     name:'胸像',           img:'deco/statue_bust.png'},
+  {id:'deco_statue_cross',    name:'十字架',         img:'deco/statue_cross.png'},
+  {id:'obj_deco_fountain_l',  name:'噴水(大)',       img:'deco/fountain_large.png'},
+  {id:'obj_deco_fountain_s',  name:'噴水(小)',       img:'deco/fountain_large.png'},
+  {id:'obj_fountain',         name:'噴水',           img:'deco/fountain_large.png'},
+  {id:'obj_fountain_large',   name:'大噴水',         img:'deco/fountain_large.png'},
+  {id:'deco_well_fountain',   name:'噴水台',         img:'deco/well_fountain.png'},
+  // ─── 城・街の小物 ────────────────────────────────────────
+  {sep:'城・街の小物'},
+  {id:'obj_deco_barrel',      name:'樽',             img:'deco/barrel_a.png'},
+  {id:'deco_barrel',          name:'樽(新)',         img:'deco/barrel.png'},
+  {id:'deco_barrel_a',        name:'樽A',            img:'deco/barrel_a.png'},
+  {id:'deco_barrel_b',        name:'樽B',            img:'deco/barrel_b.png'},
+  {id:'deco_barrel_c',        name:'樽C',            img:'deco/barrel_c.png'},
+  {id:'deco_barrel_small',    name:'小樽',           img:'deco/barrel_small.png'},
+  {id:'deco_barrel_cart',     name:'樽カート',       img:'deco/barrel_cart.png'},
+  {id:'deco_cart_barrel',     name:'荷台',           img:'deco/cart_barrel.png'},
+  {id:'deco_sack',            name:'麻袋',           img:'deco/sack.png'},
+  {id:'deco_vase_town',       name:'壺(街)',         img:'deco/vase_town.png'},
+  {id:'obj_deco_vase',        name:'壺',             img:'deco/vase_tall.png'},
+  {id:'deco_vase_tall',       name:'壺(高)',         img:'deco/vase_tall.png'},
+  {id:'deco_vase_small',      name:'壺(小)',         img:'deco/vase_small.png'},
+  {id:'deco_vase_decor',      name:'壺(飾)',         img:'deco/vase_decor.png'},
+  {id:'deco_crate_wood',      name:'木箱',           img:'deco/crate_wood.png'},
+  {id:'deco_crate_stack',     name:'木箱積',         img:'deco/crate_stack.png'},
+  {id:'obj_deco_well',        name:'井戸',           img:'deco/well_bucket.png'},
+  {id:'deco_well_small',      name:'井戸(小)',       img:'deco/well_small.png'},
+  {id:'deco_well_stone',      name:'石井戸',         img:'deco/well_stone.png'},
+  {id:'deco_fence_wood',      name:'柵(木)',         img:'deco/fence_wood.png'},
+  {id:'deco_fence_wood_a',    name:'柵A',            img:'deco/fence_wood_a.png'},
+  {id:'deco_fence_wood_b',    name:'柵B',            img:'deco/fence_wood_b.png'},
+  {id:'deco_fence_iron',      name:'柵(鉄)',         img:'deco/fence_iron.png'},
+  {id:'deco_pillar_stone',    name:'石柱',           img:'deco/pillar_stone.png'},
+  {id:'deco_stone_pillar',    name:'石柱B',          img:'deco/stone_pillar.png'},
+  {id:'deco_stone_pillar2',   name:'石柱C',          img:'deco/stone_pillar2.png'},
+  {id:'deco_stone_block',     name:'石ブロック',     img:'deco/stone_block.png'},
+  {id:'deco_stone_block_a',   name:'石積みA',        img:'deco/stone_block_a.png'},
+  {id:'deco_stone_block_b',   name:'石積みB',        img:'deco/stone_block_b.png'},
+  {id:'deco_stone_tile',      name:'石タイル',       img:'deco/stone_tile.png'},
+  {id:'deco_grate_iron',      name:'鉄格子床',       img:'deco/grate_iron.png'},
+  {id:'deco_grate_floor',     name:'床格子',         img:'deco/grate_floor.png'},
+  {id:'deco_dock_platform',   name:'桟橋',           img:'deco/dock_platform.png'},
+  {id:'obj_deco_clock',       name:'時計塔',         img:'deco/clock_tower.png'},
+  {id:'deco_bell_tower',      name:'鐘楼',           img:'deco/bell_tower.png'},
+  // ─── 室内の調度品 ────────────────────────────────────────
+  {sep:'室内の調度品'},
+  {id:'obj_bed',              name:'ベッド',         img:'deco/bed_royal.png'},
+  {id:'obj_bed_royal',        name:'王族ベッド',     img:'deco/bed_royal.png'},
+  {id:'obj_bed_inn',          name:'宿屋ベッド',     img:'deco/bed_royal.png'},
+  {id:'deco_bed_blue',        name:'ベッド(青)',     img:'deco/bed_blue.png'},
+  {id:'obj_bookshelf',        name:'本棚A',          img:'deco/bookshelf_a.png'},
+  {id:'obj_bookshelf2',       name:'本棚B',          img:'deco/bookshelf_b.png'},
+  {id:'deco_clock_grand',     name:'大時計',         img:'deco/clock_grand.png'},
+  {id:'deco_desk_wood',       name:'机(木)',         img:'deco/desk_wood.png'},
+  {id:'deco_desk_writing',    name:'書き机',         img:'deco/desk_writing.png'},
+  {id:'deco_table_dining',    name:'食卓',           img:'deco/table_dining.png'},
+  {id:'deco_table_round',     name:'丸テーブル',     img:'deco/table_round.png'},
+  {id:'deco_table_cloth',     name:'クロステーブル', img:'deco/table_cloth.png'},
+  {id:'deco_table_side',      name:'サイドテーブル', img:'deco/table_side.png'},
+  {id:'deco_chair_wood',      name:'椅子(木)',       img:'deco/chair_wood.png'},
+  {id:'deco_stool_wood',      name:'スツール(木)',   img:'deco/stool_wood.png'},
+  {id:'deco_stool',           name:'スツール',       img:'deco/stool.png'},
+  {id:'deco_nightstand',      name:'ナイトスタンド', img:'deco/nightstand.png'},
+  {id:'deco_cabinet',         name:'キャビネット',   img:'deco/cabinet.png'},
+  {id:'deco_cabinet_a',       name:'棚A',            img:'deco/cabinet_a.png'},
+  {id:'deco_cabinet_b',       name:'棚B',            img:'deco/cabinet_b.png'},
+  {id:'obj_deco_fireplace',   name:'暖炉',           img:'deco/fireplace.png'},
+  {id:'obj_counter',          name:'カウンター',     img:null, emoji:'🗄'},
+  // ─── 水まわり ────────────────────────────────────────────
+  {sep:'水まわり'},
+  {id:'deco_well_bucket',     name:'つるべ井戸',     img:'deco/well_bucket.png'},
+  {id:'deco_pond_small',      name:'小池',           img:'deco/pond_small.png'},
+  {id:'deco_pond_lily',       name:'蓮池',           img:'deco/pond_lily.png'},
+  {id:'deco_waterfall_rock',  name:'滝(岩)',         img:'deco/waterfall_rock.png'},
+  {id:'deco_waterfall',       name:'滝',             img:'deco/waterfall.png'},
+  {id:'deco_waterfall_pool',  name:'滝つぼ',         img:'deco/waterfall_pool.png'},
+  {id:'deco_stream_water',    name:'小川',           img:'deco/stream_water.png'},
+  {id:'deco_bridge_wood',     name:'橋(木)',         img:'deco/bridge_wood.png'},
+  // ─── その他 ──────────────────────────────────────────────
+  {sep:'その他'},
+  {id:'deco_bell_arch',       name:'アーチ鐘',       img:'deco/bell_arch.png'},
+  {id:'deco_mirror_frame',    name:'鏡(枠)',         img:'deco/mirror_frame.png'},
+  {id:'deco_gong',            name:'ドラ',           img:'deco/gong.png'},
+  {id:'deco_chest_closed',    name:'宝箱(閉)',       img:'deco/chest_closed.png'},
+  {id:'deco_chest_open',      name:'宝箱(開)',       img:'deco/chest_open.png'},
+  {id:'obj_chest_item',       name:'宝箱(道具)',     img:'deco/treasure_chest.png'},
+  {id:'obj_chest_weapon',     name:'宝箱(武器)',     img:'deco/treasure_chest.png'},
+  {id:'obj_chest_armor',      name:'宝箱(防具)',     img:'deco/treasure_chest.png'},
+  {id:'deco_treasure_chest',  name:'宝箱',           img:'deco/treasure_chest.png'},
+  {id:'deco_treasure_open',   name:'宝箱(開放)',     img:'deco/treasure_open.png'},
+  {id:'deco_coin_pile',       name:'金貨の山',       img:'deco/coin_pile.png'},
+  {id:'deco_gold_coins',      name:'金貨',           img:'deco/gold_coins.png'},
+  {id:'deco_gem_pile',        name:'宝石の山',       img:'deco/gem_pile.png'},
+  {id:'obj_fill',             name:'透明壁',         img:null, emoji:'▪'},
+];
+
+const COMMON_NPCS = [
+  // ★機能付きNPC（ゲームのショップ/宿/教会イベントが発動する）
+  {id:'npc_weapon_shop',      name:'★武器屋の主人'},
+  {id:'npc_item_shop',        name:'★道具屋の主人'},
+  {id:'npc_inn',              name:'★宿屋の主人'},
+  {id:'npc_priest',           name:'★神父'},
+  // ★宝箱（開けるとアイテムが入手できる・一度きり）
+  {id:'obj_chest_item',       name:'★宝箱（道具）'},
+  {id:'obj_chest_weapon',     name:'★宝箱（武器）'},
+  {id:'obj_chest_armor',      name:'★宝箱（防具）'},
+  {id:'obj_chest_king_gift_1',name:'★王の贈り物①'},
+  {id:'obj_chest_king_gift_2',name:'★王の贈り物②'},
+  {id:'obj_chest_king_gift_3',name:'★王の贈り物③'},
+  {id:'obj_chest_king_gift_4',name:'★王の贈り物④'},
+  {id:'obj_chest_king_gift_5',name:'★王の贈り物⑤'},
+  // 一般NPC
+  {id:'guard',                name:'衛兵'},
+  {id:'king',                 name:'王様'},
+  {id:'oldMan',               name:'老人'},
+  {id:'npcMan',               name:'村人(男)'},
+  {id:'npcWoman',             name:'村人(女)'},
+  {id:'npcChild',             name:'子供'},
+  {id:'npc_merchant',         name:'旅の商人'},
+  {id:'npcMaidA',             name:'メイドA'},
+  {id:'npcMaidB',             name:'メイドB'},
+  {id:'npcNoble',             name:'貴族(女)'},
+  {id:'npcNobleM',            name:'貴族(男)'},
+  {id:'npcSage',              name:'賢者'},
+  {id:'npcVetSage',           name:'老賢者'},
+  {id:'npc_class_change',     name:'転職の神父'},
+];
+
+// ビルド系マップのみ表示（フィールド・海は除外）
+function isBuildingMap(id) {
+  if (!id) return false;
+  return !id.startsWith('map_field_') && !id.startsWith('map_ocean_') && id !== '_ocean_oob';
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let mapFileHandle = null; // File System Access API用ハンドル（同セッション内の再保存に使う）
+let allMaps = {};
+let currentMapId = null;
+let currentMap = null;
+let mode = 'tile';
+let selectedTile = 0;
+let selectedDeco = null;
+let selectedRot = 0;    // 0 / 90 / 180 / 270 度
+let selectedScale = 1.0; // 表示倍率 (0.5 / 1.0 / 1.5 / 2.0 / 3.0 / 4.0)
+const SCALE_STEPS = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0];
+let cam = {x:20, y:20, zoom:1.5};
+let isPainting = false;
+let isPanning = false;
+let panStart = null, camStart = null;
+let spaceDown = false;
+let undoStack = [];
+let isDirty = false;
+const TILE_PX = 24;
+
+const canvas = document.getElementById('map-canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+
+// 装飾画像プリロード
+const decoImgCache = {};
+DECO_DEFS.forEach(d => {
+  if (d.sep || !d.img) return;
+  const im = new Image(); im.src = d.img; decoImgCache[d.id] = im;
+});
+
+// ============================================================
+// パレット構築
+// ============================================================
+function buildTilePalette() {
+  const p = document.getElementById('tile-palette');
+  p.innerHTML = '';
+  Object.keys(TILE_DEFS).forEach(tid => {
+    const td = TILE_DEFS[tid];
+    const el = document.createElement('div');
+    el.className = 'tile-palette-item' + (parseInt(tid) === selectedTile ? ' active' : '');
+    el.title = td.desc || '';
+    el.dataset.tile = tid;
+    // 32×32 カラースウォッチ
+    const sw = document.createElement('canvas');
+    sw.className = 'tile-swatch'; sw.width = 32; sw.height = 32;
+    const sc = sw.getContext('2d');
+    sc.fillStyle = td.color; sc.fillRect(0, 0, 32, 32);
+    if (td.solid) { sc.fillStyle='rgba(0,0,0,0.22)'; sc.fillRect(0,0,32,32); }
+    // パターンヒント
+    if (td.color === '#cc0000') { sc.fillStyle='rgba(200,0,0,0.2)'; for(let i=0;i<32;i+=6)sc.fillRect(0,i,32,2); }
+    if (parseInt(tid)===16) { sc.fillStyle='rgba(0,0,0,0.3)'; sc.beginPath();sc.arc(16,16,10,0,Math.PI*2);sc.fill(); }
+    el.appendChild(sw);
+    const lbl = document.createElement('span');
+    lbl.innerHTML = '<span style="color:#807060;font-size:9px">' + tid + '</span> ' + td.name;
+    el.appendChild(lbl);
+    el.addEventListener('click', () => {
+      selectedTile = parseInt(tid); mode = 'tile';
+      document.querySelectorAll('.tile-palette-item').forEach(e=>e.classList.remove('active'));
+      el.classList.add('active'); updateStatus();
+    });
+    p.appendChild(el);
+  });
+}
+
+function buildDecoPalette() {
+  const p = document.getElementById('deco-palette');
+  p.innerHTML = '';
+  DECO_DEFS.forEach(d => {
+    if (d.sep) {
+      const hdr = document.createElement('div');
+      hdr.className = 'deco-sep'; hdr.textContent = '▸ ' + d.sep;
+      p.appendChild(hdr); return;
+    }
+    const el = document.createElement('div');
+    el.className = 'deco-item'; el.dataset.decoId = d.id; el.title = d.id;
+    if (d.img) {
+      const im = document.createElement('img');
+      im.className = 'deco-thumb'; im.src = d.img;
+      el.appendChild(im);
+    } else {
+      const box = document.createElement('div');
+      box.className = 'deco-emoji-box';
+      box.textContent = d.emoji || '?'; el.appendChild(box);
+    }
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:10px;line-height:1.2;word-break:break-all';
+    lbl.textContent = d.name; el.appendChild(lbl);
+    el.addEventListener('click', () => {
+      selectedDeco = d; mode = 'deco';
+      document.querySelectorAll('.deco-item').forEach(e=>e.classList.remove('active'));
+      el.classList.add('active'); updateStatus();
+    });
+    p.appendChild(el);
+  });
+}
+
+function buildNpcList() {
+  const p = document.getElementById('npc-list'); p.innerHTML = '';
+  COMMON_NPCS.forEach(n => {
+    const el = document.createElement('div'); el.className = 'npc-item';
+    el.innerHTML = '<span style="color:#a09070;font-size:10px">' + n.id + '</span><br>' + n.name;
+    el.addEventListener('click', () => {
+      document.getElementById('npc-id-input').value = n.id;
+      document.getElementById('npc-name-input').value = n.name;
+      mode = 'npc';
+      document.querySelectorAll('.npc-item').forEach(e => e.classList.remove('active'));
+      el.classList.add('active'); updateStatus();
+    });
+    p.appendChild(el);
+  });
+}
+
+function updateActivePalette(cid, el) {
+  // deco-palette は .deco-item、tile-palette は .tile-palette-item を使う
+  document.querySelectorAll('#'+cid+' .deco-item, #'+cid+' .tile-palette-item').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ============================================================
+// 描画
+// ============================================================
+function resizeCanvas() {
+  canvas.width = wrap.clientWidth; canvas.height = wrap.clientHeight; render();
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!currentMap) return;
+  const ts = TILE_PX * cam.zoom;
+  const W = currentMap.width, H = currentMap.height;
+
+  // タイル描画
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const px = x*ts+cam.x, py = y*ts+cam.y;
+      if (px+ts<0||py+ts<0||px>canvas.width||py>canvas.height) continue;
+      const tid = currentMap.tiles[y*W+x] || 0;
+      const td = TILE_DEFS[tid] || {color:'#222'};
+      ctx.fillStyle = td.color; ctx.fillRect(px, py, ts, ts);
+      // 壁パターン
+      if (tid===1||tid===4||tid===15) {
+        ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.fillRect(px,py,ts,ts);
+        ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.fillRect(px,py,ts,2);
+      } else if (tid===9) { // カーペット縦縞
+        ctx.fillStyle='rgba(200,0,0,0.18)';
+        for (let i=0;i<ts;i+=6) ctx.fillRect(px,py+i,ts,2);
+      } else if (tid===16) { // 柱
+        ctx.fillStyle='rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.arc(px+ts/2,py+ts/2,ts*0.32,0,Math.PI*2); ctx.fill();
+      } else if (tid===21||tid===22) { // 扉
+        ctx.strokeStyle='rgba(255,200,50,0.6)'; ctx.lineWidth=1.5;
+        ctx.strokeRect(px+2,py+2,ts-4,ts-4);
+      } else if (tid===5) { // 水波
+        ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.fillRect(px,py+ts*0.35,ts,ts*0.12);
+        ctx.fillRect(px,py+ts*0.65,ts,ts*0.1);
+      }
+    }
+  }
+
+  // グリッド
+  if (cam.zoom >= 0.35) {
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+    for (let x=0;x<=W;x++) {
+      const px=x*ts+cam.x; ctx.beginPath(); ctx.moveTo(px,cam.y); ctx.lineTo(px,H*ts+cam.y); ctx.stroke();
+    }
+    for (let y=0;y<=H;y++) {
+      const py=y*ts+cam.y; ctx.beginPath(); ctx.moveTo(cam.x,py); ctx.lineTo(W*ts+cam.x,py); ctx.stroke();
+    }
+  }
+
+  // 座標ラベル (5マスごと)
+  if (cam.zoom >= 0.85) {
+    ctx.fillStyle='rgba(200,180,140,0.4)'; ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.font = Math.floor(ts*0.24)+'px monospace';
+    for (let x=0;x<W;x+=5) for (let y=0;y<H;y+=5) {
+      const px=x*ts+cam.x+2, py=y*ts+cam.y+2;
+      if (px>0&&py>0&&px<canvas.width&&py<canvas.height) ctx.fillText(x+','+y,px,py);
+    }
+  }
+
+  // NPC/装飾
+  const npcs = currentMap.npcs || {};
+  Object.keys(npcs).forEach(key => {
+    const [sx,sy] = key.split(',');
+    const npc = npcs[key];
+    const px=parseInt(sx)*ts+cam.x, py=parseInt(sy)*ts+cam.y;
+    if (px+ts<0||py+ts<0||px>canvas.width||py>canvas.height) return;
+    const dd = DECO_DEFS.find(d=>d.id===npc.id);
+    const img = dd&&dd.img ? decoImgCache[npc.id] : null;
+    const rot = npc.rot || 0;
+    const sc = npc.scale || 1.0;
+    // スケールされた描画サイズ（タイル基準）
+    const drawSize = ts * sc;
+    // 左上をアンカーにして中心揃え
+    const dpx = px + (ts - drawSize) / 2;
+    const dpy = py + (ts - drawSize) / 2;
+    ctx.save();
+    if (rot) {
+      ctx.translate(px+ts/2, py+ts/2);
+      ctx.rotate(rot*Math.PI/180);
+      ctx.translate(-(px+ts/2), -(py+ts/2));
+    }
+    if (img && img.complete && img.naturalHeight>0) {
+      const aspect = img.naturalWidth/img.naturalHeight;
+      const dh=drawSize, dw=drawSize*aspect;
+      ctx.drawImage(img, px+(ts-dw)/2, py+(ts-dh), dw, dh);
+    } else if (dd&&dd.emoji) {
+      ctx.font=Math.floor(drawSize*0.55)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(dd.emoji, px+ts/2, py+ts/2);
+    } else {
+      const isObj = npc.id&&(npc.id.startsWith('obj_')||npc.id==='tree');
+      ctx.fillStyle = isObj?'rgba(160,110,40,0.8)':'rgba(40,100,210,0.8)';
+      const r=drawSize*0.36;
+      ctx.beginPath(); ctx.arc(px+ts/2,py+ts/2,r,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='bold '+Math.floor(drawSize*0.32)+'px monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(npc.id?npc.id[0].toUpperCase():'?', px+ts/2, py+ts/2);
+    }
+    ctx.restore();
+    if (cam.zoom>=0.8&&npc.name) {
+      ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.font=Math.max(7,Math.floor(ts*0.2))+'px sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      let lbl = npc.name.slice(0,6);
+      if (rot) lbl += '↺'+rot;
+      if (sc!==1) lbl += ' '+sc+'×';
+      ctx.fillText(lbl, px+ts/2, py+ts);
+    }
+  });
+
+  // 出口
+  const exits = currentMap.exits || {};
+  Object.keys(exits).forEach(key => {
+    const [sx,sy] = key.split(',');
+    const ex = exits[key];
+    const px=parseInt(sx)*ts+cam.x, py=parseInt(sy)*ts+cam.y;
+    if (px+ts<0||py+ts<0||px>canvas.width||py>canvas.height) return;
+    ctx.fillStyle='rgba(255,200,0,0.3)'; ctx.fillRect(px,py,ts,ts);
+    ctx.strokeStyle='#ffc000'; ctx.lineWidth=1.5; ctx.strokeRect(px+0.5,py+0.5,ts-1,ts-1);
+    if (cam.zoom>=0.6&&ex.map) {
+      ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font=Math.max(7,Math.floor(ts*0.18))+'px monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('→'+ex.map.split('_').pop(), px+ts/2, py+ts/2);
+    }
+  });
+}
+
+// ============================================================
+// マウス座標変換
+// ============================================================
+function getMapCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  const ts = TILE_PX*cam.zoom;
+  const tx = Math.floor((e.clientX-rect.left-cam.x)/ts);
+  const ty = Math.floor((e.clientY-rect.top-cam.y)/ts);
+  return {tx,ty,valid:currentMap&&tx>=0&&ty>=0&&tx<currentMap.width&&ty<currentMap.height};
+}
+
+// スケール大オブジェクトは視覚位置が上にはみ出るため、クリック位置+下方向も検索する
+function findNpcAt(tx, ty) {
+  const npcs = currentMap && currentMap.npcs || {};
+  const key = tx+','+ty;
+  if (npcs[key]) return { key, npc: npcs[key] };
+  for (let dy = 1; dy <= 4; dy++) {
+    const nk = tx+','+(ty+dy);
+    if (npcs[nk] && dy < (npcs[nk].scale || 1)) return { key: nk, npc: npcs[nk] };
+  }
+  return null;
+}
+
+// ============================================================
+// 編集操作
+// ============================================================
+function pushUndo() {
+  if (!currentMap) return;
+  undoStack.push({
+    tiles: currentMap.tiles.slice(),
+    npcs: JSON.parse(JSON.stringify(currentMap.npcs||{})),
+    exits: JSON.parse(JSON.stringify(currentMap.exits||{})),
+  });
+  if (undoStack.length>80) undoStack.shift();
+}
+
+function undo() {
+  if (!undoStack.length||!currentMap) return;
+  const p=undoStack.pop();
+  currentMap.tiles=p.tiles; currentMap.npcs=p.npcs; currentMap.exits=p.exits;
+  markDirty(); render();
+}
+
+function applyAt(tx,ty) {
+  if (!currentMap) return;
+  const key=tx+','+ty;
+  if (mode==='tile') {
+    currentMap.tiles[ty*currentMap.width+tx]=selectedTile;
+  } else if (mode==='deco'&&selectedDeco) {
+    currentMap.npcs=currentMap.npcs||{};
+    const obj={id:selectedDeco.id, name:selectedDeco.name};
+    if (selectedRot!==0) obj.rot=selectedRot;
+    if (selectedScale!==1.0) obj.scale=selectedScale;
+    currentMap.npcs[key]=obj;
+  } else if (mode==='npc') {
+    const id=document.getElementById('npc-id-input').value.trim();
+    const name=document.getElementById('npc-name-input').value.trim()||id;
+    if (!id) return;
+    currentMap.npcs=currentMap.npcs||{};
+    const obj={id,name};
+    if (selectedRot!==0) obj.rot=selectedRot;
+    if (selectedScale!==1.0) obj.scale=selectedScale;
+    currentMap.npcs[key]=obj;
+  } else if (mode==='erase') {
+    if (currentMap.npcs&&currentMap.npcs[key]) { delete currentMap.npcs[key]; return; }
+    if (currentMap.exits&&currentMap.exits[key]) { delete currentMap.exits[key]; return; }
+    currentMap.tiles[ty*currentMap.width+tx]=0;
+  }
+  markDirty();
+}
+
+let _autoSaveTimer = null;
+function markDirty() {
+  isDirty=true; document.getElementById('dirty-indicator').style.display='';
+  // 2秒後に自動バックアップ（連続編集中は延長）
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem('gq_editor_autosave', JSON.stringify(allMaps));
+    } catch(e) {}
+  }, 2000);
+}
+
+// ============================================================
+// マウス / キーボードイベント
+// ============================================================
+let lastPaint=null;
+let mouseDownClient=null; // ドラッグ判定用
+let mouseDownMoved=false;
+
+canvas.addEventListener('mousedown', e=>{
+  // 中ボタン or Space+左クリック → パン
+  if (e.button===1||(e.button===0&&spaceDown)) {
+    isPanning=true; panStart={x:e.clientX,y:e.clientY}; camStart={x:cam.x,y:cam.y};
+    canvas.style.cursor='grabbing'; e.preventDefault(); return;
+  }
+  // 右クリック → 消去
+  if (e.button===2) {
+    const c=getMapCoords(e); if(!c.valid) return;
+    pushUndo();
+    const key=c.tx+','+c.ty;
+    const found=findNpcAt(c.tx,c.ty);
+    if (found) delete currentMap.npcs[found.key];
+    else if (currentMap.exits&&currentMap.exits[key]) delete currentMap.exits[key];
+    else currentMap.tiles[c.ty*currentMap.width+c.tx]=0;
+    markDirty(); render(); return;
+  }
+  if (e.button===0) {
+    mouseDownClient={x:e.clientX,y:e.clientY};
+    mouseDownMoved=false;
+    // deco/npc/exit モード: 左ドラッグ=パン、クリック=配置（mouseupで判定）
+    if (mode==='deco'||mode==='npc'||mode==='exit') {
+      isPanning=true; panStart={x:e.clientX,y:e.clientY}; camStart={x:cam.x,y:cam.y};
+      return;
+    }
+    // tile/erase: 従来通りドラッグ描画
+    const c=getMapCoords(e); if(!c.valid) return;
+    pushUndo(); isPainting=true; lastPaint={tx:c.tx,ty:c.ty};
+    applyAt(c.tx,c.ty); render();
+  }
+});
+
+canvas.addEventListener('mousemove', e=>{
+  if (isPanning) {
+    const dx=e.clientX-panStart.x, dy=e.clientY-panStart.y;
+    if (Math.abs(dx)>3||Math.abs(dy)>3) mouseDownMoved=true;
+    cam.x=camStart.x+dx; cam.y=camStart.y+dy;
+    render(); return;
+  }
+  // ステータスバー更新
+  const c=getMapCoords(e);
+  if (c.valid&&currentMap) {
+    document.getElementById('st-pos').textContent='X:'+c.tx+' Y:'+c.ty;
+    const tid=currentMap.tiles[c.ty*currentMap.width+c.tx]||0;
+    const td=TILE_DEFS[tid];
+    const npc=(currentMap.npcs||{})[c.tx+','+c.ty];
+    const ex=(currentMap.exits||{})[c.tx+','+c.ty];
+    let info=(td?td.name+'('+tid+')':tid+'');
+    if(npc) info+=' | '+npc.id+(npc.scale?'×'+npc.scale:'')+(npc.rot?' ↺'+npc.rot:'')+'['+npc.name+']';
+    if(ex) info+=' | →'+ex.map;
+    document.getElementById('st-tile').textContent=info;
+  }
+  // tile/erase ドラッグ描画
+  if (isPainting) {
+    const c2=getMapCoords(e);
+    if (c2.valid&&(c2.tx!==lastPaint.tx||c2.ty!==lastPaint.ty)) {
+      lastPaint={tx:c2.tx,ty:c2.ty}; applyAt(c2.tx,c2.ty); render();
+    }
+  }
+});
+
+canvas.addEventListener('mouseup', e=>{
+  if (e.button===1) { isPanning=false; canvas.style.cursor='crosshair'; return; }
+  if (e.button===0) {
+    if (isPanning&&(mode==='deco'||mode==='npc'||mode==='exit')) {
+      isPanning=false; canvas.style.cursor='crosshair';
+      // ほとんど動いていない = クリック → 配置
+      if (!mouseDownMoved) {
+        const c=getMapCoords(e);
+        if (c.valid) {
+          if (mode==='exit') { handleExitClick(c.tx,c.ty); return; }
+          // 既存NPC/decoをクリック → ピックアップ（移動のため）
+          const found=findNpcAt(c.tx,c.ty);
+          if (found) {
+            pushUndo();
+            delete currentMap.npcs[found.key];
+            document.getElementById('npc-id-input').value=found.npc.id||'';
+            document.getElementById('npc-name-input').value=found.npc.name||found.npc.id||'';
+            selectedRot=found.npc.rot||0; selectedScale=found.npc.scale||1.0;
+            updateRotDisplay(); updateScaleDisplay();
+            markDirty(); render(); return;
+          }
+          pushUndo(); applyAt(c.tx,c.ty); render();
+        }
+      }
+      return;
+    }
+    isPanning=false; isPainting=false;
+    canvas.style.cursor='crosshair';
+  }
+});
+canvas.addEventListener('contextmenu', e=>e.preventDefault());
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const oz=cam.zoom;
+  cam.zoom=Math.max(0.18,Math.min(8,cam.zoom*(e.deltaY<0?1.13:0.89)));
+  cam.x=mx-(mx-cam.x)*(cam.zoom/oz); cam.y=my-(my-cam.y)*(cam.zoom/oz);
+  render();
+},{passive:false});
+document.addEventListener('keydown', e=>{
+  const tag=document.activeElement.tagName;
+  if (e.key===' '&&tag!=='INPUT'&&tag!=='TEXTAREA') { spaceDown=true; canvas.style.cursor='grab'; e.preventDefault(); }
+  if ((e.ctrlKey||e.metaKey)&&e.key==='z') { e.preventDefault(); undo(); }
+  if ((e.ctrlKey||e.metaKey)&&e.key==='s') { e.preventDefault(); document.getElementById('btn-save-direct').click(); }
+  if (tag==='INPUT'||tag==='TEXTAREA') return;
+  if (e.key==='e'||e.key==='E') { mode='erase'; updateStatus(); }
+  if (e.key==='t'||e.key==='T') { mode='tile'; updateStatus(); }
+  if (e.key==='d'||e.key==='D') { mode='deco'; updateStatus(); }
+  if (e.key==='n'||e.key==='N') { mode='npc'; updateStatus(); }
+  if (e.key===']') { selectedRot=(selectedRot+90)%360; updateRotDisplay(); }
+  if (e.key==='[') { selectedRot=(selectedRot+270)%360; updateRotDisplay(); }
+  if (e.key==='}') { const i=SCALE_STEPS.indexOf(selectedScale); if(i<SCALE_STEPS.length-1){selectedScale=SCALE_STEPS[i+1];updateScaleDisplay();} }
+  if (e.key==='{') { const i=SCALE_STEPS.indexOf(selectedScale); if(i>0){selectedScale=SCALE_STEPS[i-1];updateScaleDisplay();} }
+});
+document.addEventListener('keyup', e=>{
+  if (e.key===' ') { spaceDown=false; if(!isPanning) canvas.style.cursor='crosshair'; }
+});
+
+// ============================================================
+// 出口配置
+// ============================================================
+let _pendingExitKey=null;
+function handleExitClick(tx,ty) {
+  _pendingExitKey=tx+','+ty;
+  const ex=(currentMap.exits||{})[_pendingExitKey]||{};
+  document.getElementById('exit-dest-map').value=ex.map||'';
+  document.getElementById('exit-dest-x').value=ex.x!=null?ex.x:'';
+  document.getElementById('exit-dest-y').value=ex.y!=null?ex.y:'';
+  document.getElementById('exit-list').textContent='設定中: ('+tx+','+ty+')';
+}
+document.getElementById('exit-apply').addEventListener('click', ()=>{
+  if (!_pendingExitKey||!currentMap) return;
+  const destMap=document.getElementById('exit-dest-map').value.trim();
+  if (!destMap) { alert('遷移先マップIDを入力してください'); return; }
+  const destX=parseInt(document.getElementById('exit-dest-x').value)||0;
+  const destY=parseInt(document.getElementById('exit-dest-y').value)||0;
+  pushUndo();
+  currentMap.exits=currentMap.exits||{};
+  currentMap.exits[_pendingExitKey]={map:destMap,x:destX,y:destY};
+  document.getElementById('exit-list').textContent=_pendingExitKey+' → '+destMap+'('+destX+','+destY+')';
+  markDirty(); render();
+});
+
+// ============================================================
+// マップ管理
+// ============================================================
+function updateMapSelector() {
+  const sel=document.getElementById('map-select');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">-- マップ選択 ('+Object.keys(allMaps).filter(isBuildingMap).length+'件) --</option>';
+  Object.keys(allMaps).filter(isBuildingMap).sort().forEach(id=>{
+    const m=allMaps[id];
+    const opt=document.createElement('option');
+    opt.value=id;
+    opt.textContent=id+(m.name?' ['+m.name+']':'')+' '+m.width+'×'+m.height;
+    sel.appendChild(opt);
+  });
+  if (cur&&allMaps[cur]) sel.value=cur;
+}
+
+function loadMap(id) {
+  if (!id||!allMaps[id]) return;
+  currentMapId=id; currentMap=allMaps[id];
+  if (!currentMap.npcs) currentMap.npcs={};
+  if (!currentMap.exits) currentMap.exits={};
+  if (!Array.isArray(currentMap.tiles)) currentMap.tiles=new Array(currentMap.width*currentMap.height).fill(0);
+  const ts=TILE_PX;
+  // マップ全体がキャンバスに収まる最大ズームを計算し、下限2.0を設けて大きく表示
+  const fitZoom=Math.min((canvas.width-20)/(currentMap.width*ts),(canvas.height-20)/(currentMap.height*ts));
+  cam.zoom=Math.max(2.0, Math.min(5.0, fitZoom));
+  cam.x=(canvas.width-currentMap.width*ts*cam.zoom)/2;
+  cam.y=(canvas.height-currentMap.height*ts*cam.zoom)/2;
+  isDirty=false; document.getElementById('dirty-indicator').style.display='none'; undoStack=[];
+  document.getElementById('st-map').textContent=id+(currentMap.name?' ['+currentMap.name+']':'')+' '+currentMap.width+'×'+currentMap.height;
+  document.getElementById('load-panel').style.display='none';
+  render();
+}
+
+document.getElementById('map-select').addEventListener('change', e=>{
+  if (e.target.value) loadMap(e.target.value);
+});
+
+// 新規マップ
+document.getElementById('btn-new-map').addEventListener('click', ()=>{
+  const f=document.getElementById('new-map-form');
+  f.style.display=f.style.display==='none'?'block':'none';
+});
+document.getElementById('nm-create').addEventListener('click', ()=>{
+  const id=document.getElementById('nm-id').value.trim();
+  const name=document.getElementById('nm-name').value.trim();
+  const w=parseInt(document.getElementById('nm-w').value)||20;
+  const h=parseInt(document.getElementById('nm-h').value)||20;
+  if (!id) { alert('マップIDを入力してください'); return; }
+  if (allMaps[id]&&!confirm(id+'はすでに存在します。上書きしますか？')) return;
+  const tiles=new Array(w*h).fill(0);
+  for (let x=0;x<w;x++) { tiles[x]=1; tiles[(h-1)*w+x]=1; }
+  for (let y=0;y<h;y++) { tiles[y*w]=1; tiles[y*w+(w-1)]=1; }
+  allMaps[id]={width:w,height:h,tiles,npcs:{},exits:{},name};
+  updateMapSelector();
+  document.getElementById('map-select').value=id;
+  loadMap(id);
+  document.getElementById('new-map-form').style.display='none';
+  markDirty();
+});
+document.getElementById('nm-cancel').addEventListener('click', ()=>{ document.getElementById('new-map-form').style.display='none'; });
+
+// ============================================================
+// データ読み込み / 保存
+// ============================================================
+function tryLoadFromStorage() {
+  const data=localStorage.getItem('gq_maps');
+  const err=document.getElementById('load-err');
+  if (!data) {
+    err.style.display='';
+    err.innerHTML='<b>⚠ データが見つかりません</b><br>ゲーム(index.html)を同じブラウザで開き、<br>ゲーム画面で <b>Ctrl+Shift+E</b> を押してください。';
+    return false;
+  }
+  try {
+    const maps=JSON.parse(data);
+    Object.assign(allMaps,maps);
+    updateMapSelector();
+    err.style.display='none';
+    document.getElementById('load-panel').style.display='none';
+    const cnt=Object.keys(maps).filter(isBuildingMap).length;
+    alert('読み込みました。\nビルド系マップ: '+cnt+'件\nドロップダウンからマップを選んでください。');
+    return true;
+  } catch(e) {
+    err.style.display=''; err.textContent='JSON解析エラー: '+e.message; return false;
+  }
+}
+
+document.getElementById('btn-load-open').addEventListener('click', tryLoadFromStorage);
+document.getElementById('lp-btn-load').addEventListener('click', tryLoadFromStorage);
+document.getElementById('lp-btn-close').addEventListener('click', ()=>{ document.getElementById('load-panel').style.display='none'; });
+
+document.getElementById('lp-btn-paste').addEventListener('click', ()=>{
+  const txt=document.getElementById('paste-area').value.trim();
+  const err=document.getElementById('load-err');
+  if (!txt) { err.style.display=''; err.textContent='テキストが空です'; return; }
+  try {
+    const maps=JSON.parse(txt);
+    Object.assign(allMaps,maps);
+    updateMapSelector();
+    err.style.display='none'; document.getElementById('load-panel').style.display='none';
+    alert('JSONを読み込みました ('+Object.keys(maps).length+'マップ)');
+  } catch(e) { err.style.display=''; err.textContent='JSONエラー: '+e.message; }
+});
+
+// ============================================================
+// maps_override.js の内容を生成する共通関数
+// ============================================================
+function buildOverrideJS() {
+  const keys = Object.keys(allMaps).filter(isBuildingMap);
+  if (!keys.length) return null;
+  const out = {}; keys.forEach(k => { out[k] = allMaps[k]; });
+  return {
+    js: [
+      '// このファイルは editor.html で自動生成されました - ' + new Date().toLocaleString('ja-JP'),
+      '// gravity-quest/ フォルダに保存するとゲームに永続反映されます',
+      'window.GQ_MAP_OVERRIDES = ' + JSON.stringify(out, null, 2) + ';',
+    ].join('\n'),
+    count: keys.length
+  };
+}
+
+// maps_override.js への保存（サーバーAPI → File API → DL の優先順）
+async function saveOverrideFile() {
+  const data = buildOverrideJS();
+  if (!data) { alert('マップがありません'); return false; }
+
+  // ① サーバー経由（start-server.command で起動中の場合）
+  try {
+    const apiUrl = location.protocol === 'file:' ? 'http://localhost:8765/api/save-maps' : '/api/save-maps';
+    const resp = await fetch(apiUrl, {
+      method:'POST', headers:{'Content-Type':'text/plain'}, body:data.js
+    });
+    if (resp.ok) {
+      isDirty = false;
+      document.getElementById('dirty-indicator').style.display = 'none';
+      return true;
+    }
+  } catch(e) { /* サーバーが起動していない */ }
+
+  // ② File System Access API（Chrome など）
+  if (window.showOpenFilePicker) {
+    try {
+      if (!mapFileHandle) {
+        const [fh] = await window.showOpenFilePicker({
+          types:[{description:'maps_override.js',accept:{'application/javascript':['.js'],'text/javascript':['.js']}}],
+          multiple:false
+        });
+        mapFileHandle = fh;
+      }
+      const writable = await mapFileHandle.createWritable();
+      await writable.write(data.js);
+      await writable.close();
+      isDirty = false;
+      document.getElementById('dirty-indicator').style.display = 'none';
+      return true;
+    } catch(e) {
+      if (e.name === 'AbortError') return false;
+      mapFileHandle = null;
+    }
+  }
+
+  // ③ フォールバック: ダウンロード
+  const blob = new Blob([data.js], {type:'application/javascript'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'maps_override.js'; a.click();
+  alert('maps_override.js をダウンロードしました。\ngravity-quest/ フォルダに上書き保存してください。\n\n※ start-server.command を起動すると次回から自動保存されます。');
+  return false;
+}
+
+document.getElementById('btn-copy-js').addEventListener('click', async ()=>{
+  const data = buildOverrideJS();
+  if (!data) { alert('マップがありません'); return; }
+  try {
+    await navigator.clipboard.writeText(data.js);
+    const btn = document.getElementById('btn-copy-js');
+    btn.textContent = '✅ コピー完了！';
+    setTimeout(()=>{ btn.textContent = '📋 コピー'; }, 3000);
+  } catch(e) {
+    alert('コピーに失敗しました: ' + e.message);
+  }
+});
+
+document.getElementById('btn-save-direct').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btn-save-direct');
+  const orig = btn.textContent;
+  btn.textContent = '保存中...'; btn.disabled = true;
+  const ok = await saveOverrideFile();
+  btn.disabled = false;
+  if (ok) {
+    btn.textContent = '✅ 保存済み！';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  } else {
+    btn.textContent = orig;
+  }
+});
+
+// maps_override.js を生成してダウンロード（ゲームフォルダに保存すると永続反映）
+document.getElementById('btn-write-override').addEventListener('click', ()=>{
+  const data = buildOverrideJS();
+  if (!data) { alert('マップがありません'); return; }
+  const blob = new Blob([data.js], {type:'application/javascript'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'maps_override.js'; a.click();
+  isDirty = false; document.getElementById('dirty-indicator').style.display = 'none';
+  alert('maps_override.js をダウンロードしました (' + data.count + 'マップ)\n' +
+        'ダウンロードしたファイルを gravity-quest/ フォルダに上書き保存してください。\n' +
+        '※「💾 直接保存」ボタンを使うとこの手順が不要です。');
+});
+
+document.getElementById('btn-apply-override').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btn-apply-override');
+  const orig = btn.textContent; btn.disabled = true;
+  // まずファイルへの永続保存を試みる
+  const ok = await saveOverrideFile();
+  btn.disabled = false;
+  if (ok) {
+    btn.textContent = '✅ 保存完了！';
+    setTimeout(()=>{ btn.textContent = orig; }, 2000);
+    alert('maps_override.js に保存しました。\nゲームをF5リロードすると反映されます。');
+  } else {
+    // ファイル保存失敗時はlocalStorageにも保存（保険）
+    const keys=Object.keys(allMaps).filter(isBuildingMap);
+    const out={}; keys.forEach(k=>{ out[k]=allMaps[k]; });
+    try { localStorage.setItem('gq_maps_override',JSON.stringify(out)); } catch(e){}
+  }
+});
+
+document.getElementById('btn-export-json').addEventListener('click', ()=>{
+  const keys=Object.keys(allMaps).filter(isBuildingMap);
+  const out={}; keys.forEach(k=>{ out[k]=allMaps[k]; });
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='gq_maps_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+});
+
+document.getElementById('btn-import-json').addEventListener('click', ()=>{ document.getElementById('file-input').click(); });
+document.getElementById('file-input').addEventListener('change', e=>{
+  const file=e.target.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try {
+      const data=JSON.parse(ev.target.result);
+      Object.assign(allMaps,data); updateMapSelector();
+      document.getElementById('load-panel').style.display='none';
+      alert('インポートしました ('+Object.keys(data).length+'マップ)');
+    } catch(err) { alert('JSONエラー: '+err.message); }
+  };
+  reader.readAsText(file); e.target.value='';
+});
+
+document.getElementById('btn-undo').addEventListener('click', undo);
+
+// スケールボタン
+function updateScaleDisplay() {
+  document.getElementById('scale-display').textContent = selectedScale + '×';
+}
+document.getElementById('btn-scale-up').addEventListener('click', ()=>{
+  const i = SCALE_STEPS.indexOf(selectedScale);
+  if (i < SCALE_STEPS.length-1) { selectedScale=SCALE_STEPS[i+1]; updateScaleDisplay(); }
+});
+document.getElementById('btn-scale-down').addEventListener('click', ()=>{
+  const i = SCALE_STEPS.indexOf(selectedScale);
+  if (i > 0) { selectedScale=SCALE_STEPS[i-1]; updateScaleDisplay(); }
+});
+
+// 回転ボタン
+function updateRotDisplay() {
+  document.getElementById('rot-display').textContent = selectedRot + '°';
+}
+document.getElementById('btn-rot-cw').addEventListener('click', ()=>{
+  selectedRot = (selectedRot + 90) % 360; updateRotDisplay();
+});
+document.getElementById('btn-rot-ccw').addEventListener('click', ()=>{
+  selectedRot = (selectedRot + 270) % 360; updateRotDisplay();
+});
+
+// ズームボタン
+document.getElementById('btn-zoom-in').addEventListener('click', ()=>{
+  const cx=canvas.width/2, cy=canvas.height/2, oz=cam.zoom;
+  cam.zoom=Math.min(8, cam.zoom*1.4);
+  cam.x=cx-(cx-cam.x)*(cam.zoom/oz); cam.y=cy-(cy-cam.y)*(cam.zoom/oz); render();
+});
+document.getElementById('btn-zoom-out').addEventListener('click', ()=>{
+  const cx=canvas.width/2, cy=canvas.height/2, oz=cam.zoom;
+  cam.zoom=Math.max(0.18, cam.zoom/1.4);
+  cam.x=cx-(cx-cam.x)*(cam.zoom/oz); cam.y=cy-(cy-cam.y)*(cam.zoom/oz); render();
+});
+document.getElementById('btn-zoom-fit').addEventListener('click', ()=>{
+  if (!currentMap) return;
+  const ts=TILE_PX;
+  const fitZoom=Math.min((canvas.width-20)/(currentMap.width*ts),(canvas.height-20)/(currentMap.height*ts));
+  cam.zoom=Math.max(2.0, Math.min(5.0, fitZoom));
+  cam.x=(canvas.width-currentMap.width*ts*cam.zoom)/2;
+  cam.y=(canvas.height-currentMap.height*ts*cam.zoom)/2;
+  render();
+});
+
+// ============================================================
+// タブ切り替え
+// ============================================================
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    tab.classList.add('active');
+    const c=document.getElementById('tab-'+tab.dataset.tab);
+    if(c) c.classList.add('active');
+    if(tab.dataset.tab==='deco') { mode='deco'; updateStatus(); }
+    if(tab.dataset.tab==='npc') { mode='npc'; updateStatus(); }
+    if(tab.dataset.tab==='exit') { mode='exit'; updateStatus(); }
+  });
+});
+
+document.getElementById('npc-id-input').addEventListener('input', ()=>{ mode='npc'; updateStatus(); });
+
+// ============================================================
+// ステータス表示
+// ============================================================
+function updateStatus() {
+  const m={tile:'タイル', deco:'装飾配置', npc:'NPC配置', exit:'出口配置', erase:'消去'};
+  document.getElementById('st-mode').textContent='モード: '+(m[mode]||mode);
+}
+
+// ============================================================
+// リサイズ
+// ============================================================
+new ResizeObserver(resizeCanvas).observe(wrap);
+
+// ============================================================
+// 初期化 - localStorage自動読み込み
+// ============================================================
+buildTilePalette();
+buildDecoPalette();
+buildNpcList();
+resizeCanvas();
+updateStatus();
+
+(function(){
+  // 優先順位: autosave（編集中） > gq_maps_override（保存済み編集） > gq_maps（ゲーム原本）
+  const sources = [
+    { key:'gq_editor_autosave', label:'🔄 前回の編集を自動復元' },
+    { key:'gq_maps_override',   label:'🔄 保存済み編集データを復元' },
+    { key:'gq_maps',            label:'件のマップを読込 → ドロップダウンから選択' },
+  ];
+  for (const src of sources) {
+    const raw = localStorage.getItem(src.key);
+    if (!raw) continue;
+    try {
+      const maps = JSON.parse(raw);
+      const keys = Object.keys(maps).filter(isBuildingMap);
+      if (keys.length === 0) continue;
+      Object.assign(allMaps, maps);
+      updateMapSelector();
+      document.getElementById('load-panel').style.display='none';
+      const lbl = src.key==='gq_maps' ? keys.length+''+src.label : src.label+' ('+keys.length+'マップ)';
+      document.getElementById('st-map').textContent = lbl;
+      break;
+    } catch(e) {}
+  }
+})();
+</script>
+</body>
+</html>
