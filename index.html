@@ -11069,6 +11069,188 @@ async function checkAction() {
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
 
+            // ===== SNS・恋愛ネタ NPC (クスっと笑える系) =====
+            {
+                // 石板SNS (ファンタジー版SNS) 6パターン
+                const _sns = [
+                    "最近 城下町に「お気持ち石板」なるものが 流行っておる。\n毎朝 自分の 気持ちを 石に 刻んで 掲示板に 貼るんじゃよ。\n「今日の 朝ごはん：黒パン」……\nだから 何なんじゃ！！",
+                    "魔法使いが「空中文字術」で 自分の 考えを\n世界中に 飛ばせるらしい。\n昨日「うちの ドラゴンが かわいい」って 飛ばしてきた。\n……誰に 向けて 言ってるんじゃ？",
+                    "冒険者仲間が ダンジョン攻略の 記録を 掲示板に 貼ったら\n「エア討伐乙」って 落書きが 百件 増えた。\nバズるって こういうことか……\n全然 嬉しくない。",
+                    "商会長が「毎日 今日の 相場を 石版で 配信する」と 言い出した。\n朝起きたら 矢文で「今日の 鉄の値段：8G」が 届いた。\nフォロー 解除したい……\nどう やれば いいんじゃ。",
+                    "城壁に「いいね！の 石」を 押しつける 文化が 始まった。\nところが「よくない！の 石」を 投げつける 奴が 出てきた。\n普通に 暴力 じゃないか！！",
+                    "旅人が ドラゴン討伐の 話を 石版に 刻んで 配ったら\n「うそくさい 画像は？」って 矢文が 百本 返ってきた。\n現代は 怖い……証拠がないと 信じてもらえん。",
+                ];
+                // 恋愛事情 8パターン
+                const _love = [
+                    "好きな 女冒険者を 洞窟に 誘ったら\n「そういう 関係じゃない」と 言われた。\nでも 翌日 別の 男と ダンジョンに 行く 姿を 目撃。\nダンジョンが ダメなのか、\n俺だけが ダメなのか……",
+                    "三回 告白したが 毎回\n「今は 魔王討伐に 集中したい」と 断られた。\n魔王が 倒れたら 勝機かと 思ったら\n「勇者に 告白された」と 言い出した。\nタイミングとは 何じゃ……。",
+                    "婚約指輪を 贈ったら「重い」と 言われた。\n魔法の 鉄で 打った 特注品だったんだが……\nほんとうに 重かったのか、\n気持ちが 重かったのか、\n今でも 分からない。",
+                    "付き合って 三ヶ月で 相手が\n「実は 精霊だった」と 告白してきた。\n驚いたが まあ 続いておる。\nただ 雨の 日に 体が 半透明に なるのが\nなかなか 慣れん。",
+                    "転職したら 元カレに 再会した。\n剣士から 僧侶に なっておった。\n「丸くなった？」と 聞いたら\n「回復魔法を 覚えたら 自然と」と 言ってた。\n笑えるやら 笑えないやら。",
+                    "城下町の 宿屋の 娘さんに\n三年 思いを 寄せておった。\n今日 勇気を 出したら\n「もう 勇者と 婚約した」と 言われた。\n……勇者め！！",
+                    "恋の 魔法薬を 飲んだ。\n効果が 出たのか 出てないのか よく 分からない。\nただ 何となく 飲む前より\n犬が かわいく 見える。\nこれは 副作用か？",
+                    "一目 惚れした 相手が\n実は 変装した モンスターだった。\n気持ちは 本物だったが\n相手が 本物じゃなかった。\n……どう すれば。",
+                ];
+                const _ri = n => Math.floor(Math.random() * n);
+
+                // 踊り子 → 恋愛ネタ (ロマンチックな職業ゆえ)
+                if (npc.id === 'npc_gar_dancer') {
+                    await typeMessage(`【踊り子】
+${_love[_ri(_love.length)]}`);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 貴族の令嬢 → SNSネタ (社交界なので情報通)
+                if (npc.id === 'npc_gar_noblewoman') {
+                    await typeMessage(`【貴族の令嬢】
+${_sns[_ri(_sns.length)]}`);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // ガルド村の旅人 / 一般旅人 → SNS+恋愛を交互に
+                if (npc.id === 'npc_gar_traveler') {
+                    const _mixed = [..._sns, ..._love];
+                    await typeMessage(`【旅人】
+${_mixed[_ri(_mixed.length)]}`);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 長老 → SNSへの苦言 (老害風に)
+                if (npc.id === 'npc_gar_elder_01') {
+                    const _e = [
+                        `【長老】
+${_sns[_ri(_sns.length)]}
+……ったく、昔は 口コミじゃった。`,
+                        `【長老】
+${_sns[_ri(_sns.length)]}
+儂が 若い頃には こんなものは なかった。`,
+                        `【長老】
+${_love[_ri(_love.length)]}
+まあ……若い頃は 儂も そんなもんじゃったよ。`,
+                    ];
+                    await typeMessage(_e[_ri(_e.length)]);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 一般女性NPC → 恋愛ネタ (女子トーク)
+                if (npc.id === 'npc_gar_woman_01') {
+                    await typeMessage(`【市民の女性】
+${_love[_ri(_love.length)]}`);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 城の衛兵A → SNSネタ (仕事中に噂)
+                if (npc.id === 'npc_castle_guard_a') {
+                    const _g = [
+                        `【衛兵】
+（小声で）
+${_sns[_ri(_sns.length)]}`,
+                        `【衛兵】
+当直中に 聞いた 話なんだが……
+${_love[_ri(_love.length)]}
+……ないしょで 頼む。`,
+                    ];
+                    await typeMessage(_g[_ri(_g.length)]);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 城の衛兵B → 恋愛ネタ (仕事中に悩み相談)
+                if (npc.id === 'npc_castle_guard_b') {
+                    await typeMessage(`【衛兵】
+（ため息をつきながら）
+${_love[_ri(_love.length)]}
+どうしたら いいと 思う？`);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 城の兵士L → 兵舎の SNS話
+                if (npc.id === 'npc_castle_soldier_l') {
+                    await typeMessage(`【兵士】
+訓練の 合間に 聞いた 話だが……
+${_sns[_ri(_sns.length)]}
+……え、仕事しろ？ はい。`);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 城の兵士R → 兵舎の恋愛悩み
+                if (npc.id === 'npc_castle_soldier_r') {
+                    await typeMessage(`【兵士】
+実は 相談が あるんだが……
+${_love[_ri(_love.length)]}
+……隊長には 内緒で 頼む。`);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 噂好きNPC → 両方を混ぜて語る
+                if (npc.id === 'npc_sub_rumor') {
+                    const _all = [
+                        `【噂好き】
+聞いてよ！ 最近こんな 噂があるのよ！
+${_sns[_ri(_sns.length)]}`,
+                        `【噂好き】
+実はね……
+${_love[_ri(_love.length)]}
+それで どうなったか 続き 聞きたい？`,
+                        `【噂好き】
+これ 誰にも 言っちゃダメよ？
+${_love[_ri(_love.length)]}
+（ところで あなたは 恋人 いるの？）`,
+                    ];
+                    await typeMessage(_all[_ri(_all.length)]);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 市場のNPC各種 → 商売と SNS/恋愛が交差
+                if (npc.id === 'npc_market_food' || npc.id === 'npc_market_herb' ||
+                    npc.id === 'npc_market_cloth' || npc.id === 'npc_market_stall' ||
+                    npc.id === 'npc_market_pottery' || npc.id === 'npc_market_peddler') {
+                    const _m = [
+                        `【市場の商人】
+買ってくれるのは ありがたいが……
+${_sns[_ri(_sns.length)]}`,
+                        `【市場の商人】
+お客さん 聞いてよ……
+${_love[_ri(_love.length)]}
+まあ 商売も 恋も 一期一会じゃよ。`,
+                        `【市場の商人】
+うちの 常連さんがね……
+${_love[_ri(_love.length)]}`,
+                    ];
+                    await typeMessage(_m[_ri(_m.length)]);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 骨董品・宝石・毛皮の商人 → ちょっと格式高いが同じ悩み
+                if (npc.id === 'npc_market_antique' || npc.id === 'npc_market_jewel' ||
+                    npc.id === 'npc_merchant_fur' || npc.id === 'npc_merchant_farm') {
+                    const _ma = [
+                        `【商人】
+お耳を 拝借……
+${_sns[_ri(_sns.length)]}
+まったく 世も末じゃな。`,
+                        `【商人】
+仕入れの 旅で 聞いた 話だが……
+${_love[_ri(_love.length)]}`,
+                    ];
+                    await typeMessage(_ma[_ri(_ma.length)]);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 修理屋・一般市場 → 職人らしい語り口
+                if (npc.id === 'npc_market_repair') {
+                    await typeMessage(`【修理屋】
+まあ 仕事の 合間にな……
+${_love[_ri(_love.length)]}
+……って 話を 聞いた。
+剣は 磨けば 光るが
+恋は 磨けば いいというものでも ないな。`);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+                // 海賊の部下 → 海賊流の恋愛観
+                if (npc.id === 'npc_pirate_sailor') {
+                    const _p = [
+                        `【海賊】
+よう 旅人！
+${_love[_ri(_love.length)]}
+うちの 船長も 昔は こんな 感じだったぜ。`,
+                        `【海賊】
+（酒を飲みながら）
+${_sns[_ri(_sns.length)]}
+まあ 海に 出りゃそんな 悩み 吹き飛ぶけどな！`,
+                    ];
+                    await typeMessage(_p[_ri(_p.length)]);
+                    state='FIELD'; hideAllWindows(); drawMap(); return;
+                }
+            }
+
             // ===== ミーラ村 NPC (進行状況対応) =====
             if (npc.id === "npc_frontier_elder") {
                 if (partyData.flags.flag_dungeon_cleared) {
