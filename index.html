@@ -5786,7 +5786,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 // NPC 会話定義
                 if (!externalEntitiesData['npc_frontier_elder']) externalEntitiesData['npc_frontier_elder'] = { id:'npc_frontier_elder', name:'村長', msg:'ここは ミーラ村。\nこの 先の 南の 海岸に\n試練の 洞窟が あるぞ。\n腕に 自信がなければ\nまず 力を 蓄えて 来い。' };
                 if (!externalEntitiesData['npc_frontier_guard']) externalEntitiesData['npc_frontier_guard'] = { id:'npc_frontier_guard', name:'村の衛兵', msg:'ここより 南の 海岸に 試練の 洞窟がある。\n最深部には 恐ろしい ボスが いるらしい……\n宿屋で 十分に 休んで から 挑め。' };
-                if (!externalEntitiesData['npc_frontier_girl']) externalEntitiesData['npc_frontier_girl'] = { id:'npc_frontier_girl', name:'村の少女', msg:'ねえ 知ってる？\n洞窟を 抜けると 船が 手に入るって！\nどんなに 遠い 島にも 行けるようになるんだって！' };
+                if (!externalEntitiesData['npc_frontier_girl']) externalEntitiesData['npc_frontier_girl'] = { id:'npc_frontier_girl', name:'村の少女', msg:'南の 洞窟に 挑む 旅人さん？\n宿屋で 十分 休んでから 行くんだよ！\n気をつけてね！' };
                 if (!externalEntitiesData['npc_inn_frontier']) externalEntitiesData['npc_inn_frontier'] = { id:'npc_inn_frontier', name:'宿屋のおばさん', type:'inn', msg:'ここは ミーラ村の 宿屋じゃよ。\n洞窟に 挑む前に ゆっくり 休んでいきなされ。' };
                 if (!externalEntitiesData['npc_item_shop_frontier']) externalEntitiesData['npc_item_shop_frontier'] = { id:'npc_item_shop_frontier', name:'道具屋', type:'shop', msg:'旅人さん！\n洞窟に 行くなら やくそうは たっぷり 持っていくんじゃよ！\nうちには 安くて 便利な ものが 揃っとる。' };
             }
@@ -9684,29 +9684,44 @@ async function checkAction() {
             // 宮廷賢者3人（進行ヒント）
             if (npc.id === 'npc_advisor_hall_1' || npc.id === 'npc_advisor_hall_2' || npc.id === 'npc_advisor_hall_3') {
                 const _hi = npc.id.slice(-1);
-                const _msgs = {
-                    '1': [
-                        // 試練の洞窟前
-                        "【宮廷賢者】\nまずは 南西の 海岸へ 向かえ。\nミーラ村で 休憩してから\n『試練の 洞窟』を 制覇するのじゃ。\n洞窟の 最奥に 守護霊がいる……\n倒せば 船を 授けてくれるはずじゃ！",
-                        // 洞窟後
-                        "【宮廷賢者】\n洞窟を 制覇したか！\n次は 主大陸 北西の\n『北のダーマ神殿』へ 向かえ。\n転職して 力を 高めてから\n海へ 出るのじゃ！",
-                        // ダーマ後
-                        "【宮廷賢者】\n転職も 済ませたか。\n船で 南西の 海へ！\n伝説の 鍛冶屋が 住む 孤島がある。\n星砕きの 剣を 鍛えてもらえ！"
-                    ],
-                    '2': [
-                        "【宮廷賢者】\n剣を 手に入れたら\n北の 海に 出るのじゃ。\n北西の 孤島には 海賊王バルゴがいる。\n倒せば 東への 海図が 手に入る！",
-                        "【宮廷賢者】\n海図を 持って 北東へ！\n東の 島に 『天空の 塔』がある。\n頂上の 守護者を 倒し\n天空の 力を 授かるのじゃ。\nその 力なくして 魔王城には 入れぬ……",
-                        "【宮廷賢者】\n天空の 力を 得たならば\n東の 極果てに 住む\n大魔導士 ラムダスを 探せ。\n究極の 魔法こそ\n魔王の 闇を 打ち破る 鍵じゃ！"
-                    ],
-                    '3': [
-                        "【宮廷賢者】\n全ての 準備が 整ったなら\n南東の 暗い 島へ 向かえ。\nそこに 魔王城がある。\nただし 天空の 塔の 力なくして\n城の 扉は 開かぬぞ……",
-                        "【宮廷賢者】\n魔王城は 手強い。\n宝物庫の 封印を 解く 力\nそして 仲間たちの 絆が\nお前たちの 最大の 武器じゃ！\n諦めるな……世界は お前たちを 待っている！",
-                        "【宮廷賢者】\n冒険の 途中で 行き詰まったら\nふしぎな 台帳を 見るのじゃ。\n各地に サブストーリーが 眠っている。\nそれを 解けば 強力な 装備が 手に入るぞ！"
-                    ]
-                };
-                const _advMsgList = _msgs[_hi] || _msgs['1'];
-                let _advIdx = partyData.flags.last_boss_defeated ? 2 : (partyData.flags.flag_tower_cleared ? 1 : (partyData.flags.flag_dungeon_cleared ? (partyData.flags.flag_dharma_north_visited ? (partyData.flags.flag_weapon_forged ? (partyData.flags.flag_pirate_king_cleared ? 1 : 0) : 0) : 0) : 0));
-                await typeMessage(_advMsgList[Math.min(_advIdx, _advMsgList.length - 1)]);
+                // 進行段階を計算
+                const _advDone = partyData.flags.last_boss_defeated;
+                const _advSt = _advDone ? 5 :
+                    partyData.flags.flag_mage_trial_cleared ? 4 :
+                    partyData.flags.flag_tower_cleared ? 3 :
+                    partyData.flags.flag_pirate_king_cleared ? 3 :
+                    partyData.flags.flag_weapon_forged ? 2 :
+                    partyData.flags.flag_dungeon_cleared ? 1 : 0;
+                // 賢者1: 今すぐやるべきこと
+                const _adv1 = [
+                    "【宮廷賢者①】\nまずは 南西へ 向かえ。\nミーラ村で 休憩してから\n『試練の 洞窟』を 制覇するのじゃ。\n洞窟を 抜ければ 次の 道が 開けるはずじゃ！",
+                    "【宮廷賢者①】\n洞窟を 制覇したか！\n次は 主大陸 北西の\n『北のダーマ神殿』へ 向かえ。\n転職して 力を 高めてから\n海へ 乗り出すのじゃ。",
+                    "【宮廷賢者①】\n転職も 済ませたか。\n船で 南西の 海へ 乗り出せ！\n伝説の 鍛冶屋が 待っておる。\nほしのカケラを 3つ 集めて 星砕きの剣を 打てるぞ！",
+                    "【宮廷賢者①】\n剣を 手に入れたか！\n北の 海へ 乗り出せ。\n北西の 孤島に 海賊王バルゴがいる。\n倒せば 東への 海図が 手に入るぞ！",
+                    "【宮廷賢者①】\n天空の 力と 究極の 魔法を 手に入れたか。\n残るは 魔王城のみ。\n南東の 暗い 島へ 向かえ。\n……生きて 帰れ。",
+                    "【宮廷賢者①】\n魔王を 倒したか……！\nお前たちは 本当に 偉業を 成し遂げた。\nこの 城は いつでも 勇者たちの 帰る 場所じゃ。"
+                ];
+                // 賢者2: 戦略・準備のアドバイス
+                const _adv2 = [
+                    "【宮廷賢者②】\n旅立つ 前に この 城の 宝箱を 忘れるな。\n南の 廊下に 5つの 宝箱がある。\nまた 戦いの 前は 必ず HPと MPを 満タンにするのじゃ。",
+                    "【宮廷賢者②】\n船が 手に入ったなら 世界中を 旅できる。\nまずは 近隣の 港から 探索してみよ。\n各地の 町人から 噂を 集めれば\n次の 道が 自然と 分かるじゃろう。",
+                    "【宮廷賢者②】\n星砕きの剣を 打つには 3つの カケラが 必要じゃ。\nカケラは 各地の ダンジョンや 隠し 場所に 眠っておる。\nふしぎな 台帳に ヒントが 書いてあるぞ！",
+                    "【宮廷賢者②】\n北の 大洋には 様々な 島がある。\n地図を 手に入れれば 航路が 開けるじゃろう。\n焦らず 探索しながら 進むのじゃ。",
+                    "【宮廷賢者②】\n魔王城は 複数の 階層がある。\n各所に ボスが 控えておるぞ。\n仲間の 絆と 満タンの 回復アイテムで 挑め！",
+                    "【宮廷賢者②】\n冒険の 途中で 行き詰まったら\nふしぎな 台帳を 見るのじゃ。\n各地に サブストーリーが 眠っている。\nそれを 解けば 強力な 装備が 手に入るぞ！"
+                ];
+                // 賢者3: 世界の謎・伏線
+                const _adv3 = [
+                    "【宮廷賢者③】\nこの 王国には 古くから 伝わる 言葉がある。\n「選ばれし 者のみが 世界を 変える」……\nじゃが 世界を 変えるのは 本当に「選ばれた者」だけか？\nわしには 分からなくなってきた……。",
+                    "【宮廷賢者③】\n各地には 聖なる 祠がある。\n転職や 情報収集に 役立てるのじゃ。\n旅の 中で 立ち寄れば 必ず 助けに なるぞ。",
+                    "【宮廷賢者③】\nこの 世界の 闇は 一体 どこから 来たのか……\n古い 文献を 読めば 読むほど\n不思議な 点が 増えていく。\n旅の 途中で その 答えが 分かるかもしれんぞ。",
+                    "【宮廷賢者③】\n王国の 歴史は 百年前に 一度 大きく 変わった。\nその 前後で 何が 起きたのか……\nラムダスという 大魔導士が 知っているらしい。\nいずれ 出会う 機会が あるじゃろう。",
+                    "【宮廷賢者③】\n魔王城の 奥に 何が 待つかは 誰も 知らない。\n……いや、一人だけ 知っておる 者がいるかもしれぬが。\n真実を 見つけるのは お前たちじゃ。",
+                    "【宮廷賢者③】\nお前たちは 伝説を 作った。\nじゃが その 伝説は まだ 続く……\nこの 世界に 残された 謎を\n自分の 足で 解き 明かすのじゃ。"
+                ];
+                const _safeIdx = Math.min(_advSt, 5);
+                const _advMsg = _hi === '1' ? _adv1[_safeIdx] : (_hi === '2' ? _adv2[_safeIdx] : _adv3[_safeIdx]);
+                await typeMessage(_advMsg);
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             // 化粧台
@@ -10167,7 +10182,7 @@ async function checkAction() {
                     await typeMessage("【国王グラード】\nおお……きたか。\nよくぞ 参った……\nお前のことは ずっと 注目しておったぞ。");
                     await typeMessage("【国王グラード】\n今 この国には「光の 継承者」が 必要じゃ。\n星占い師が 言うのじゃよ——\n「まだ 若く、未熟な 者のみが\n東の 天空の 塔に 登り 光を 継ぐ」と。\nそれが お前だ。");
                     await typeMessage("【国王グラード】\nわが 騎士団の 者たちは……\n老練すぎて「天空の 光」は 宿らない。\n（王の 瞳の 奥に 一瞬 冷たい 光が 走った 気がした）\n若い お前にしか できない 旅じゃ。");
-                    await typeMessage("【国王グラード】\nまずは 城の 南西の 海岸を 歩いて 進め。\n試練の 洞窟が ある。\n洞窟を 制覇したら 浜辺に 船が 現れるはずじゃ。\nその 船で 東の 島の 天空の 塔を 目指せ。");
+                    await typeMessage("【国王グラード】\nまずは 南西へ 向かえ。\n途中に ミーラ村という 村がある。\nそこで 英気を 養い\n更に 南の「試練の 洞窟」に 挑むのじゃ。\n……あとの ことは 旅の 途中で 分かるじゃろう。");
                     await typeMessage("【国王グラード】\n勇者よ……\n……期待しておるぞ。");
                     partyData.gold += 200;
                     updateGoldWindow();
@@ -10926,7 +10941,15 @@ async function checkAction() {
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_nord_captain") {
-                await typeMessage("【港の船長】\nノルド港へ ようこそ！\nここは 冒険者が 集まる 北東の 玄関口じゃ。\n東には エストリア王国、\n北東には ザーモ古城、\n南には 砂漠の デセルタ王国がある。\n船で 各地を 旅するが いい！");
+                if (partyData.flags.flag_pirate_king_cleared) {
+                    await typeMessage("【港の船長】\n海賊王まで 倒したか！\nあの 海を 越えれば 天空の 塔がある。\n北東の 大洋を 進んでいけ！\n頂上に 天空の 力が 眠っておる！");
+                } else if (partyData.flags.flag_weapon_forged) {
+                    await typeMessage("【港の船長】\n伝説の剣を 手に入れたとは！\n次は 北西の 孤島に 海賊王バルゴがおる。\nやつを 倒して 海図を 奪えば\n東への 航路が 開けるぞ！");
+                } else if (partyData.flags.flag_dungeon_cleared) {
+                    await typeMessage("【港の船長】\nノルド港へ ようこそ！\nここは 冒険者が 集まる 北東の 玄関口じゃ。\n東には エストリア王国、\n北東には ザーモ古城。\nどこへ 向かう？ 各地への 船が 出ておるぞ！");
+                } else {
+                    await typeMessage("【港の船長】\nノルド港へ ようこそ！\nここは 冒険者が 集まる 北東の 玄関口じゃ。\n東には エストリア王国、\n北東には ザーモ古城、\n南には 砂漠の デセルタ王国がある。\n船で 各地を 旅するが いい！");
+                }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
             if (npc.id === "npc_rosalia_girl") {
@@ -11043,6 +11066,152 @@ async function checkAction() {
             }
             if (npc.id === "npc_estoria_citizen_a") {
                 await typeMessage("【市民】\nエストリアは 強い 王国だけど……\n私は 思うんだ。強さって 武力だけじゃない と。\n王様が 覇者に 求めているのは\n本当に 力だけなのかな……？");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ===== ミーラ村 NPC (進行状況対応) =====
+            if (npc.id === "npc_frontier_elder") {
+                if (partyData.flags.flag_dungeon_cleared) {
+                    await typeMessage("【村長】\n洞窟を 制覇したか！\n南の 浜辺に 船が 現れたじゃろう。\n船に 乗れば 海を 渡って 新たな 大地へ と 行けるぞ。\n北東に 冒険者の 港 ノルドがある。\n行ってらっしゃい！");
+                } else {
+                    await typeMessage("【村長】\nここは ミーラ村。\nこの 先の 南の 海岸に\n試練の 洞窟が あるぞ。\nまずは 宿屋で 体を 休めてから 向かえ。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_frontier_guard") {
+                if (partyData.flags.flag_dungeon_cleared) {
+                    await typeMessage("【村の衛兵】\n洞窟のボスを 倒したとは！\n浜辺に 船が 出たそうじゃないか。\nこれで 世界が 広がった。\n行ってらっしゃい！");
+                } else {
+                    await typeMessage("【村の衛兵】\nここより 南の 海岸に 試練の 洞窟がある。\n最深部には 恐ろしい ボスが いるらしい……\n宿屋で 十分に 休んでから 挑め。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_frontier_girl") {
+                if (partyData.flags.flag_dungeon_cleared) {
+                    await typeMessage("【村の少女】\nすごい！洞窟を 突破したんだね！\n浜辺に 船が 現れたって 聞いたよ！\n次の 冒険、応援してるよ！");
+                } else {
+                    await typeMessage("【村の少女】\nここより 南が 試練の 洞窟よ。\n宿屋で 十分 回復してから 挑むのよ！\nくれぐれも 無理しちゃダメよ！");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ===== ガルド村 NPC (town_02, 洞窟近く・鍛冶屋の村) =====
+            if (npc.id === "npc_guide_02") {
+                if (partyData.flags.flag_weapon_forged) {
+                    await typeMessage("【ガルド村長】\n伝説の剣が 鍛えられたか！\nうちの 鍛冶屋が お役に 立てたとは 光栄じゃ。\n次の 旅へ……息災でな！");
+                } else if (partyData.flags.flag_dungeon_cleared) {
+                    await typeMessage("【ガルド村長】\n洞窟を 制覇したとは！ よくやった。\nうちの 伝説の 鍛冶屋に 話しかけておくれ。\n素材さえ 揃えれば 最強の 剣が 打てるという。");
+                } else {
+                    await typeMessage("【ガルド村長】\nここは 南西の 村 ガルドじゃ。\n南西の 方角に「試練の 洞窟」がある。\n宿屋で 十分 英気を 養ってから 向かうのじゃぞ。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_sub_smith") {
+                if (partyData.flags.flag_weapon_forged) {
+                    await typeMessage("【伝説の鍛冶屋】\n剣は 無事かい？\nあの剣は 俺の 魂を 込めた 最高傑作じゃ。\n大事に 使ってくれよ……頼む。");
+                } else if (partyData.flags.flag_dungeon_cleared) {
+                    if (getSQ('sq_06') >= 4) {
+                        await typeMessage("【伝説の鍛冶屋】\nほしのカケラが 3つ 揃ったか！\nよし……今すぐ 打とう！\n少し 待っておれ！");
+                    } else {
+                        await typeMessage("【伝説の鍛冶屋】\n洞窟を 制覇した 者か……\n聞いてくれ。星の 伝承書に こう ある。\n「三つの カケラが 揃う時、星砕きの 剣が 現れる」と。\nほしのカケラを 三つ 集めてきてくれないか！");
+                    }
+                } else {
+                    await typeMessage("【伝説の鍛冶屋】\nワシは 鍛冶師じゃ。\n今は 素材待ちでな……\nまた 話しかけてくれ。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_villager_03") {
+                if (partyData.flags.flag_dungeon_cleared) {
+                    await typeMessage("【農夫】\n洞窟の 唸り声が 止んだ！\nあなたが ボスを 倒したのか？\nやっと 安心して 畑仕事ができる。ありがとう！");
+                } else {
+                    await typeMessage("【農夫】\n南西の 洞窟から 時々\n地の底から 響くような 唸り声が する。\n農作業も 落ち着かんよ。誰か どうにかしてくれんかのう……");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_villager_04") {
+                if (partyData.flags.flag_dungeon_cleared) {
+                    await typeMessage("【旅人】\n洞窟を 突破した 者が 現れたと 聞いた！\n浜辺に 船が 出たそうじゃないか。\n世界が 広がるな。どこへ 向かうんだい？");
+                } else {
+                    await typeMessage("【旅人】\n南の「試練の洞窟」に 挑んで\n命を 落とした 者を 何人も 見てきた。\n宿屋で 十分 回復してから 向かえよ！\n焦ることは ない。");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_elder_w_01") {
+                await typeMessage("【村の老婆】\nまあ 旅人さん、疲れた 顔をしておるね。\n宿屋で ゆっくり 休んでいきなさい。\n南の 洞窟は 長い旅じゃ。\nMPを 満タンに してから 向かうんじゃよ。");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_young_01") {
+                if (partyData.flags.flag_dungeon_cleared && !partyData.flags.flag_weapon_forged) {
+                    await typeMessage("【若者】\n鍛冶屋の おじさんが 呼んでたよ！\n「洞窟を 制した 者が 現れたら 伝えてくれ」って。\n鍛冶屋に 話しかけてみなよ！");
+                } else if (partyData.flags.flag_weapon_forged) {
+                    await typeMessage("【若者】\n鍛冶屋が 打った 伝説の 剣……！\nすごい…… あんたは 本物の 英雄だよ！");
+                } else {
+                    await typeMessage("【若者】\nオレも いつか 南の 洞窟に 挑む 冒険者に なるんだ！\n今は 鍛冶屋の じいさんに 武器を 磨いて もらっている！");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_fisherman_01") {
+                if (partyData.flags.has_ship) {
+                    await typeMessage("【元漁師】\n船が 出たんだって！\n儂も 昔は 船乗りじゃったよ。\n北東の 方角に 進めば 冒険者の 港 ノルドに 着けるはずだ。\n寄港して 次の 目的地を 確かめるといい！");
+                } else {
+                    await typeMessage("【元漁師】\n昔 船乗りを しておった。\n南の 洞窟を 制した 者には\n浜辺に 船が 現れると 聞いておる。\nお前さんなら きっと 手に 入れられるじゃろう！");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_child_01") {
+                await typeMessage("【子供】\nここの 鍛冶屋の おじさんが 作った 武器は\n世界で 一番 強いんだよ！\nお兄ちゃん（お姉ちゃん）も 使う？");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            // ===== バルカ (東の市場, town_03) NPC =====
+            if (npc.id === "npc_guide_03") {
+                if (partyData.flags.flag_mage_trial_cleared) {
+                    await typeMessage("【案内人】\n大魔導士 ラムダス様から 究極の 魔法を……！\n伝説の 旅人たちに 会えて 光栄です。\nどうか 魔王城へ……ご武運を！");
+                } else if (partyData.flags.flag_tower_cleared) {
+                    await typeMessage("【案内人】\nここ バルカは 東の 大市場じゃ。\n奥に 大魔導士 ラムダス様が おられる。\n天空の 力を 持つ 者に 試練を 課すそうじゃ。\n話しかけてみよ！");
+                } else {
+                    await typeMessage("【案内人】\nここ バルカへ ようこそ！\n東の 大市場じゃ。\n北に ノルド港、北東に ザーモ古城、\n東の 海にも 国があるぞ。\n腕に 自信があれば いろいろ 挑んでみよ！");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_merchant_01") {
+                if (partyData.flags.flag_tower_cleared) {
+                    await typeMessage("【商人】\n天空の 塔を 制した 者よ！\nここ バルカの 大魔導士 ラムダス様が\n真の 力を 授けてくれるという。\n奥の 部屋に おられる……！");
+                } else {
+                    await typeMessage("【商人】\n各地から 商品が 集まる 市場だが……\n東の 地下迷宮の せいで\n商人の 通行が 危険でな。\n誰か あの 迷宮の ボスを 倒してくれれば\nもっと 繁盛するんじゃが……");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_merchant_02") {
+                await typeMessage("【行商人】\n北の 古城ザーモには\n数百年来の 呪いが かかっているそうな。\n暗黒公リッチが 王の 霊を 囚えておると いう話よ。\n……腕の 立つ 者しか 近づけん らしいが。");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_child_01") {
+                await typeMessage("【子供】\nこのお市場にはいろんな 人が 来るんだよ！\n昨日は 天空の 塔から 逃げてきたって 旅人も いた！\nあそこは よほど 恐ろしいんだろうな……");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_young_01") {
+                if (partyData.flags.flag_dungeon_cleared) {
+                    await typeMessage("【若い商人】\n東の 地下迷宮か……\n腕の 立つ 者が 挑んでいるが\n誰も 制覇できていない。\nあんた なら やれそうだな！\n東の 海を 越えた先に あるぞ。");
+                } else {
+                    await typeMessage("【若い商人】\nここ 商都 バルカ。\n東の 地下迷宮を 制した 者は\n業界で 一目 置かれるって 話だ。\n挑んでみるかい？");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_soldier_01") {
+                await typeMessage("【衛兵】\n東の 方角に 地下迷宮がある。\n南東には エストリア城、\nその 北東には ザーモ 古城がある。\n冒険者なら 腕試しに 行ってみるが いい……\nが、無理は するなよ。");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_woman_01") {
+                await typeMessage("【市場の女性】\nラムダス様が ここに 居を 構えて もう 長い。\n不思議な お方よ……\n百年前から ずっと 生きてると いう 噂がある。\n実際 話してみると 温かい 目を している 方よ。");
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_bar_fisherman_01") {
+                if (partyData.flags.flag_tower_cleared) {
+                    await typeMessage("【海の男】\n天空の 塔を 制した と 聞いた！\nここ バルカの 大魔導士に 話しかければ\n究極の 力が もらえるって 噂だぞ！\nぜひ 試してみな！");
+                } else {
+                    await typeMessage("【海の男】\n儂は 南の 海峡で 漁をするんじゃが……\nコーラルの 東南に 地下迷宮がある。\n底まで 続く 深い 洞窟とか……\nまあ、関係ない 話じゃよ。海は 怖い。");
+                }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
 
