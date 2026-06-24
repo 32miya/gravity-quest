@@ -1472,15 +1472,39 @@ const AudioManager = {
             break;
         // 属性魔法SE
         case 'magic_fire':
-            this.playNoise(0.1, 0.45); this.playTone(180, 'sawtooth', 0.55, 0.38, 900);
-            setTimeout(() => this.playTone(280, 'sawtooth', 0.3, 0.28, 1400), 110);
+            // チャージ "キィィィン" - 上昇サイン波
+            this.playTone(600, 'sine', 0.68, 0.25, 3200);
+            this.playTone(350, 'triangle', 0.55, 0.10, 1600);
+            // 爆発 "ズガガァァァン" + 轟音 "ゴォォォ"
+            setTimeout(() => {
+                this.playNoise(0.32, 0.88);
+                this.playTone(62, 'sawtooth', 0.52, 0.58, 22);
+                this.playTone(42, 'sine', 0.82, 0.46, 16);
+                setTimeout(() => this.playNoise(0.22, 0.40), 85);
+            }, 720);
             break;
         case 'magic_ice':
-            [2200, 1800, 2600, 1600, 3000].forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 0.18, 0.2), i * 75));
+            // パリパリパリ - 高速高音パルス
+            [2800, 2200, 3200, 2600, 3600, 2400, 3000, 2800].forEach((f, i) =>
+                setTimeout(() => this.playTone(f, 'sine', 0.06, 0.18), i * 35));
+            // シャキィィィン - 鋭い金属音
+            setTimeout(() => this.playTone(2400, 'triangle', 0.38, 0.36, 3900), 310);
+            // パラパラ - 降下クリスタル残響
+            [3200, 2500, 1700, 1100].forEach((f, i) =>
+                setTimeout(() => this.playTone(f, 'sine', 0.16, 0.14), 700 + i * 75));
             break;
         case 'magic_lightning':
-            this.playNoise(0.06, 0.75); this.playTone(90, 'sawtooth', 0.07, 0.6, 40);
-            setTimeout(() => { this.playNoise(0.09, 0.5); this.playTone(70, 'square', 0.12, 0.4, 30); }, 70);
+            // ビキビキ - 電気スパーク連射
+            [2200, 1600, 2800, 1400, 2600, 1800].forEach((f, i) =>
+                setTimeout(() => { this.playTone(f, 'sawtooth', 0.05, 0.26); this.playNoise(0.025, 0.18); }, i * 30));
+            // ドッゴォォォン + バリバリバリ + 低轟音
+            setTimeout(() => {
+                this.playNoise(0.42, 0.92);
+                this.playTone(52, 'sawtooth', 0.48, 0.62, 18);
+                this.playTone(36, 'sine', 0.65, 0.48, 14);
+                [320, 180, 280, 140, 240].forEach((f, i) =>
+                    setTimeout(() => this.playTone(f, 'sawtooth', 0.09, 0.28), i * 60));
+            }, 210);
             break;
         case 'magic_wind':
             this.playTone(700, 'sine', 0.65, 0.28, 200); this.playNoise(0.5, 0.15);
@@ -4314,7 +4338,7 @@ function generateDQStyleMaps() {
             if(externalMapData['map_tower_1f']){
                 const _fw=externalMapData['map_field_4_0'].width||45;
                 const _fh=externalMapData['map_field_4_0'].height||45;
-                const _ey=Math.min(_twrP.y+1,_fh-2);
+                const _ey=_twrP.y;
                 const _ep={map:'map_field_4_0',x:_twrP.x,y:_ey};
                 externalMapData['map_tower_1f'].exits['10,22']=_ep;
                 externalMapData['map_tower_1f'].exits['11,22']=_ep;
@@ -4697,7 +4721,7 @@ function generateDQStyleMaps() {
     if(!externalMapData['map_dharma_temple_north']){
         // フィールド入口位置を先に確定してから出口座標に使う
         const _dnp = findLand('map_field_1_1', 22, 18);
-        const _dnRet = _dnp ? {x:_dnp.x, y:_dnp.y+1} : {x:22,y:19};
+        const _dnRet = _dnp ? {x:_dnp.x, y:_dnp.y} : {x:22,y:19};
         const mn = mkMap(16,16,
             [[1,1,14,9],[3,11,10,3]],
             [[7,9,7,11]],
@@ -4922,7 +4946,7 @@ function generateDQStyleMaps() {
             {'6,2':{id:'boss_dark_general',name:'暗黒の魔将'},'3,5':{id:'obj_chest_haiya_axe',name:'古びた宝箱'}},
             [],'廃屋');
         const _f30=externalMapData['map_field_3_0'];
-        if(_f30){let _hp=findLand('map_field_3_0',25,38);if(_hp){_f30.tiles[_hp.y*(_f30.width||45)+_hp.x]=22;_f30.exits[_hp.k]={map:'map_abandoned_house',x:6,y:7};externalMapData['map_abandoned_house'].exits['6,8']={map:'map_field_3_0',x:_hp.x,y:_hp.y+1};externalMapData['map_abandoned_house'].exits['5,8']={map:'map_field_3_0',x:_hp.x,y:_hp.y+1};}}
+        if(_f30){let _hp=findLand('map_field_3_0',25,38);if(_hp){_f30.tiles[_hp.y*(_f30.width||45)+_hp.x]=22;_f30.exits[_hp.k]={map:'map_abandoned_house',x:6,y:7};externalMapData['map_abandoned_house'].exits['6,8']={map:'map_field_3_0',x:_hp.x,y:_hp.y};externalMapData['map_abandoned_house'].exits['5,8']={map:'map_field_3_0',x:_hp.x,y:_hp.y};}}
     }
 
     // ===== 南西の村 ガルド / 東の市場 バルカ  (既存 mkMap ベース) =====
@@ -5553,7 +5577,7 @@ function generateDQStyleMaps() {
         const _f30=externalMapData['map_field_3_0'];
         if(_f30){
             let _hp=findLand('map_field_3_0',25,38);
-            if(_hp){_f30.tiles[_hp.y*(_f30.width||45)+_hp.x]=22;_f30.exits[_hp.k]={map:'map_abandoned_house',x:7,y:10};externalMapData['map_abandoned_house'].exits['7,11']={map:'map_field_3_0',x:_hp.x,y:_hp.y+1};externalMapData['map_abandoned_house'].exits['8,11']={map:'map_field_3_0',x:_hp.x,y:_hp.y+1};}
+            if(_hp){_f30.tiles[_hp.y*(_f30.width||45)+_hp.x]=22;_f30.exits[_hp.k]={map:'map_abandoned_house',x:7,y:10};externalMapData['map_abandoned_house'].exits['7,11']={map:'map_field_3_0',x:_hp.x,y:_hp.y};externalMapData['map_abandoned_house'].exits['8,11']={map:'map_field_3_0',x:_hp.x,y:_hp.y};}
         }
         externalMapData['map_abandoned_house']=_ah;
     }
@@ -5781,7 +5805,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     _vt.push((y===0||y===_vh-1||x===0||x===_vw-1)&&!(y===_vh-1&&x===6)?1:0);
                 }
                 const _vfp=findLand("map_field_2_1",22,30);
-                const _vret=_vfp?{map:'map_field_2_1',x:_vfp.x,y:_vfp.y+1}:{map:'map_field_2_1',x:22,y:31};
+                const _vret=_vfp?{map:'map_field_2_1',x:_vfp.x,y:_vfp.y}:{map:'map_field_2_1',x:22,y:31};
                 externalMapData['map_waypoint_village']={
                     width:_vw,height:_vh,tiles:_vt,encounters:[],
                     exits:{'6,11':_vret},
@@ -5799,7 +5823,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     externalMapData["map_field_2_1"].tiles[_vfp.y*(externalMapData["map_field_2_1"].width||45)+_vfp.x]=21;
                     externalMapData["map_field_2_1"].exits[_vfp.k]={map:'map_waypoint_village',x:6,y:10};
                     // 旅人の里の出口座標も更新（脱出時に村入口の1マス前に戻る）
-                    externalMapData['map_waypoint_village'].exits['6,11']={map:'map_field_2_1',x:_vfp.x,y:_vfp.y+1};
+                    externalMapData['map_waypoint_village'].exits['6,11']={map:'map_field_2_1',x:_vfp.x,y:_vfp.y};
                 }
             }
             // ===== 洞窟前哨村 ミーラ (map_frontier_village) — field(0,3) =====
@@ -5835,8 +5859,8 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     if (_fp03) {
                         externalMapData['map_field_0_3'].tiles[_fp03.y*(externalMapData['map_field_0_3'].width||45)+_fp03.x] = 22;
                         externalMapData['map_field_0_3'].exits[_fp03.k] = {map:'map_frontier_village', x:7, y:11};
-                        externalMapData['map_frontier_village'].exits['7,12'] = {map:'map_field_0_3', x:_fp03.x, y:_fp03.y+1};
-                        externalMapData['map_frontier_village'].exits['8,12'] = {map:'map_field_0_3', x:_fp03.x, y:_fp03.y+1};
+                        externalMapData['map_frontier_village'].exits['7,12'] = {map:'map_field_0_3', x:_fp03.x, y:_fp03.y};
+                        externalMapData['map_frontier_village'].exits['8,12'] = {map:'map_field_0_3', x:_fp03.x, y:_fp03.y};
                     }
                 }
 
@@ -5864,7 +5888,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                         // town_02 の出口を このフィールド座標に固定
                         Object.keys(_t02exits||{}).forEach(k => {
                             if(_t02exits[k]&&_t02exits[k].map&&/^map_field_/.test(_t02exits[k].map)) {
-                                _t02exits[k] = {map:'map_field_1_3', x:_t02P.x, y:_t02P.y+1};
+                                _t02exits[k] = {map:'map_field_1_3', x:_t02P.x, y:_t02P.y};
                             }
                         });
                     }
@@ -5879,7 +5903,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     _st.push((y===0||y===_sh-1||x===0||x===_sw-1)&&!(y===_sh-1&&x===5)?1:0);
                 }
                 const _sfp=findLand("map_field_3_0",5,7);
-                const _sret=_sfp?{map:'map_field_3_0',x:_sfp.x,y:_sfp.y+1}:{map:'map_field_3_0',x:5,y:8};
+                const _sret=_sfp?{map:'map_field_3_0',x:_sfp.x,y:_sfp.y}:{map:'map_field_3_0',x:5,y:8};
                 externalMapData['map_sage_shrine']={
                     width:_sw,height:_sh,tiles:_st,encounters:[],
                     exits:{'5,9':_sret},
@@ -5970,7 +5994,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                     if(!_fp) continue;
                     if(_efMap.npcs[_fp.k]||_efMap.exits[_fp.k]) continue;
                     _efMap.npcs[_fp.k]={id:'obj_eden_entrance',name:'かくし扉'};
-                    const _retPos={map:_efKey,x:_fp.x,y:_fp.y+1};
+                    const _retPos={map:_efKey,x:_fp.x,y:_fp.y};
                     externalMapData['map_eden'].exits['10,15']=_retPos;
                     externalMapData['map_eden'].exits['11,15']=_retPos;
                     _ePlaced=true; break;
@@ -6010,7 +6034,7 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
                 const _fvT=_fvLayout.flat();
                 // 試練の洞窟のある map_field_0_4 の南部陸地を探す
                 const _fvP=findLand('map_field_0_4',10,35)||findLand('map_field_0_4',10,30)||findLand('map_field_0_4',8,28);
-                const _fvRet=_fvP?{map:'map_field_0_4',x:_fvP.x,y:_fvP.y+1}:{map:'map_field_0_4',x:10,y:36};
+                const _fvRet=_fvP?{map:'map_field_0_4',x:_fvP.x,y:_fvP.y}:{map:'map_field_0_4',x:10,y:36};
                 externalMapData['map_fishing_village_nw']={
                     width:_fvW,height:_fvH,tiles:_fvT,encounters:[],
                     exits:{'6,0':_fvRet,'7,0':_fvRet},  // 北出口→フィールドへ(洞窟方向)
@@ -8866,8 +8890,9 @@ function drawMap() {
                 if (externalImages['guard']) { ctx.save(); ctx.filter='hue-rotate(30deg) saturate(1.2) brightness(1.05)'; drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); ctx.restore(); }
                 else if (externalImages['oldMan']) { drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); }
             } else if (npc.id.startsWith('deco_')) {
-                // エディタの npc.scale を使ってサイズを再現
-                const _dsc = npc.scale || 1.0;
+                // エディタの npc.scale を使ってサイズを再現（石柱系はデフォルト2倍）
+                const _isPillar = npc.id === 'deco_pillar_stone' || npc.id === 'deco_stone_pillar2';
+                const _dsc = npc.scale || (_isPillar ? 2.0 : 1.0);
                 if (!window._decoGenCache) window._decoGenCache = {};
                 if (!window._decoGenCache[npc.id]) {
                     const _gi3raw = new Image();
@@ -9449,6 +9474,8 @@ async function checkAction() {
 
     if(currentMap.npcs && currentMap.npcs[key]) {
         const npc = currentMap.npcs[key]; const extDef = externalEntitiesData[npc.id];
+        // 装飾オブジェクト（石柱・柵・松明など）は会話不可
+        if (npc.id.startsWith('deco_')) { state = 'FIELD'; hideAllWindows(); drawMap(); return; }
         showGoldWindow();
         try {
             // 偽王討伐編: 魔王城クリア後、城の王様に話しかける → 偽王正体明かし → グラ王最終形態
@@ -13859,6 +13886,25 @@ async function showTitleScreen() {
             if (v && v.tiles && v.tiles.length > 0) externalMapData[k] = v;
         });
         console.log('[Editor] override applied:', Object.keys(window._GQ_PENDING_OVERRIDES).length, 'maps');
+        // override 適用後: 全ダンジョン/町→フィールド出口をフィールドマップの実際の入口位置に再同期
+        if (externalMapData) {
+            Object.keys(externalMapData).forEach(mapKey => {
+                if (mapKey.startsWith('map_field_') || mapKey.startsWith('map_ocean_')) return;
+                const _dm = externalMapData[mapKey];
+                if (!_dm || !_dm.exits) return;
+                Object.values(_dm.exits).forEach(ev => {
+                    if (!ev || !ev.map || !ev.map.startsWith('map_field_')) return;
+                    const _fm = externalMapData[ev.map];
+                    if (!_fm || !_fm.exits) return;
+                    for (const [fk, fv] of Object.entries(_fm.exits)) {
+                        if (fv && fv.map === mapKey) {
+                            const [fx, fy] = fk.split(',').map(Number);
+                            ev.x = fx; ev.y = fy; break;
+                        }
+                    }
+                });
+            });
+        }
     }
     _loadPct = 60;
     await loadExternalGrowthDatabase("https://www.gravity.place/share/ugcGame?id=38430");
