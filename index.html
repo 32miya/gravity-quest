@@ -4262,10 +4262,22 @@ function generateDQStyleMaps() {
         externalMapData['map_tower_1f']=m;
     }
 
-    // 天空の塔フィールド入口
+    // 天空の塔フィールド入口（島の中央付近を検索して確実に陸地に配置）
     if(externalMapData['map_field_4_0']){
-        const _twrP=findLand('map_field_4_0',7,12);
-        if(_twrP){externalMapData['map_field_4_0'].tiles[_twrP.y*(externalMapData['map_field_4_0'].width||45)+_twrP.x]=22;externalMapData['map_field_4_0'].exits[_twrP.k]={map:'map_tower_1f',x:10,y:21};}
+        const _twrP=findLand('map_field_4_0',30,20); // 海から遠い島の中心付近を検索
+        if(_twrP){
+            externalMapData['map_field_4_0'].tiles[_twrP.y*(externalMapData['map_field_4_0'].width||45)+_twrP.x]=22;
+            externalMapData['map_field_4_0'].exits[_twrP.k]={map:'map_tower_1f',x:10,y:21};
+            // 塔1Fの出口を実際の入口位置に合わせる（ハードコード(7,13)は海のため）
+            if(externalMapData['map_tower_1f']){
+                const _fw=externalMapData['map_field_4_0'].width||45;
+                const _fh=externalMapData['map_field_4_0'].height||45;
+                const _ey=Math.min(_twrP.y+1,_fh-2);
+                const _ep={map:'map_field_4_0',x:_twrP.x,y:_ey};
+                externalMapData['map_tower_1f'].exits['10,22']=_ep;
+                externalMapData['map_tower_1f'].exits['11,22']=_ep;
+            }
+        }
     }
 
     // ===== 天空の塔 2F 大吹き抜け・聖なる泉 (22x24) =====
@@ -4363,9 +4375,9 @@ function generateDQStyleMaps() {
         for(let y=3;y<=18;y++) if(m.tiles[y*W+11]===0) _sT(m,11,y,9);
         // NPCs
         m.npcs['2,6']={id:'obj_chest_armor',name:'宝箱（空中の秘宝）'};
-        m.npcs['20,12']={id:'npc_tower_spring',name:'聖なる泉'};
-        m.npcs['11,10']={id:'npc_tower_cloud_marker',name:'雲海を見渡す場所'};
-        m.npcs['11,15']={id:'npc_tower_cloud_marker',name:'天空の風が吹き荒れている'};
+        m.npcs['18,12']={id:'npc_tower_spring',name:'聖なる泉'};           // (20,12)→ピラー回避で18に移動
+        m.npcs['7,6']={id:'npc_tower_cloud_marker',name:'雲海を見渡す場所'}; // 左回廊(通路外)
+        m.npcs['16,13']={id:'npc_tower_cloud_marker',name:'天空の風が吹き荒れている'}; // 右回廊下段
         externalMapData['map_tower_3f']=m;
     }
 
@@ -7642,11 +7654,21 @@ function drawProceduralTile(ctx, tile, px, py, rand, now, mc, lights) {
             ctx.moveTo(px+cx, py+top); ctx.lineTo(px+cx+sh*0.6, py+top+sh*0.72); ctx.lineTo(px+cx+sh*0.15, py+top+sh*0.42);
             ctx.closePath(); ctx.fill();
         });
-    } else if (tile === 5) { // 水（DQ3スタイル明るい青）
-        let w1 = Math.sin(now / 700 + rand * 3.1) * 2, w2 = Math.sin(now / 950 + rand * 5.3 + 1) * 2;
-        fr('#1878d8', 0, 0, T, T); fr('#2090e8', 0, fl(5 + w1), T, 7); fr('#28a8f8', 2, fl(13 + w2), T - 4, 6);
-        fr('rgba(255,255,255,0.55)', fl(2 + rand * 8), fl(5 + w1), 10, 2); fr('rgba(255,255,255,0.38)', fl(14 + rand * 9), fl(15 + w2), 8, 2);
-        fr('rgba(255,255,255,0.2)', fl(8 + rand * 6), fl(24 + w1), 7, 1);
+    } else if (tile === 5) { // 水 or 天空の塔の虚空
+        if (tower) {
+            // 天空の塔: 虚空（空色 + 薄い流れ雲）
+            fr('#88c8f0', 0, 0, T, T);
+            fr('#a0d4f8', 0, 0, T, fl(T * 0.55));
+            const _ca = 0.13 + Math.sin(now / 1800 + rand * 5.2) * 0.07;
+            fr(`rgba(255,255,255,${_ca.toFixed(2)})`, fl(rand * 10), fl(2 + rand * 8), T, 5);
+            const _ca2 = 0.07 + Math.sin(now / 2600 + rand * 3.1) * 0.04;
+            fr(`rgba(255,255,255,${_ca2.toFixed(2)})`, fl(rand * 6), fl(14 + rand * 7), T - 2, 3);
+        } else {
+            let w1 = Math.sin(now / 700 + rand * 3.1) * 2, w2 = Math.sin(now / 950 + rand * 5.3 + 1) * 2;
+            fr('#1878d8', 0, 0, T, T); fr('#2090e8', 0, fl(5 + w1), T, 7); fr('#28a8f8', 2, fl(13 + w2), T - 4, 6);
+            fr('rgba(255,255,255,0.55)', fl(2 + rand * 8), fl(5 + w1), 10, 2); fr('rgba(255,255,255,0.38)', fl(14 + rand * 9), fl(15 + w2), 8, 2);
+            fr('rgba(255,255,255,0.2)', fl(8 + rand * 6), fl(24 + w1), 7, 1);
+        }
     } else if (tile === 0 || tile === 23) {
         if (tile === 0 && !town && !castle && !cave && !demon && !tower && !shrine) {
             // フィールド砂漠 DQ4スタイル
