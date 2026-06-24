@@ -2100,6 +2100,47 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
     else if (stype === 'debuff' || stype === 'status') etype = 'debuff';
     else if (stype === 'field' || sid.includes('rula') || sid.includes('remi') || sid.includes('tohe')) etype = 'warp';
 
+
+    // 最上位魔法(tier4/ultima): 戦闘背景を宇宙空間に差し替え
+    const _isUltima = sid.includes('ultima') || sid.includes('mahyado') || sid.includes('bazuna');
+    const _isCosmic = (tier >= 4) && (_atkTypes.includes(etype) || etype === 'dark' || etype === 'wind' || etype === 'explosion');
+    let _cosmicRaf = null, _cosmicCvs = null;
+    if (_isCosmic || _isUltima) {
+        _cosmicCvs = document.createElement('canvas');
+        _cosmicCvs.width = W; _cosmicCvs.height = H;
+        Object.assign(_cosmicCvs.style, {position:'absolute',top:'0',left:'0',width:'100%',height:'100%',pointerEvents:'none',zIndex:'0'});
+        layer.appendChild(_cosmicCvs);
+        const _cc = _cosmicCvs.getContext('2d');
+        const _cosmicStars = Array.from({length:90},(_,i)=>({x:rng(i*7+1)*W,y:rng(i*7+2)*H,r:0.5+rng(i*7+3)*2.2,spd2:0.18+rng(i*7+4)*0.85,tw:rng(i*7+5)*Math.PI*2,hue4:rng(i*7+6)*60}));
+        // 色味: 風=青緑, 爆発=赤橙, 闇/アルテマ=深紫
+        const _nebCol = _isUltima?'rgba(40,0,80,0.72)':(etype==='wind'?'rgba(0,30,60,0.62)':(etype==='explosion'?'rgba(60,10,0,0.62)':'rgba(20,0,50,0.68)'));
+        const _starCol = _isUltima?['#cc88ff','#ffffff','#aa66ff']:(etype==='wind'?['#88ffcc','#ffffff','#66ddaa']:(etype==='explosion'?['#ffcc88','#ffffff','#ffaa66']:['#aaaaff','#ffffff','#8888dd']));
+        const _cosmicStart2 = performance.now();
+        const _cosmicDur2 = dur + 120;
+        const _animCosmic = (now2) => {
+            const ct5 = Math.min((now2-_cosmicStart2)/_cosmicDur2, 1);
+            _cc.clearRect(0,0,W,H);
+            const bgAc = ct5<0.14?ct5/0.14*0.94:(ct5>0.86?Math.max(0,1-(ct5-0.86)/0.14)*0.94:0.94);
+            _cc.globalAlpha=bgAc; _cc.fillStyle='#000010'; _cc.fillRect(0,0,W,H);
+            // 星雲グロー
+            _cc.globalAlpha=bgAc*0.42;
+            const nG=_cc.createRadialGradient(tcx,tcy,0,tcx,tcy,W*0.65);
+            nG.addColorStop(0,_nebCol); nG.addColorStop(0.55,_nebCol.replace('0.','0.32,').replace(',0.',',(0.32/')); nG.addColorStop(1,'rgba(0,0,0,0)');
+            _cc.fillStyle=nG; _cc.fillRect(0,0,W,H);
+            // 流れ星パーティクル
+            for(const s of _cosmicStars){
+                const tw2=Math.sin(s.tw+ct5*Math.PI*9*s.spd2)*0.45+0.55;
+                _cc.globalAlpha=bgAc*tw2*0.9;
+                _cc.shadowColor='#ffffff'; _cc.shadowBlur=s.r*2.2;
+                _cc.fillStyle=_starCol[Math.floor(s.hue4*3)%3];
+                _cc.beginPath(); _cc.arc(s.x,s.y,s.r*tw2,0,Math.PI*2); _cc.fill();
+            }
+            _cc.shadowBlur=0; _cc.globalAlpha=1;
+            if(ct5<1) _cosmicRaf=requestAnimationFrame(_animCosmic);
+        };
+        _cosmicRaf=requestAnimationFrame(_animCosmic);
+    }
+
     // Canvas setup
     const gc = document.getElementById('game-container');
     const W = gc.offsetWidth || 360, H = gc.offsetHeight || 560;
@@ -2499,53 +2540,101 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
         clearGlow(); ctx.globalAlpha=1;
     };
     // ── バギ系（風）: DQ6風 三日月形の風刃が斜めに飛ぶ ────────────
+    // ── バギ系（風）: 空間を歪める巨大竜巻 → 中心エネルギー球 → 臨界爆発
     const drawWind = (t) => {
-        // DQ6バギ系の特徴: 緑のトリミングした三日月形が斜め上から敵へ飛ぶ
-        const slashN = tier >= 3 ? 4 : tier >= 2 ? 3 : 2;
-        for (let wi=0; wi<slashN; wi++) {
-            const delay = wi * 0.16;
-            const wt = Math.max(0, t - delay); if (wt <= 0) continue;
+        const SPHERE_ST = 0.28, CRIT_ST = 0.58;
 
-            // 斜めに飛来（画面右上→中心へ）
-            const flyP = Math.min(wt / 0.5, 1);
-            const fadeP = Math.max(0, (wt-0.5)/0.4);
-            const wA = flyP < 1 ? flyP : Math.max(0, 1-fadeP);
-            if (wA <= 0) continue;
+        // 1. 背景薄緑染め
+        const bgA5 = t<0.45?t/0.45*(0.28+tier*0.07):t<0.72?(0.28+tier*0.07):Math.max(0,1-(t-0.72)/0.28)*(0.2+tier*0.05);
+        if(bgA5>0){ctx.globalAlpha=bgA5;ctx.fillStyle='rgba(38,175,58,0.28)';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
 
-            // 奇数偶数で方向を変える（DQ6ではバギクロスで×形に）
-            const dir = wi % 2 === 0 ? 1 : -1;
-            const sx = (dir > 0 ? W+50 : -50) * (1-flyP);
-            const sy = -H*0.25 * (1-flyP);
-
-            ctx.globalAlpha = wA * 0.9;
-            ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 14+tier*4;
-            ctx.strokeStyle = '#88ffbb';
-            ctx.lineWidth = 5+tier*2;
-
-            // 三日月形（弧を描く風刃）
-            ctx.save();
-            ctx.translate(tcx + sx, tcy + sy);
-            ctx.rotate(dir * (-Math.PI/4));
-            ctx.beginPath();
-            ctx.arc(0, 0, 28+tier*12, -Math.PI*0.6, Math.PI*0.1);
-            ctx.stroke();
-            // 風刃の先端の輝き
-            ctx.globalAlpha = wA * 0.7;
-            ctx.fillStyle = '#ccffee';
-            ctx.beginPath(); ctx.arc((28+tier*12)*Math.cos(-Math.PI*0.6), (28+tier*12)*Math.sin(-Math.PI*0.6), 4+tier, 0, Math.PI*2); ctx.fill();
-            ctx.restore();
-            clearGlow();
+        // 2. 竜巻の気流 — 多層螺旋パーティクル (空間歪み感)
+        const tnt=Math.min(t/0.62,1);
+        const tnA=t>=CRIT_ST?Math.max(0,1-(t-CRIT_ST)/0.28):Math.min(tnt*2.2,1);
+        const layers=tier>=4?6:tier>=3?5:tier>=2?3:2;
+        for(let li=0;li<layers;li++){
+            const lph=li/layers;
+            const baseR=(0.12+lph*0.38)*W*(0.48+tier*0.07);
+            const lA=tnA*(1-lph*0.45);
+            const pN2=6+li*4+tier*2;
+            const dir=li%2===0?1:-1;
+            for(let pi=0;pi<pN2;pi++){
+                const ph=pi/pN2;
+                const ang3=ph*Math.PI*2+tnt*Math.PI*(3+li*0.7)*dir;
+                // 竜巻の輪郭は上下に広がる(高さ方向の歪み)
+                const r2=baseR*(0.45+tnt*0.55)*(1+0.14*Math.sin(tnt*Math.PI*7+ph*5));
+                const px4=tcx+Math.cos(ang3)*r2;
+                const py4=tcy+Math.sin(ang3)*r2*0.5+(li-layers/2)*20*tnt;
+                const sz6=(3+rng(li*100+pi*3)*7+tier*1.5)*(1-lph*0.5);
+                const pA7=lA*(0.55+rng(li*100+pi*3+1)*0.45);
+                if(sz6<=0||pA7<=0) continue;
+                ctx.globalAlpha=pA7;
+                ctx.shadowColor='#44ee66';ctx.shadowBlur=sz6*1.6;
+                const hue3=88+rng(li*100+pi*3+2)*45;
+                ctx.fillStyle=pA7>0.75?'#ffffff':`hsl(${hue3},88%,${52+rng(li*100+pi*3+3)*28}%)`;
+                ctx.beginPath();ctx.arc(px4,py4,sz6,0,Math.PI*2);ctx.fill();clearGlow();
+            }
+        }
+        // 竜巻輪郭ライン (tier3+)
+        if(tier>=3&&tnA>0){
+            const lineN2=tier>=4?10:6;
+            for(let li3=0;li3<lineN2;li3++){
+                const a5=(li3/lineN2)*Math.PI*2+tnt*Math.PI*3.5;
+                const rx2=tcx+Math.cos(a5)*(W*0.3*tnt);
+                const ry2=tcy+Math.sin(a5)*(W*0.16*tnt);
+                ctx.globalAlpha=tnA*0.62;ctx.shadowColor='#88ffaa';ctx.shadowBlur=8;
+                ctx.strokeStyle='rgba(100,255,138,0.78)';ctx.lineWidth=1.5;
+                ctx.beginPath();ctx.moveTo(tcx,tcy);ctx.lineTo(rx2,ry2);ctx.stroke();clearGlow();
+            }
         }
 
-        // 着弾後の緑リング
-        dqRing(t, 'rgba(60,220,80,0.85)', 2.5, 0.65);
+        // 3. 中心エネルギー球体 — 徐々に輝く
+        if(t>=SPHERE_ST){
+            const st2=(t-SPHERE_ST)/(CRIT_ST-SPHERE_ST+0.04);
+            const sP2=Math.min(st2,1);
+            const sA2=t>=CRIT_ST?Math.max(0,1-(t-CRIT_ST)/0.1):Math.min(sP2*2,1);
+            const sR2=(11+tier*9)*sP2;
+            if(sA2>0&&sR2>0){
+                ctx.globalAlpha=sA2*0.58;ctx.shadowColor='#88ffaa';ctx.shadowBlur=sR2*3.2;
+                const oG2=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,sR2*2.6);
+                oG2.addColorStop(0,'rgba(175,255,198,0.82)');oG2.addColorStop(0.5,'rgba(55,215,98,0.5)');oG2.addColorStop(1,'rgba(28,145,58,0)');
+                ctx.fillStyle=oG2;ctx.beginPath();ctx.arc(tcx,tcy,sR2*2.6,0,Math.PI*2);ctx.fill();
+                ctx.globalAlpha=sA2;ctx.shadowColor='#ffffff';ctx.shadowBlur=sR2*2;
+                const cG4=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,sR2);
+                cG4.addColorStop(0,'#ffffff');cG4.addColorStop(0.35,'#aaffe0');cG4.addColorStop(0.7,'#44dd88');cG4.addColorStop(1,'rgba(28,148,58,0)');
+                ctx.fillStyle=cG4;ctx.beginPath();ctx.arc(tcx,tcy,sR2,0,Math.PI*2);ctx.fill();
+                const pulse2=sR2*(1+Math.sin(sP2*Math.PI*9)*0.32);
+                ctx.globalAlpha=sA2*0.72;ctx.strokeStyle='rgba(175,255,198,0.92)';ctx.lineWidth=2;ctx.shadowColor='#88ffaa';ctx.shadowBlur=14;
+                ctx.beginPath();ctx.arc(tcx,tcy,pulse2,0,Math.PI*2);ctx.stroke();clearGlow();
+            }
+        }
 
-        // 画面全体の薄緑フィルター
-        ctx.globalAlpha = Math.sin(t*Math.PI) * (0.08+tier*0.04);
-        ctx.fillStyle='rgba(50,200,80,0.25)'; ctx.fillRect(0,0,W,H);
-        ctx.globalAlpha = 1;
+        // 4. 臨界爆発 — 画面全体を白光で染め上げる
+        if(t>=CRIT_ST){
+            const ct3=(t-CRIT_ST)/(1-CRIT_ST);
+            dqFlash(t,CRIT_ST,'rgba(195,255,215,0.98)');
+            const expR2=ct3*(78+tier*62);
+            const expA2=Math.max(0,1-ct3*1.1);
+            if(expA2>0&&expR2>0){
+                ctx.globalAlpha=expA2;ctx.shadowColor='#88ffaa';ctx.shadowBlur=expR2*0.5;
+                const eG2=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,expR2);
+                eG2.addColorStop(0,'#ffffff');eG2.addColorStop(0.22,'#ccffdd');eG2.addColorStop(0.52,'#44dd88');eG2.addColorStop(1,'rgba(28,145,58,0)');
+                ctx.fillStyle=eG2;ctx.beginPath();ctx.arc(tcx,tcy,expR2,0,Math.PI*2);ctx.fill();clearGlow();
+            }
+            dqRing(t,'rgba(95,255,148,0.95)',4.5,1.32);
+            for(const p of parts){
+                const pt7=Math.max(0,(t-CRIT_ST-p.phase*0.14)/0.66); if(pt7<=0||pt7>=1) continue;
+                const s7=32+p.spd*92+tier*20;
+                const lx5=tcx+Math.cos(p.angle)*s7*pt7,ly5=tcy+Math.sin(p.angle)*s7*pt7+pt7*22;
+                const sz7=(2+p.size*5)*Math.max(0,1-pt7*1.22);
+                const pA8=Math.max(0,(1-pt7)*0.88); if(sz7<=0||pA8<=0) continue;
+                ctx.globalAlpha=pA8;ctx.shadowColor='#44ff88';ctx.shadowBlur=sz7*1.5;
+                ctx.fillStyle=pt7<0.38?'#ffffff':(pt7<0.68?'#aaffcc':'#44cc88');
+                ctx.beginPath();ctx.arc(lx5,ly5,sz7,0,Math.PI*2);ctx.fill();clearGlow();
+            }
+        }
+        ctx.globalAlpha=1;
     };
-
     // ── 回復系: DQ6風 光の粒が上昇 + 緑・金の光柱 ─────────────────
     const drawHeal = (t) => {
         const isRevive = sid.includes('zao')||sid.includes('zaorn');
@@ -2619,54 +2708,106 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
     };
 
     // ── イオ系（爆発）: DQ6風 白フラッシュ → 衝撃波リング連続 ──────
+    // ── イオ系（爆発）: エネルギー球収束 → 核爆発 → 衝撃波が画面を埋める
     const drawExplosion = (t) => {
-        // DQ6イオ系の最大の特徴: まず画面が真っ白になる
-        const burstN = tier >= 3 ? 4 : tier >= 2 ? 2 : 1;
-        for (let bi=0; bi<burstN; bi++) {
-            const delay = bi * 0.2;
-            const bt = Math.max(0, t - delay); if (bt <= 0) continue;
-            const bx = tcx + (bi-(burstN-1)/2) * (20+tier*14);
+        const BOOM_ST2=0.36;
 
-            // 白フラッシュ（核心）
-            dqFlash(bt, 0, '#ffffff');
-
-            // 爆発コア（白→黄→橙、急速に消えていく）
-            const coreP = Math.max(0, 1 - bt/0.3);
-            if (coreP > 0) {
-                const cr = (0.3-Math.max(0,bt-0.02))/0.3 * (50+tier*30);
-                if (cr > 0) {
-                    ctx.globalAlpha = coreP * 0.92;
-                    ctx.shadowColor = '#ff8800'; ctx.shadowBlur = cr;
-                    const cg = ctx.createRadialGradient(bx,tcy,0,bx,tcy,cr);
-                    cg.addColorStop(0,'#ffffff'); cg.addColorStop(0.3,'#ffff88');
-                    cg.addColorStop(0.65,'#ff8800'); cg.addColorStop(1,'rgba(200,0,0,0)');
-                    ctx.fillStyle = cg;
-                    ctx.beginPath(); ctx.arc(bx,tcy,cr,0,Math.PI*2); ctx.fill();
-                    clearGlow();
-                }
-            }
-
-            // 衝撃波リング（イオ系の象徴：複数のリングが広がる）
-            const ringN = 3 + tier;
-            for (let ri=0; ri<ringN; ri++) {
-                const rp = Math.max(0, bt - ri*0.06); if (rp <= 0) continue;
-                const r = rp * (85+tier*45);
-                const al = Math.max(0, 1 - rp * 1.05);
-                ctx.globalAlpha = al;
-                ctx.strokeStyle = ri===0 ? '#ffffff' : (ri===1?'#ffee44':'#ff8800');
-                ctx.lineWidth = Math.max(0.5, 5-ri-rp*3);
-                ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 12;
-                ctx.beginPath(); ctx.arc(bx,tcy,r,0,Math.PI*2); ctx.stroke();
-            }
-            clearGlow();
+        // 1. 背景オレンジ/黄環境光
+        const bgA6=t<0.28?t/0.28*(0.28+tier*0.09):t<0.68?(0.28+tier*0.09):Math.max(0,1-(t-0.68)/0.32)*(0.2+tier*0.06);
+        if(bgA6>0){
+            ctx.globalAlpha=bgA6;
+            const bG2=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,Math.max(W,H)*0.92);
+            bG2.addColorStop(0,'rgba(255,155,0,0.82)');bG2.addColorStop(0.52,'rgba(195,55,0,0.58)');bG2.addColorStop(1,'rgba(95,0,0,0)');
+            ctx.fillStyle=bG2;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;
         }
 
-        // 環境光（橙）
-        ctx.globalAlpha = Math.sin(Math.min(t/0.7,1)*Math.PI) * (0.18+tier*0.08);
-        ctx.fillStyle='rgba(255,100,0,0.4)'; ctx.fillRect(0,0,W,H);
+        // 2. エネルギー球が各方向から収束
+        if(t<BOOM_ST2+0.06){
+            const orbN2=tier>=4?9:tier>=3?7:tier>=2?5:3;
+            for(let oi3=0;oi3<orbN2;oi3++){
+                const oph2=oi3/orbN2;
+                const delay3=oph2*0.16;
+                const ot2=Math.max(0,t-delay3);
+                if(ot2<=0||ot2>BOOM_ST2+0.06) continue;
+                const convP2=Math.min(ot2/Math.max(0.01,BOOM_ST2-delay3),1);
+                const burstA2=t>=BOOM_ST2?Math.max(0,1-(t-BOOM_ST2)/0.07):1;
+                const oA2=Math.min(convP2*2,1)*burstA2; if(oA2<=0) continue;
+                const startA2=(oi3/orbN2)*Math.PI*2;
+                const startR2=W*0.46;
+                const ox2=tcx+Math.cos(startA2)*startR2*(1-convP2);
+                const oy2=tcy+Math.sin(startA2)*startR2*(1-convP2)*0.62;
+                const oR2=(8+tier*5)*(0.48+convP2*0.52);
+                ctx.globalAlpha=oA2;ctx.shadowColor='#ffcc00';ctx.shadowBlur=oR2*3.2;
+                const oG3=ctx.createRadialGradient(ox2,oy2,0,ox2,oy2,oR2);
+                oG3.addColorStop(0,'#ffffff');oG3.addColorStop(0.38,'#ffee44');oG3.addColorStop(1,'rgba(255,95,0,0)');
+                ctx.fillStyle=oG3;ctx.beginPath();ctx.arc(ox2,oy2,oR2,0,Math.PI*2);ctx.fill();
+                // 軌跡
+                ctx.globalAlpha=oA2*0.38;ctx.shadowColor='#ffaa00';ctx.shadowBlur=6;
+                ctx.strokeStyle='rgba(255,198,48,0.7)';ctx.lineWidth=2;
+                const trailStart2=Math.max(0,convP2-0.1);
+                ctx.beginPath();ctx.moveTo(tcx+Math.cos(startA2)*startR2*(1-trailStart2),tcy+Math.sin(startA2)*startR2*(1-trailStart2)*0.62);ctx.lineTo(ox2,oy2);ctx.stroke();clearGlow();
+            }
+        }
+
+        // 3. 核爆発コア — 白核が急拡大
+        if(t>=BOOM_ST2){
+            const bt6=(t-BOOM_ST2)/(1-BOOM_ST2);
+            dqFlash(t,BOOM_ST2,'#ffffff');
+            const coreR2=bt6<0.38?bt6/0.38*(88+tier*62):Math.max(5,(88+tier*62)*(1-(bt6-0.38)/0.62));
+            const coreA2=Math.max(0,bt6<0.42?1:1-(bt6-0.42)/0.58);
+            if(coreA2>0&&coreR2>0){
+                ctx.globalAlpha=coreA2;ctx.shadowColor='#ff8800';ctx.shadowBlur=coreR2*0.42;
+                const cG5=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,coreR2);
+                cG5.addColorStop(0,'#ffffff');cG5.addColorStop(0.14,'#ffffcc');cG5.addColorStop(0.38,'#ffcc44');cG5.addColorStop(0.7,'#ff5500');cG5.addColorStop(1,'rgba(175,0,0,0)');
+                ctx.fillStyle=cG5;ctx.beginPath();ctx.arc(tcx,tcy,coreR2,0,Math.PI*2);ctx.fill();clearGlow();
+            }
+
+            // 衝撃波リング群 — 複数段で画面を満たす
+            const waveN2=3+tier;
+            for(let wi3=0;wi3<waveN2;wi3++){
+                const wDelay2=wi3*0.048;
+                const wt2=Math.max(0,bt6-wDelay2); if(wt2<=0) continue;
+                const wR2=wt2*(W*(0.58+tier*0.1)+wi3*18);
+                const wA2=Math.max(0,1-wt2*1.02)*0.93; if(wA2<=0) continue;
+                ctx.globalAlpha=wA2;
+                const wCol=wi3===0?'#ffffff':(wi3===1?'#ffee44':'#ff8800');
+                ctx.shadowColor=wCol;ctx.shadowBlur=14;ctx.strokeStyle=wCol;
+                ctx.lineWidth=Math.max(0.5,5-wi3-wt2*2.8);
+                ctx.beginPath();ctx.arc(tcx,tcy,wR2,0,Math.PI*2);ctx.stroke();clearGlow();
+            }
+
+            // デブリパーティクル
+            for(const p of parts){
+                const pt8=Math.max(0,(bt6-p.phase*0.28)/0.76); if(pt8<=0||pt8>=1) continue;
+                const s8=42+p.spd*105+tier*26;
+                const lx6=tcx+Math.cos(p.angle)*s8*pt8,ly6=tcy+Math.sin(p.angle)*s8*pt8+pt8*pt8*52;
+                const sz8=(3+p.size*6+tier)*Math.max(0,1-pt8*1.18);
+                const pA9=Math.max(0,(1-pt8)*0.92); if(sz8<=0||pA9<=0) continue;
+                ctx.globalAlpha=pA9;ctx.shadowColor='#ff8800';ctx.shadowBlur=sz8;
+                ctx.fillStyle=pt8<0.28?'#ffffff':(pt8<0.58?'#ffcc44':'#ff4400');
+                ctx.beginPath();ctx.arc(lx6,ly6,sz8,0,Math.PI*2);ctx.fill();clearGlow();
+            }
+
+            // tier4: 画面周辺で連鎖爆発
+            if(tier>=4){
+                const chainN2=7;
+                for(let ci2=0;ci2<chainN2;ci2++){
+                    const cD2=ci2*0.076+0.08;
+                    const ct4=Math.max(0,bt6-cD2); if(ct4<=0||ct4>0.48) continue;
+                    const cR3=ct4*(W*0.26);
+                    const ca2=(Math.PI*2/chainN2)*ci2+bt6*Math.PI;
+                    const cx4=tcx+Math.cos(ca2)*(W*0.34),cy4=tcy+Math.sin(ca2)*(W*0.34)*0.52;
+                    const cA3=Math.max(0,1-ct4*2.4)*0.82; if(cA3<=0||cR3<=0) continue;
+                    ctx.globalAlpha=cA3;
+                    const cG6=ctx.createRadialGradient(cx4,cy4,0,cx4,cy4,cR3);
+                    cG6.addColorStop(0,'#ffffff');cG6.addColorStop(0.38,'#ffee44');cG6.addColorStop(1,'rgba(255,78,0,0)');
+                    ctx.fillStyle=cG6;ctx.beginPath();ctx.arc(cx4,cy4,cR3,0,Math.PI*2);ctx.fill();
+                }
+                clearGlow();
+            }
+        }
         ctx.globalAlpha=1;
     };
-
     // ── ドルマ系（闇）: DQ6風 暗黒のオーブが着弾 ───────────────────
     const drawDark = (t) => {
         // DQ6ドルマ系の特徴: 暗黒球が飛来→着弾で暗転、紫の爆発
@@ -2824,6 +2965,7 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
     rafId = requestAnimationFrame(animate);
     await new Promise(r => setTimeout(r, dur + 80));
     cancelAnimationFrame(rafId);
+    if (_cosmicRaf) cancelAnimationFrame(_cosmicRaf);
     layer.innerHTML = '';
 }
 
