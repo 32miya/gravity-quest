@@ -1458,7 +1458,7 @@ const AudioManager = {
     playTone(freq, type, duration, vol=0.5, slideFreq=null) { if(this.isMuted || !this.ctx) return; this.init(); const osc = this.ctx.createOscillator(); const gainNode = this.ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime); if (slideFreq) osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration); gainNode.gain.setValueAtTime(vol, this.ctx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration); osc.connect(gainNode); gainNode.connect(this.masterGainNode); osc.onended = () => { try { osc.disconnect(); gainNode.disconnect(); } catch(e) {} }; osc.start(); osc.stop(this.ctx.currentTime + duration); },
     playNoise(duration, vol=0.5) { if(this.isMuted || !this.ctx) return; this.init(); const bufferSize = this.ctx.sampleRate * duration; const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1; const noise = this.ctx.createBufferSource(); noise.buffer = buffer; const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1000; const gainNode = this.ctx.createGain(); gainNode.gain.setValueAtTime(vol, this.ctx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration); noise.connect(filter); filter.connect(gainNode); gainNode.connect(this.masterGainNode); noise.onended = () => { try { noise.disconnect(); filter.disconnect(); gainNode.disconnect(); } catch(e) {} }; noise.start(); },
     // 音声エンジンをリセットしてゾンビノードを一掃
-    gcAudio() { const _bgmKey = this.currentBgmKey; this.stopBGM(); if(this.masterGainNode){try{this.masterGainNode.disconnect();}catch(e){} this.masterGainNode=null;} if(this.ctx){try{this.ctx.close();}catch(e){} this.ctx=null;} setTimeout(()=>{ this.init(); if(_bgmKey) this.playBGM(_bgmKey); }, 150); },
+    gcAudio() { const _bgmKey = this.currentBgmKey; this.stopBGM(); if(this.masterGainNode){try{this.masterGainNode.disconnect();}catch(e){} this.masterGainNode=null;} if(this.ctx){try{this.ctx.close();}catch(e){} this.ctx=null;} setTimeout(()=>{ this.init(); if(_bgmKey && !this.currentBgmKey && (typeof state === 'undefined' || state !== 'BATTLE')) this.playBGM(_bgmKey); }, 150); },
     playSynthSE(key) { if(this.isMuted) return; switch(key) { case 'cursor': this.playTone(880, 'square', 0.05, 0.2); break; case 'decision': this.playTone(660, 'square', 0.1, 0.2); setTimeout(() => this.playTone(880, 'square', 0.15, 0.2), 100); break; case 'cancel': this.playTone(200, 'sawtooth', 0.2, 0.3); break; case 'attack_hit': this.playNoise(0.1, 0.5); this.playTone(150, 'square', 0.1, 0.3, 50); break; case 'attack_crit': this.playNoise(0.3, 0.8); this.playTone(200, 'sawtooth', 0.3, 0.5, 50); break; case 'damage_hero': this.playTone(100, 'square', 0.2, 0.4, 20); this.playNoise(0.15, 0.4); break; case 'magic_cast': this.playTone(400, 'sine', 0.4, 0.3, 1200); setTimeout(() => this.playTone(600, 'sine', 0.3, 0.2, 1600), 100); break; case 'poison': this.playTone(150, 'sawtooth', 0.1, 0.3, 80); setTimeout(() => this.playTone(120, 'sawtooth', 0.1, 0.3, 60), 150); break; case 'item_get': [440, 554, 659, 880].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', 0.15, 0.2), i * 120)); break; case 'save': this.playTone(440, 'square', 0.1, 0.2); setTimeout(() => this.playTone(880, 'square', 0.15, 0.2), 100); break; case 'inn': const notes = [{f: 440, d: 0.15}, {f: 554, d: 0.15}, {f: 659, d: 0.15}, {f: 880, d: 0.6}]; let delay = 0; notes.forEach(n => { setTimeout(() => this.playTone(n.f, 'square', n.d, 0.2), delay * 1000); delay += n.d; }); break; case 'level_up': [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', i===5?0.4:0.1, 0.2), i * 120)); break;
         case 'travel_gate':
             // DQ風旅の扉SE: 上昇する魔法的なアルペジオ
@@ -5945,7 +5945,7 @@ function pressBtn(key) { AudioManager.init(); if (!pressedKeys[key]) { pressedKe
 function releaseBtn(key) { pressedKeys[key] = false; if (!pressedKeys['ArrowUp'] && !pressedKeys['ArrowDown'] && !pressedKeys['ArrowLeft'] && !pressedKeys['ArrowRight']) { stopMoveLoop(); } }
 function stopMoveLoop() { if (moveInterval) { clearInterval(moveInterval); moveInterval = null; } }
 function simKey(key) { AudioManager.init(); handleInput(key); }
-document.addEventListener('keydown', (e) => { let key = e.key; if(key === 'z' || key === ' ') key = 'Enter'; if(key === 'x') key = 'Escape'; if(key.startsWith('Arrow')) { pressBtn(key); } else { if(!pressedKeys[key]) { pressedKeys[key] = true; AudioManager.init(); handleInput(key); } } });
+document.addEventListener('keydown', (e) => { let key = e.key; if(key === 'z' || key === ' ') key = 'Enter'; if(key === 'x') key = 'Escape'; if(key.startsWith('Arrow')) { unlockAudio(); pressBtn(key); } else { if(!pressedKeys[key]) { pressedKeys[key] = true; unlockAudio(); handleInput(key); } } });
 document.addEventListener('keyup', (e) => { let key = e.key; if(key === 'z' || key === ' ') key = 'Enter'; if(key === 'x') key = 'Escape'; if(key.startsWith('Arrow')) { releaseBtn(key); } else { pressedKeys[key] = false; } });
 function handleInput(key) { AudioManager.init(); if(inputCallback) { inputCallback(key); } else if(state === 'FIELD') { handleFieldInput(key); } }
 
@@ -8386,6 +8386,64 @@ function drawMap() {
                     ctx.beginPath(); ctx.arc(_gcx,_cy-11,2.5,0,Math.PI); ctx.fillStyle='rgba(20,10,60,0.7)'; ctx.fill();
                 }
                 ctx.restore();
+            // ===== 城下町グラマニア 多様な商人・市場NPC =====
+            } else if (npc.id === 'npc_market_food') {
+                if (externalImages['itemShop']) { ctx.save(); ctx.filter='hue-rotate(25deg) saturate(1.8) brightness(1.1)'; drawSpriteLocal(ctx, externalImages['itemShop'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🥕',px+12,py+12); }
+            } else if (npc.id === 'npc_market_herb') {
+                if (externalImages['priest']) { ctx.save(); ctx.filter='hue-rotate(100deg) saturate(2.0) brightness(1.05)'; drawSpriteLocal(ctx, externalImages['priest'], px, py, 48); ctx.restore(); }
+                else if (externalImages['itemShop']) { ctx.save(); ctx.filter='hue-rotate(110deg) saturate(1.8)'; drawSpriteLocal(ctx, externalImages['itemShop'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🌿',px+12,py+12); }
+            } else if (npc.id === 'npc_market_cloth') {
+                if (externalImages['innGirl']) { ctx.save(); ctx.filter='hue-rotate(45deg) saturate(1.7) brightness(1.15)'; drawSpriteLocal(ctx, externalImages['innGirl'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🧵',px+12,py+12); }
+            } else if (npc.id === 'npc_market_jewel') {
+                if (externalImages['innGirl']) { ctx.save(); ctx.filter='hue-rotate(275deg) saturate(2.2) brightness(1.2)'; drawSpriteLocal(ctx, externalImages['innGirl'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('💎',px+12,py+12); }
+            } else if (npc.id === 'npc_market_pottery') {
+                if (externalImages['oldMan']) { ctx.save(); ctx.filter='hue-rotate(15deg) saturate(1.3) brightness(0.95)'; drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🏺',px+12,py+12); }
+            } else if (npc.id === 'npc_market_repair') {
+                if (externalImages['weaponShop']) { ctx.save(); ctx.filter='hue-rotate(10deg) saturate(0.75) brightness(0.78)'; drawLargeSpriteLocal(ctx, externalImages['weaponShop'], px, py, 64); ctx.restore(); }
+                else if (externalImages['guard']) { ctx.save(); ctx.filter='hue-rotate(20deg) saturate(0.8) brightness(0.85)'; drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🔨',px+12,py+12); }
+            } else if (npc.id === 'npc_market_stall') {
+                if (externalImages['oldMan']) { ctx.save(); ctx.filter='hue-rotate(180deg) saturate(1.1) brightness(1.05)'; drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); ctx.restore(); }
+                else if (externalImages['guard']) { ctx.save(); ctx.filter='hue-rotate(60deg) saturate(1.2)'; drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🛒',px+12,py+12); }
+            } else if (npc.id === 'npc_market_antique') {
+                if (externalImages['oldMan']) { ctx.save(); ctx.filter='sepia(0.6) brightness(1.1)'; drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🏛️',px+12,py+12); }
+            } else if (npc.id === 'npc_market_peddler') {
+                if (externalImages['guard']) { ctx.save(); ctx.filter='hue-rotate(30deg) saturate(1.4) brightness(0.9)'; drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🎒',px+12,py+12); }
+            } else if (npc.id === 'npc_shop_weapon') {
+                if (externalImages['weaponShop']) { drawLargeSpriteLocal(ctx, externalImages['weaponShop'], px, py, 64); }
+                else if (externalImages['guard']) { drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); }
+            } else if (npc.id === 'npc_shop_armor') {
+                if (externalImages['weaponShop']) { ctx.save(); ctx.filter='hue-rotate(200deg) saturate(1.3) brightness(0.88)'; drawLargeSpriteLocal(ctx, externalImages['weaponShop'], px, py, 64); ctx.restore(); }
+                else if (externalImages['guard']) { ctx.save(); ctx.filter='hue-rotate(200deg)'; drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); ctx.restore(); }
+            } else if (npc.id === 'npc_shop_tool') {
+                if (externalImages['itemShop']) { drawSpriteLocal(ctx, externalImages['itemShop'], px, py, 48); }
+                else if (externalImages['oldMan']) { ctx.save(); ctx.filter='hue-rotate(120deg) saturate(1.2)'; drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); ctx.restore(); }
+            } else if (npc.id === 'npc_merchant_south') {
+                if (externalImages['guard']) { ctx.save(); ctx.filter='hue-rotate(330deg) saturate(0.9) brightness(0.82)'; drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); ctx.restore(); }
+                else if (externalImages['oldMan']) { drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); }
+            } else if (npc.id === 'npc_merchant_fur') {
+                if (externalImages['oldMan']) { ctx.save(); ctx.filter='hue-rotate(340deg) saturate(0.75) brightness(1.1)'; drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); ctx.restore(); }
+                else if (externalImages['guard']) { ctx.save(); ctx.filter='sepia(0.3) brightness(1.1)'; drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); ctx.restore(); }
+            } else if (npc.id === 'npc_merchant_farm') {
+                if (externalImages['oldMan']) { ctx.save(); ctx.filter='hue-rotate(85deg) saturate(1.5) brightness(0.95)'; drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🌾',px+12,py+12); }
+            } else if (npc.id === 'npc_gar_dancer') {
+                if (externalImages['innGirl']) { ctx.save(); ctx.filter='hue-rotate(350deg) saturate(2.2) brightness(1.25)'; drawSpriteLocal(ctx, externalImages['innGirl'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('💃',px+12,py+12); }
+            } else if (npc.id === 'npc_gar_noblewoman') {
+                if (externalImages['innGirl']) { ctx.save(); ctx.filter='hue-rotate(260deg) saturate(1.6) brightness(1.2)'; drawSpriteLocal(ctx, externalImages['innGirl'], px, py, 48); ctx.restore(); }
+                else { ctx.font='26px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('👸',px+12,py+12); }
+            } else if (npc.id === 'npc_gar_traveler') {
+                if (externalImages['guard']) { ctx.save(); ctx.filter='hue-rotate(30deg) saturate(1.2) brightness(1.05)'; drawSpriteLocal(ctx, externalImages['guard'], px, py, 48); ctx.restore(); }
+                else if (externalImages['oldMan']) { drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48); }
             } else if (npc.id.startsWith('deco_')) {
                 // エディタの npc.scale を使ってサイズを再現
                 const _dsc = npc.scale || 1.0;
@@ -9200,12 +9258,16 @@ async function checkAction() {
                 }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
-            // 薬草の入った壺
-            // 石像・装飾オブジェクト（固定・しゃべらない）
-            if (npc.id === 'boss_maou_statue' || npc.id === 'obj_deco_statue_knight' ||
-                npc.id === 'obj_deco_statue_woman' || npc.id === 'obj_deco_statue_angel' ||
-                npc.id === 'obj_statue_foot' || npc.id === 'obj_fill') {
-                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            // 非インタラクティブ obj_ 系 (カウンター・ベッド・装飾など) はホワイトリストで制御
+            if (npc.id === 'boss_maou_statue') { state = 'FIELD'; hideAllWindows(); drawMap(); return; }
+            if (npc.id && npc.id.startsWith('obj_')) {
+                const _talkable = npc.id.startsWith('obj_chest') || npc.id.startsWith('obj_deco_') ||
+                    npc.id.startsWith('obj_treasure_king') || npc.id.startsWith('obj_chest_king') ||
+                    npc.id.startsWith('obj_bookshelf') ||
+                    npc.id === 'obj_herb_pot' || npc.id === 'obj_bed_royal' ||
+                    npc.id === 'obj_vault_door' || npc.id === 'obj_parents_relic' ||
+                    npc.id === 'obj_eden_entrance';
+                if (!_talkable) { state = 'FIELD'; hideAllWindows(); drawMap(); return; }
             }
             if (npc.id === 'obj_herb_pot') {
                 if (partyData.flags.herb_pot_taken) {
@@ -10769,17 +10831,57 @@ async function checkAction() {
                 } else if (!partyData.flags.flag_tower_cleared) { await typeMessage("【商人】\n旅の 方……一つ 耳よりな 情報を 教えましょう。\n魔王城に 向かうなら 天空の 塔を 先に 攻略しないと\n城の 前で 弾かれるらしいですよ。\n複数の 冒険者が そう 言っていました。"); }
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
-            // ===== ガルド（南西の村）の住民 =====
+            // ===== 城下町・村の住民 =====
+            if (npc.id === "npc_gar_dancer") {
+                const _nm = npc.name || '踊り子';
+                if (partyData.flags.last_boss_defeated) {
+                    await typeMessage(`【${_nm}】\n魔王が 倒れて……\nようやく 心から 踊れる 気がするわ。\nありがとう 旅人さん！`);
+                } else if (partyData.flags.flag_2nd_maou_cleared) {
+                    await typeMessage(`【${_nm}】\n……なんか 不思議な 感じがするの。\n平和に なったはずなのに\n踊っていても 心が 晴れない……`);
+                } else {
+                    await typeMessage(`【${_nm}】\n城下町では 毎夜 踊りが 披露されるのよ。\n魔王の 影響で 最近は 人が 減ったけど……\nいつか また 賑やかに なると いいわね。`);
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_noblewoman") {
+                const _nm2 = npc.name || '貴族の令嬢';
+                if (partyData.flags.last_boss_defeated) {
+                    await typeMessage(`【${_nm2}】\n真の 平和が 戻ってきましたわ……\nグラマニア城の 未来が 楽しみです。\n勇者様に 感謝を 申し上げます。`);
+                } else if (partyData.flags.flag_2nd_maou_cleared) {
+                    await typeMessage(`【${_nm2}】\n（小声で）\n王様の 様子が おかしいと\nわたくし 前から 思っておりましたの……\nどうか 気をつけてくださいませ。`);
+                } else {
+                    await typeMessage(`【${_nm2}】\n南西の 試練の 洞窟を\n制覇した 勇者には\n王家の 船が 与えられると\n聞いたことがあります。`);
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_gar_traveler") {
+                if (partyData.flags.last_boss_defeated) {
+                    await typeMessage("【旅人】\n魔王が 倒れたと 聞いて\n長い 旅から 戻って きました。\n世界が 変わった 気がします。");
+                } else if (partyData.flags.has_ship) {
+                    await typeMessage("【旅人】\n船を お持ちなんですね！\n北の 海域には 古城が あるとか……\nただし 廃城ですから 魔物に 気をつけて。");
+                } else {
+                    await typeMessage("【旅人】\nわたしは 各地を 回っている 旅人です。\n城下町は 久しぶりに 来ましたが\n以前より 緊張した 空気が 漂っている 気がして……");
+                }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
             if (npc.id === "npc_gar_woman_01") {
                 const _inCastle = partyData.pos.map && partyData.pos.map.includes('castle') && !partyData.pos.map.includes('demon');
+                const _inTown01 = partyData.pos.map && partyData.pos.map.includes('town_01');
                 if (_inCastle && npc.name && npc.name.includes('侍女')) {
-                    // グラマニア城の侍女
                     await typeMessage("【侍女】\n疲れたときは\nあちらの ベッドで\nゆっくり お休みください。\nHP・MPが 全回復しますよ。");
                 } else if (_inCastle && npc.name && (npc.name.includes('貴族') || npc.name.includes('令嬢'))) {
-                    // グラマニア城の貴族
                     await typeMessage("【貴族の令嬢】\n南西の 試練の 洞窟を\n制覇した 勇者には\n王家の 船が 与えられると\n聞いたことがある。");
                 } else if (partyData.flags.last_boss_defeated) {
-                    await typeMessage("【村の女性】\n魔王が 倒れたって 聞いたとき\n思わず 泣いてしまいました。\nほんとうに ありがとうございます！");
+                    const _nf = npc.name || '女性';
+                    await typeMessage(`【${_nf}】\n魔王が 倒れたって 聞いたとき\n思わず 泣いてしまいました。\nほんとうに ありがとうございます！`);
+                } else if (_inTown01) {
+                    const _nf2 = npc.name || '市民';
+                    const _twMsgs = [
+                        `【${_nf2}】\nグラマニア城下町は\n王国で 一番 賑やかな 街よ。\nでも 最近 魔王の 影響で\n旅人が 減って しまったわ……`,
+                        `【${_nf2}】\n南の 市場では いろんな 商人が\n珍しい 品物を 売っているわ。\n見ていくといいわよ。`,
+                        `【${_nf2}】\n城の 方では 国王グラード様が\n勇者を 選んだって 話よ。\n魔王を 倒してくれると いいけど……`,
+                    ];
+                    await typeMessage(_twMsgs[Math.floor(Math.abs(Math.sin((parseInt(nx)||0)*7.3+(parseInt(ny)||0)*11.1))*_twMsgs.length)]);
                 } else if (partyData.flags.flag_weapon_forged) {
                     await typeMessage("【村の女性】\n鍛冶屋の おじさんが\nすごく 嬉しそうにしていましたよ。\nきっと とびきりの 剣を 作ったのでしょうね。");
                 } else {
