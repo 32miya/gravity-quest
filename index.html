@@ -1469,6 +1469,31 @@ const AudioManager = {
                 }, i * 65);
             });
             setTimeout(() => this.playNoise(0.45, 0.04), 20);
+            break;
+        // 属性魔法SE
+        case 'magic_fire':
+            this.playNoise(0.1, 0.45); this.playTone(180, 'sawtooth', 0.55, 0.38, 900);
+            setTimeout(() => this.playTone(280, 'sawtooth', 0.3, 0.28, 1400), 110);
+            break;
+        case 'magic_ice':
+            [2200, 1800, 2600, 1600, 3000].forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 0.18, 0.2), i * 75));
+            break;
+        case 'magic_lightning':
+            this.playNoise(0.06, 0.75); this.playTone(90, 'sawtooth', 0.07, 0.6, 40);
+            setTimeout(() => { this.playNoise(0.09, 0.5); this.playTone(70, 'square', 0.12, 0.4, 30); }, 70);
+            break;
+        case 'magic_wind':
+            this.playTone(700, 'sine', 0.65, 0.28, 200); this.playNoise(0.5, 0.15);
+            setTimeout(() => this.playTone(450, 'sine', 0.45, 0.2, 150), 220);
+            break;
+        case 'magic_explosion':
+            this.playNoise(0.22, 0.82); this.playTone(55, 'sawtooth', 0.42, 0.5, 18);
+            setTimeout(() => { this.playNoise(0.14, 0.45); this.playTone(40, 'sawtooth', 0.2, 0.3, 15); }, 100);
+            break;
+        case 'magic_dark':
+            this.playTone(380, 'sawtooth', 0.62, 0.42, 70); this.playNoise(0.18, 0.2);
+            setTimeout(() => this.playTone(190, 'sawtooth', 0.42, 0.32, 35), 210);
+            setTimeout(() => this.playTone(95, 'sawtooth', 0.3, 0.22, 20), 440);
             break; } },
     playSynthVictory() { if(this.isMuted) return; this.stopBGM(); const notes = [{f: 349.23, d: 0.12}, {f: 349.23, d: 0.12}, {f: 349.23, d: 0.12}, {f: 349.23, d: 0.35}, {f: 293.66, d: 0.15}, {f: 233.08, d: 0.15}, {f: 293.66, d: 0.15}, {f: 349.23, d: 0.15}, {f: 466.16, d: 0.8}]; let delay = 0; notes.forEach(n => { setTimeout(() => this.playTone(n.f, 'square', n.d, 0.3), delay * 1000); delay += n.d + 0.02; }); },
     preloadAllBGMs() { const seen = new Set(); Object.values(this.db.bgm).forEach(url => { if (!url || url.includes('ここに') || seen.has(url) || this.bgmBlobCache[url]) return; seen.add(url); fetch(url).then(r => r.blob()).then(b => { if (!this.bgmBlobCache[url]) this.bgmBlobCache[url] = URL.createObjectURL(b); }).catch(() => {}); }); },
@@ -2080,6 +2105,19 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
     const stype = spellData.type || '';
     const elem = (spellData.element || '').toLowerCase();
     const sval = spellData.value || spellData.power || 0;
+
+    // 属性別SE（エフェクト開始と同時に再生）
+    {
+        let _magicSE = null;
+        if (elem === 'fire' || sid.includes('mera')) _magicSE = 'magic_fire';
+        else if (elem === 'ice' || sid.includes('hya')) _magicSE = 'magic_ice';
+        else if (elem === 'lightning' || sid.includes('gira') || sid.includes('begi')) _magicSE = 'magic_lightning';
+        else if (elem === 'wind' || sid.includes('bagi')) _magicSE = 'magic_wind';
+        else if (sid.includes('io') || elem === 'explosion') _magicSE = 'magic_explosion';
+        else if (sid.includes('doru') || sid.includes('dol') || elem === 'dark') _magicSE = 'magic_dark';
+        else if (stype === 'attack' || stype === 'debuff' || stype === 'status') _magicSE = 'magic_cast';
+        if (_magicSE) AudioManager.playSE(_magicSE);
+    }
 
     // Tier (spell power) detection: 1=weak, 2=medium, 3=strong, 4=ultimate
     let tier = 1;
@@ -4250,10 +4288,12 @@ function generateDQStyleMaps() {
         // 白石の列柱（左右対称）
         [[2,6],[2,9],[2,12],[19,6],[19,9],[19,12],
          [4,15],[4,18],[17,15],[17,18],[8,15],[13,15]].forEach(([x,y])=>_sT(m,x,y,16));
+        // 床を石畳に変更（草地→石畳）
+        for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(m.tiles[y*W+x]===0) _sT(m,x,y,3);
         // 聖なる赤絨毯（中央縦軸）
-        for(let x=9;x<=12;x++) for(let y=5;y<=21;y++) if(m.tiles[y*W+x]===0) _sT(m,x,y,9);
+        for(let x=9;x<=12;x++) for(let y=5;y<=21;y++) if(m.tiles[y*W+x]===3) _sT(m,x,y,9);
         // 崩落演出（非対称の美）
-        _sT(m,1,10,0); _sT(m,1,11,0);
+        _sT(m,1,10,3); _sT(m,1,11,3);
         // NPCs
         m.npcs['2,8']={id:'npc_tower_sage',name:'塔の賢者'};
         m.npcs['19,8']={id:'obj_chest_item',name:'宝箱'};
@@ -4311,9 +4351,11 @@ function generateDQStyleMaps() {
         m.exits['11,21']={map:'map_tower_1f',x:10,y:3};
         // 柱（上下ホール）
         [[3,3],[8,3],[13,3],[18,3],[3,18],[8,18],[13,18],[18,18]].forEach(([x,y])=>_sT(m,x,y,16));
-        // 装飾
-        for(let x=9;x<=12;x++) for(let y=4;y<=5;y++) if(m.tiles[y*W+x]===0) _sT(m,x,y,9);
-        for(let x=9;x<=12;x++) for(let y=18;y<=20;y++) if(m.tiles[y*W+x]===0) _sT(m,x,y,9);
+        // 床を石畳に変更（草地→石畳）
+        for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(m.tiles[y*W+x]===0) _sT(m,x,y,3);
+        // 装飾（絨毯）
+        for(let x=9;x<=12;x++) for(let y=4;y<=5;y++) if(m.tiles[y*W+x]===3) _sT(m,x,y,9);
+        for(let x=9;x<=12;x++) for(let y=18;y<=20;y++) if(m.tiles[y*W+x]===3) _sT(m,x,y,9);
         // NPCs
         m.npcs['2,11']={id:'npc_tower_spring',name:'聖なる泉'};
         m.npcs['3,3']={id:'obj_chest_weapon',name:'宝箱'};
@@ -4371,8 +4413,10 @@ function generateDQStyleMaps() {
         m.exits['12,19']={map:'map_tower_2f',x:10,y:4};
         // 白石の柱（空中に立つ神聖な柱）
         [[10,5],[12,5],[10,16],[12,16],[5,6],[5,7],[20,12],[20,13]].forEach(([x,y])=>_sT(m,x,y,16));
+        // 空中回廊の床を石畳に変更
+        for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(m.tiles[y*W+x]===0) _sT(m,x,y,3);
         // 聖なる赤絨毯（縦廊道）
-        for(let y=3;y<=18;y++) if(m.tiles[y*W+11]===0) _sT(m,11,y,9);
+        for(let y=3;y<=18;y++) if(m.tiles[y*W+11]===3) _sT(m,11,y,9);
         // NPCs
         m.npcs['2,6']={id:'obj_chest_armor',name:'宝箱（空中の秘宝）'};
         m.npcs['18,12']={id:'npc_tower_spring',name:'聖なる泉'};           // (20,12)→ピラー回避で18に移動
@@ -4682,12 +4726,11 @@ function generateDQStyleMaps() {
             [],
             [],[[6,10],[5,10]],
             {'6,10':{map:'map_field_2_3',x:7,y:7},'5,10':{map:'map_field_2_3',x:7,y:7}},
-            {'6,3':{id:'npc_shrine_priestess',name:'祠の巫女'},'5,5':{id:'obj_chest_item',name:'祠の宝箱'}},
+            {'6,3':{id:'npc_priest',name:'神父'},'5,5':{id:'obj_chest_item',name:'祠の宝箱'}},
             [],'ほこら');
         for(let y=1;y<10;y++) for(let x=1;x<11;x++) if(m.tiles[y*12+x]===0) m.tiles[y*12+x]=9;
         m.tiles[2*12+6]=3; m.tiles[11*12+6]=22; m.tiles[11*12+5]=22;
         externalMapData['map_shrine_warp']=m;
-        if(!externalEntitiesData['npc_shrine_priestess']) externalEntitiesData['npc_shrine_priestess']={id:'npc_shrine_priestess',name:'祠の巫女',type:'npc',msg:'ここは 聖なる ほこら。\nけがれを はらい\nたびびとに ちからを あたえましょう。'};
     }
 
     // ===== 竜霊の島 (12x12) =====
@@ -8588,12 +8631,13 @@ function drawMap() {
                     const _nFb = _nType === 'nobleM' ? (externalImages['king'] || externalImages['guard']) : externalImages['innGirl'];
                     if(_nFb) drawSpriteLocal(ctx, _nFb, px, py, 48);
                 }
-            } else if(npc.id.includes('advisor_hall') || npc.id === 'npc_estoria_sage') {
+            } else if(npc.id.includes('advisor_hall') || npc.id === 'npc_estoria_sage' || npc.id.includes('tower_sage') || npc.id.includes('tower_cloud_marker') || npc.id.includes('tower_spring')) {
+                // 天空の塔NPC・宮廷賢者ホール → 宮廷賢者グラフィック
                 if (!drawAnimatedNpcSprite(ctx, 'sage', npc.id, px, py, 48)) {
                     if(externalImages['priest']) { ctx.save(); ctx.filter='hue-rotate(280deg) saturate(1.8)'; drawSpriteLocal(ctx, externalImages['priest'], px, py, 48); ctx.restore(); }
                     else if(externalImages['oldMan']) drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48);
                 }
-            } else if(npc.id.includes('story_advisor') || npc.id.includes('story_hermit') || npc.id.includes('tower_sage') || npc.id.includes('dc_recovery_sage')) {
+            } else if(npc.id.includes('story_advisor') || npc.id.includes('story_hermit') || npc.id.includes('dc_recovery_sage')) {
                 if (!drawAnimatedNpcSprite(ctx, 'vetSage', npc.id, px, py, 48)) {
                     if(externalImages['priest']) { ctx.save(); ctx.filter = 'hue-rotate(30deg) brightness(1.1)'; drawSpriteLocal(ctx, externalImages['priest'], px, py, 48); ctx.restore(); }
                     else if(externalImages['oldMan']) drawSpriteLocal(ctx, externalImages['oldMan'], px, py, 48);
