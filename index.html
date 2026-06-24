@@ -2743,7 +2743,7 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
             ctx.globalAlpha = glowP * 0.75;
             ctx.shadowColor = c1; ctx.shadowBlur = glowR*1.5;
             const gg = ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,glowR);
-            gg.addColorStop(0,'rgba(255,255,255,0.9)'); gg.addColorStop(0.5,c1.replace(')',',0.7)').replace('#','rgba(')); gg.addColorStop(1,c2);
+            gg.addColorStop(0,'rgba(255,255,255,0.9)'); gg.addColorStop(0.5, isGold ? 'rgba(255,221,68,0.7)' : 'rgba(68,255,136,0.7)'); gg.addColorStop(1,c2);
             ctx.fillStyle = gg;
             ctx.beginPath(); ctx.arc(tcx,tcy,glowR,0,Math.PI*2); ctx.fill();
             clearGlow();
@@ -9298,7 +9298,7 @@ async function moveParty(dx, dy) {
     }
     if(currentMap.encounters && currentMap.encounters.length > 0 && (!partyData.flags || !partyData.flags.last_boss_defeated)) {
         if (partyData.tohero_steps && partyData.tohero_steps > 0) { } 
-        else { partyData.steps_to_encounter--; if(partyData.steps_to_encounter <= 0) { partyData.steps_to_encounter = Math.floor(Math.random()*10) + 10; executeBattle(); } }
+        else { partyData.steps_to_encounter--; if(partyData.steps_to_encounter <= 0) { partyData.steps_to_encounter = Math.floor(Math.random()*10) + 10; executeBattle().catch(err => { console.error('[Battle] 例外発生:', err); const _bs=document.getElementById('battle-screen'); if(_bs)_bs.style.display='none'; const _sc=document.getElementById('screen'); if(_sc)_sc.style.display='block'; hideAllWindows(); inputCallback=null; state='FIELD'; drawMap(); startFieldLoop(); }); } }
     }
 }
 
@@ -12778,7 +12778,7 @@ async function executeBattle(fixedEnemies = null) {
                     }
                     actionsArray[mIdx] = { actor: m, type: 'spell', spell: spellData, target: targetObj, spd: getSpd(m) + Math.random()*5 }; commandChosen = true;
                 } else if(cmdIdx === 2) {
-                    if(m.inventory.length === 0) { await typeMessage("もちものが ない！"); continue; }
+                    if(!m.inventory || m.inventory.length === 0) { await typeMessage("もちものが ない！"); continue; }
                     let itemIdx = await selectMenu(m.inventory.map(id => masterData.items[id] ? masterData.items[id].name : "なぞのアイテム"), 'cmd-window', 1, true); if(itemIdx === -1) continue;
                     let itemData = masterData.items[m.inventory[itemIdx]]; if(itemData.type !== 'tool') { await typeMessage("ここでは つかえない！"); continue; }
                     let tIdx = await selectMenu(partyData.members.map(mb=>mb.name), 'cmd-window', 1, true); if(tIdx === -1) continue; let targetObj = partyData.members[tIdx];
@@ -13549,25 +13549,25 @@ ${act.actor.name}の ちからが すいとられた！`); }
                     AudioManager.playSE('heal'); let t = act.target;
                     if(act.spell.id.includes('zao')) { 
                         if(t.hp > 0) { await typeMessage("しかし なにも おこらなかった！"); } 
-                        else { t.hp = Math.floor(t.max_hp / 2); await typeMessage(`${t.name}は いきかえった！`); } 
+                        else { t.hp = Math.floor(t.max_hp / 2); updatePartyStatus(); await typeMessage(`${t.name}は いきかえった！`); } 
                     } 
                     else if(act.spell.id.includes('kiari') || act.spell.id.includes('shana')) {
                         if(act.target === 'allies') { partyData.members.forEach(m => { m.isPoisoned = false; m.tmpSleep = 0; }); await typeMessage(`なかま ぜんいんの どくや マヒが とけた！`); } 
-                        else if (t) { t.isPoisoned = false; t.tmpSleep = 0; await typeMessage(`${t.name}の どくや マヒが とけた！`); }
+                        else if (t) { t.isPoisoned = false; t.tmpSleep = 0; updatePartyStatus(); await typeMessage(`${t.name}の どくや マヒが とけた！`); }
                     }
                     else if (act.target === 'allies') {
                         if(act.spell.id === 'behomara' || act.spell.id.includes('behomara')) {
                             // ベホマラ: 全員HP完全回復
                             partyData.members.forEach(m => { if(m.hp>0) m.hp = m.max_hp; });
-                            await typeMessage(`慈愛の 光が 仲間を 包んだ！\nなかま ぜんいんの HPが かんぜんに かいふくした！`);
+                            updatePartyStatus(); await typeMessage(`慈愛の 光が 仲間を 包んだ！\nなかま ぜんいんの HPが かんぜんに かいふくした！`);
                         } else {
                             partyData.members.forEach(m => { if(m.hp>0) m.hp = Math.min(m.max_hp, m.hp + act.spell.value); });
-                            await typeMessage(`なかま ぜんいんの HPが かいふくした！`);
+                            updatePartyStatus(); await typeMessage(`なかま ぜんいんの HPが かいふくした！`);
                         }
                     } 
                     else { 
                         if(t.hp <= 0) { await typeMessage("しんでいる なかまには きかない！"); } 
-                        else { t.hp = Math.min(t.max_hp, t.hp + act.spell.value); await typeMessage(`${t.name}の HPが かいふくした！`); } 
+                        else { t.hp = Math.min(t.max_hp, t.hp + act.spell.value); updatePartyStatus(); await typeMessage(`${t.name}の HPが かいふくした！`); }
                     }
                 } else if (act.spell.type === 'attack') {
                     let magicDmgMultiplier = (partyData.flags && partyData.flags.flag_2nd_maou_cleared && !act.actor.displayName) ? 2 : 1;
