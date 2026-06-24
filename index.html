@@ -8896,7 +8896,14 @@ function drawMap() {
     const _wNow = Date.now(); const _isWalking = (_wNow - _lastMoveTime) < 350;
     for(let i = displayOrder.length - 1; i >= 0; i--) {
         let member = displayOrder[i]; let px = partyData.pos.x, py = partyData.pos.y, pDir = partyData.dir;
-        if(i > 0 && moveHistory[i-1]) { px = moveHistory[i-1].x; py = moveHistory[i-1].y; pDir = moveHistory[i-1].dir; }
+        if(i > 0 && moveHistory[i-1]) {
+            px = moveHistory[i-1].x; py = moveHistory[i-1].y; pDir = moveHistory[i-1].dir || partyData.dir;
+            // フィールドマップ境界越え: 別マップの履歴座標をオフセット変換
+            if (_isFieldMap && moveHistory[i-1].map && moveHistory[i-1].map !== _mapId) {
+                const _hmf = moveHistory[i-1].map.match(/map_field_(\d+)_(\d+)/);
+                if (_hmf) { px += (parseInt(_hmf[1]) - _fgx) * (currentMap.width || 45); py += (parseInt(_hmf[2]) - _fgy) * (currentMap.height || 45); }
+            }
+        }
         const _mPhase = (_walkPhase + (displayOrder.length - 1 - i) * 2) % 8;
         const _bobY = _isWalking ? [0,-2,0,-4,0,-2,0,-4][_mPhase] : Math.round(Math.sin(_wNow / 1200 + i * 1.5) * 1);
         if(member.hp <= 0) { ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("⚰️", px*TILE_SIZE - camX + TILE_SIZE/2, py*TILE_SIZE - camY + TILE_SIZE/2); }
@@ -9102,7 +9109,7 @@ async function moveParty(dx, dy) {
                 partyData.last_field_pos = {...partyData.pos};
                 if(!partyData.flags.visited_maps) partyData.flags.visited_maps = {};
                 partyData.flags.visited_maps[mapId] = true;
-                currentMap = _m; moveHistory = []; drawMap(); updateBGM(); return true;
+                currentMap = _m; if (!(/^map_field_/.test(_mapIdB) && /^map_field_/.test(mapId))) moveHistory = []; drawMap(); updateBGM(); return true;
             };
 
             if (_fmM) {
@@ -9175,7 +9182,7 @@ async function moveParty(dx, dy) {
     const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && (/^map_field_/.test(partyData.pos.map) || /^map_ocean_/.test(partyData.pos.map)); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18, 25] : [1, 2, 4, 5, 15, 16, 17, 18, 25]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20, 25]; // 高山(25)のみ不可・山(20)はフィールドで通行可
     if(solidTiles.includes(tile)) return;
     const key = `${nx},${ny}`; const _npcHere = currentMap.npcs && currentMap.npcs[key]; if (_npcHere && !(['obj_deco_rug_red','obj_deco_rug_blue','deco_rug_gold','obj_deco_rug_yellow'].includes(_npcHere.id))) return;
-    moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
+    moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir, map: partyData.pos.map}); if(moveHistory.length > 5) moveHistory.pop();
     _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
     partyData.pos.x = nx; partyData.pos.y = ny;
     if (_onField) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[partyData.pos.map] = true; }
@@ -9308,10 +9315,12 @@ async function moveParty(dx, dy) {
                 if (!_canExit) return; // 孤立陸地：遷移中止
             }
             currentMap = nextMap;
+            const _oldMapIdF2F = partyData.pos.map; // フィールド間遷移判定用に旧マップIDを保存
             partyData.pos.map = _normMap;
             if (_toField) { if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {}; partyData.flags.visited_maps[_normMap] = true; }
             partyData.pos.x = _lx; partyData.pos.y = _ly;
-            moveHistory = []; drawMap(); updateBGM();
+            if (!(_toField && /^map_field_/.test(_oldMapIdF2F))) moveHistory = []; // フィールド間遷移はmoveHistoryを保持
+            drawMap(); updateBGM();
             // 偽王討伐編: マップ入場時に記憶回復チェック
             if (partyData.flags.flag_2nd_maou_cleared && !partyData.flags.last_boss_defeated) await _check2ndMemory();
             if (_isTravelGate) await _tgFade(false); return;
