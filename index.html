@@ -8022,7 +8022,7 @@ function drawMap() {
             } else if (tile === 1 || tile === 4 || tile === 15) {
                 if (_tileIsCastle) color = '#445'; else if (_tileIsTown) color = '#764'; else if (isCave) color = '#222'; else if (isMountain) color = '#333';
             }
-            let floorKeys = _tileIsCastle ? ['castleFloor', 'floor'] : (_tileIsTown ? ['townFloor', 'floor', 'townPath'] : (isCave ? ['caveFloor', 'ground', 'floor'] : ['fieldGrass', 'grass'])); if(isMountain) floorKeys = ['northMountainFloor', 'mountainFloor', 'plainRock', 'rock'];
+            let floorKeys = _tileIsCastle ? ['castleFloor', 'floor'] : (_tileIsTown ? ['townFloor', 'floor', 'townPath'] : (isCave ? ['caveFloor', 'ground', 'floor'] : (_isTower || _isDemon || _isShrine ? [] : ['fieldGrass', 'grass']))); if(isMountain) floorKeys = ['northMountainFloor', 'mountainFloor', 'plainRock', 'rock'];
             for(let k of floorKeys) { if(externalImages[k] && externalImages[k].complete && externalImages[k].naturalHeight > 0) { bgImg = externalImages[k]; break; } }
             if (tile === 1 || tile === 4) {
                let wallKeys = _tileIsCastle ? ['castleWall', 'wall'] : (_tileIsTown ? ['townWall', 'wall', 'brickWall'] : (isCave ? ['caveWall', 'rockWall', 'wall'] : ['plainRock', 'rock', 'mountainWall'])); if(isMountain) wallKeys = ['northMountainWall', 'mountainWall', 'plainRock', 'rock'];
@@ -12621,12 +12621,17 @@ async function openMainMenu() {
                 let eqAc= m.equipment.accessory ? (masterData.items[m.equipment.accessory]?.name || "なぞの指輪") : "なし";
                 let hpCol = '#fff'; if(m.hp <= m.max_hp/3 || m.hp===0) hpCol = '#f55'; else if(m.hp <= m.max_hp/2) hpCol = '#fa0';
                 let mpCol = '#fff'; if(m.max_mp>0 && m.mp <= m.max_mp/3) mpCol = '#f55'; else if(m.max_mp>0 && m.mp <= m.max_mp/2) mpCol = '#fa0';
-                const _eqRow = (lbl, name) => `<div style="display:flex;gap:4px;white-space:nowrap;overflow:hidden;"><span style="color:#888;flex-shrink:0;">${lbl}</span><span style="overflow:hidden;text-overflow:ellipsis;">${_sn(name)}</span></div>`;
-                let html = `<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #888;padding-bottom:5px;margin-bottom:8px;"><span style="font-size:16px;font-weight:bold;">${m.name}</span><span style="font-size:12px;color:#aef;">LV.${m.lv}　${m.job}</span></div>`;
-                html += `<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:12px;font-size:13px;line-height:1.85;">`;
-                html += `<div><div>HP <span style="color:${hpCol};float:right;">${Math.max(0,m.hp)}&thinsp;/&thinsp;${m.max_hp}</span></div><div>MP <span style="color:${mpCol};float:right;">${m.mp}&thinsp;/&thinsp;${m.max_mp}</span></div><div>攻 <span style="float:right;">${getAtk(m)}</span></div><div>守 <span style="float:right;">${getDef(m)}</span></div><div>速 <span style="float:right;">${getSpd(m)}</span></div><div style="color:#999;font-size:11px;">EXP<span style="float:right;">${m.exp}</span></div></div>`;
-                html += `<div style="overflow:hidden;">${_eqRow('武', eqW)}${_eqRow('体', eqA)}${_eqRow('盾', eqS)}${_eqRow('頭', eqH)}${_eqRow('指', eqAc)}</div>`;
+                const _eqRow = (lbl, name) => { const isEmpty = name==='なし'; return `<div style="display:flex;gap:6px;line-height:1.7;"><span style="color:#888;flex-shrink:0;width:1.2em;">${lbl}</span><span style="color:${isEmpty?'#555':'#e8e8e8'};">${_sn(name)}</span></div>`; };
+                let html = `<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #888;padding-bottom:5px;margin-bottom:6px;"><span style="font-size:16px;font-weight:bold;">${m.name}</span><span style="font-size:12px;color:#aef;">LV.${m.lv}　${m.job}</span></div>`;
+                html += `<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:10px;font-size:13px;line-height:1.75;margin-bottom:7px;">`;
+                html += `<div>HP <span style="color:${hpCol};float:right;">${Math.max(0,m.hp)}&thinsp;/&thinsp;${m.max_hp}</span></div>`;
+                html += `<div>MP <span style="color:${mpCol};float:right;">${m.mp}&thinsp;/&thinsp;${m.max_mp}</span></div>`;
+                html += `<div>攻 <span style="float:right;">${getAtk(m)}</span></div>`;
+                html += `<div>守 <span style="float:right;">${getDef(m)}</span></div>`;
+                html += `<div>速 <span style="float:right;">${getSpd(m)}</span></div>`;
+                html += `<div style="color:#999;font-size:11px;">EXP<span style="float:right;">${m.exp}</span></div>`;
                 html += `</div>`;
+                html += `<div style="border-top:1px solid #444;padding-top:5px;font-size:12px;">${_eqRow('武', eqW)}${_eqRow('体', eqA)}${_eqRow('盾', eqS)}${_eqRow('頭', eqH)}${_eqRow('指', eqAc)}</div>`;
                 const _hasPrev = _stIdx > 0, _hasNext = _stIdx < partyData.members.length - 1;
                 html += `<div style="border-top:1px solid #555;margin-top:8px;padding-top:6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;">`;
                 html += `<span id="_st_prev" style="padding:2px 6px;background:${_hasPrev?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.04)'};border-radius:3px;color:${_hasPrev?'#fff':'#444'};cursor:pointer;">◀前へ</span>`;
