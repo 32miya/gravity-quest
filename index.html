@@ -874,7 +874,37 @@ const _GQ_FLAGS = ['last_boss_defeated','is_second_loop','is_second_loop_unlocke
     'flag_desert_mummy_cleared','flag_sea_god_cleared','flag_dark_disciple_cleared',
     'flag_crystal_golem_cleared','flag_chaos_dragon_cleared','flag_archmage_cleared',
     'flag_demon_avatar_cleared','chest_deserta_seal',
-    'flag_dc_warden_left_cleared','flag_dc_warden_right_cleared','flag_dc_warden_ul_cleared','flag_dc_warden_ur_cleared'];
+    'flag_dc_warden_left_cleared','flag_dc_warden_right_cleared','flag_dc_warden_ul_cleared','flag_dc_warden_ur_cleared',
+    'treasure_king_1_taken','treasure_king_2_taken','treasure_king_3_taken','treasure_king_4_taken','treasure_king_5_taken'];
+// 座標宝箱テーブル（mapId_x_y形式、フラグ=chest_+エントリ名）
+const _GQ_CHESTS = [
+    'map_abandoned_house_3_5','map_castle_1f_12_2','map_castle_deserta_12_8','map_castle_zarmo_12_10',
+    'map_cave_crystal_1f_11_8','map_cave_crystal_1f_3_8','map_cave_ice_1f_11_8','map_cave_ice_1f_3_8',
+    'map_cave_ice_b1f_3_2','map_cave_lava_1f_11_8','map_cave_lava_1f_3_8','map_cave_lava_b1f_3_2',
+    'map_cave_shadow_1f_11_8','map_cave_shadow_1f_3_8','map_death_castle_1f_13_2','map_death_castle_1f_1_2',
+    'map_death_castle_2f_1_13','map_death_castle_3f_1_12','map_demon_castle_1f_23_7','map_demon_castle_1f_2_7',
+    'map_demon_castle_2f_21_13','map_demon_castle_2f_21_8','map_demon_castle_2f_2_13','map_demon_castle_2f_2_8',
+    'map_demon_castle_3f_21_12','map_demon_castle_3f_21_4','map_demon_castle_3f_2_12','map_demon_castle_3f_2_4',
+    'map_demon_castle_4f_19_11','map_demon_castle_4f_2_11','map_demon_castle_left_16_20','map_demon_castle_left_17_2',
+    'map_demon_castle_left_2_2','map_demon_castle_left_2_20','map_demon_castle_right_16_20',
+    'map_demon_castle_right_17_2','map_demon_castle_right_2_2','map_demon_castle_right_2_20','map_dharma_temple_11_7',
+    'map_dharma_temple_3_7','map_dharma_temple_north_11_7','map_dharma_temple_north_3_7','map_dragon_shrine_3_6',
+    'map_dragon_shrine_9_6','map_dungeon_1f_12_1','map_dungeon_1f_4_2','map_dungeon_abyss_1f_11_8',
+    'map_dungeon_abyss_1f_3_8','map_dungeon_b1f_15_2','map_dungeon_b1f_3_2','map_dungeon_b1f_5_14',
+    'map_dungeon_b2f_18_2','map_dungeon_b2f_3_2','map_dungeon_b2f_4_14','map_dungeon_b3f_10_2','map_dungeon_b3f_18_2',
+    'map_dungeon_b3f_2_2','map_dungeon_east_1f_11_8','map_dungeon_east_1f_3_8','map_fortress_dark_1f_11_8',
+    'map_fortress_dark_1f_3_8','map_hidden_cave_13_10','map_hidden_cave_1_10','map_hidden_cave_1_4',
+    'map_pirate_cave_12_10','map_pirate_cave_3_10','map_ruin_ancient_1f_11_8','map_ruin_ancient_1f_3_8',
+    'map_ruin_desert_1f_11_8','map_ruin_desert_1f_3_8','map_temple_sea_1f_11_8','map_temple_sea_1f_3_8',
+    'map_tower_1f_19_8','map_tower_1f_3_17','map_tower_2f_18_3','map_tower_2f_3_3','map_tower_3f_2_6',
+    'map_tower_darkspire_1f_3_9','map_tower_darkspire_2f_8_8','map_tower_darkspire_3f_3_8','map_tower_darkspire_3f_8_8',
+    'map_tower_magic_1f_3_9','map_tower_magic_2f_3_4','map_tower_magic_2f_8_8','map_tower_magic_3f_3_8',
+    'map_tower_magic_3f_8_8','map_tower_secret_13_3','map_tower_secret_2_3','map_tower_secret_7_2',
+    'map_tower_summit_20_3','map_tower_summit_3_3','map_town_01_65_10','map_town_01_65_5','map_town_01_68_35',
+    'map_town_bazaar_25_12','map_town_coral_8_12','map_town_estoria_city_3_17','map_town_frost_25_12',
+    'map_town_nord_8_4','map_town_oasis_25_4','map_town_rosalia_25_4','map_town_salmon_24_17','map_town_south_port_8_4',
+    'map_village_elfheim_3_17'
+];
 
 // ビット書き込み: 6ビット単位でbytes配列に積む
 function _gqBitPack(fields) {
@@ -987,10 +1017,12 @@ function packSaveData(pData) {
     fields.push([Math.min((pData.pos||{}).x||0,63), 6]);
     fields.push([Math.min((pData.pos||{}).y||0,63), 6]);
     for (const k of _GQ_FLAGS) fields.push([f[k]?1:0, 1]);
-    // SQ完了フラグ10個 (各1bit, 計10bit)
-    for (let _sqE=1; _sqE<=10; _sqE++) { const _sqK=_sqE<10?'sq_0'+_sqE:'sq_10'; fields.push([(f[_sqK]||0)>=99?1:0, 1]); }
+    // SQ進行度10個 (各4bit: 0=未着手, 1-14=10-140%, 15=完了(99), 計40bit)
+    for (let _sqE=1; _sqE<=10; _sqE++) { const _sqK=_sqE<10?'sq_0'+_sqE:'sq_10'; const _sv=f[_sqK]||0; fields.push([_sv>=99?15:Math.min(Math.floor(_sv/10),14), 4]); }
+    // 座標宝箱フラグ (各1bit, 計104bit)
+    for (const _ck of _GQ_CHESTS) fields.push([f['chest_'+_ck]?1:0, 1]);
     // メンバー×4: 名前(32=8×4)+職業(4)+Lv(6)+EXP(14)+装備5本(8×5=40)+所持8個(8×8=64) = 160ビット×4=640ビット
-    // 合計: 64+10+640=714ビット → ceil(714/6)=119文字 + チェックサム1文字 = 120文字
+    // 合計: 37+53+40+104+640=874ビット → ceil(874/6)=146文字 + チェックサム1文字 = 147文字
     for (let i=0;i<4;i++) {
         const m=(pData.members||[])[i];
         const _slot = (id) => { const idx=_GQ_EQUIP.indexOf(id||''); return idx>=0?idx:0; };
@@ -1007,7 +1039,7 @@ function packSaveData(pData) {
     }
     const payload = _gqBitPack(fields);
     const cs = payload.reduce((a,b)=>a+b,0)%64;
-    const bytes = [cs, ...payload.slice(0,119)]; // 1+119=120文字
+    const bytes = [cs, ...payload.slice(0,146)]; // 1+146=147文字
     return bytes.map(b=>_GQ_KANA64[b%64]).join('');
 }
 
@@ -1065,12 +1097,14 @@ function unpackSaveData(pwd) {
     // ── かなパスワード判定: 先頭文字が_GQ_KANA64に含まれるか ──
     if (_GQ_KANA64.includes(pwd[0])) {
         // フォーマット判定:
-        // 120文字=最新形式+SQ完了フラグ10個
-        // 119文字=旧形式(SQフラグなし), 116文字=旧7bit名前形式, 113文字=旧6bit名前形式
+        // 147文字=最新形式(SQ4bit+宝箱104bit+王様宝箱5bit)
+        // 120文字=旧形式(SQ完了1bit×10), 119文字=旧形式(SQなし)
+        // 116文字=旧7bit名前形式, 113文字=旧6bit名前形式
         const _eb = pwd.length >= 109 ? 8 : 7; // 装備/所持品ビット数
         const _nb = pwd.length >= 117 ? 8 : (pwd.length >= 115 ? 7 : 6); // 名前ビット数
         const _jb = pwd.length >= 115 ? 4 : 3;  // 職業ビット数
-        const _hasSQ = pwd.length >= 120; // SQ完了フラグ有無
+        const _hasSQ = pwd.length >= 120; // SQ旧形式(1bit)有無
+        const _hasFullSQ = pwd.length >= 147; // SQ新形式(4bit)+宝箱フラグ有無
         const _minLen = _eb === 8 ? 109 : 100;
         if ([...pwd].every(c => _GQ_KANA64.includes(c)) && pwd.length >= _minLen) {
             const bytes = [...pwd].map(c => _GQ_KANA64.indexOf(c));
@@ -1084,8 +1118,12 @@ function unpackSaveData(pwd) {
             const px=read(6), py=read(6);
             const flags = {};
             for (const k of _GQ_FLAGS) { if(read(1)) flags[k]=true; }
-            // SQ完了フラグ (120文字形式のみ)
-            if (_hasSQ) { for (let _sqD=1; _sqD<=10; _sqD++) { const _sqK=_sqD<10?'sq_0'+_sqD:'sq_10'; if(read(1)) flags[_sqK]=99; } }
+            // SQフラグ: 新形式=4bit×10(進行度), 旧形式=1bit×10(完了のみ)
+            if (_hasFullSQ) {
+                for (let _sqD=1; _sqD<=10; _sqD++) { const _sqK=_sqD<10?'sq_0'+_sqD:'sq_10'; const _sv=read(4); if(_sv===15) flags[_sqK]=99; else if(_sv>0) flags[_sqK]=_sv*10; }
+                // 座標宝箱フラグ
+                for (const _ck of _GQ_CHESTS) { if(read(1)) flags['chest_'+_ck]=true; }
+            } else if (_hasSQ) { for (let _sqD=1; _sqD<=10; _sqD++) { const _sqK=_sqD<10?'sq_0'+_sqD:'sq_10'; if(read(1)) flags[_sqK]=99; } }
             const members = [];
             for (let i=0;i<4;i++) {
                 const name = _gqDecodeName(read,_nb); // 7bit=カタカナ保持, 6bit=旧形式
@@ -11311,7 +11349,7 @@ async function eventPriest() {
             localStorage.setItem('gravity_quest_save', JSON.stringify(partyData)); await typeMessage("スマホに データーを きろくしました。\n（※ブラウザ履歴を消すと消える場合があります）");
             let encoded = packSaveData(partyData);
             const _hasKanji=partyData.members.some(m=>_hasUnsupportedNameChars(m.name));
-            const _pwdNote="念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（5文字区切り・119文字）"+(_hasKanji?"\n\n※名前に漢字が含まれています。\n漢字は呪文では継承されないため\nひらがな・カタカナ・英数字に\n変更することをお勧めします。":"");
+            const _pwdNote="念のため「ふっかつのじゅもん」も\nコピーしておくことを お勧めします。\n（5文字区切り・147文字）"+(_hasKanji?"\n\n※名前に漢字が含まれています。\n漢字は呪文では継承されないため\nひらがな・カタカナ・英数字に\n変更することをお勧めします。":"");
             await showCustomDialog('copy', _pwdNote, _gqFormatPwd(encoded));
             if (partyData.flags && partyData.flags.flag_2nd_maou_cleared) { await typeMessage("しかし まだ せかいのどこかに\nふおんな けはいが のこっております...\nきをつけて おすすみください。"); }
         } else if (choice === 1) {
@@ -11320,7 +11358,7 @@ async function eventPriest() {
             const _hasK2=partyData.members.some(m=>_hasUnsupportedNameChars(m.name));
             await typeMessage("あなたの これまでの ぼうけんを\nひらがなの じゅもんに して おしえましょう。");
             if(_hasK2) await typeMessage("【注意】名前に漢字が含まれています。\n漢字は「ふっかつのじゅもん」では\n引き継がれません。\nひらがな・カタカナ・英数字（A-Z・0-9）\nをお使いください。");
-            await showCustomDialog('copy', "ふっかつのじゅもん\n（5文字区切り・119文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
+            await showCustomDialog('copy', "ふっかつのじゅもん\n（5文字区切り・147文字）\n枠内を長押しでコピーできます", _gqFormatPwd(encoded)); await typeMessage("じゅもんを ともだちに おしえれば\nおなじ ところから ぼうけんできますよ。");
         } else if (choice === 2) {
             let deadMembers = partyData.members.filter(m => m.hp <= 0);
             if(deadMembers.length === 0) await typeMessage("しんでいる なかまは いませんよ。");
