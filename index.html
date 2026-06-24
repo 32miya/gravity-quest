@@ -823,7 +823,7 @@ const _GQ_JOBS = ['勇者','戦士','魔法使い','僧侶','賢者','パンダ'
                   'パラディン','サムライ','魔剣士','踊り子','召喚士','魔法戦士','モンク','商人'];
 // マップIDテーブル（6ビット=64種）
 const _GQ_MAPS = ['map_town_01','map_castle_01','map_dungeon_1f','map_dungeon_b1f','map_dungeon_b2f','map_dungeon_b3f','map_tower_1f','map_tower_2f','map_tower_3f','map_shrine_warp','map_demon_castle_1f','map_demon_castle_2f','map_demon_castle_3f','map_demon_castle_4f','map_town_02','map_town_03','map_dharma_temple','map_fishing_village_nw','map_frontier_village','map_pirate_cave','map_sage_shrine','map_field_0_0','map_field_1_0','map_field_2_0','map_field_3_0','map_field_4_0','map_field_0_1','map_field_1_1','map_field_2_1','map_field_3_1','map_field_4_1','map_field_0_2','map_field_1_2','map_field_2_2','map_field_3_2','map_field_4_2','map_field_0_3','map_field_1_3','map_field_2_3','map_field_3_3','map_field_4_3','map_field_0_4','map_field_1_4','map_field_2_4','map_field_3_4','map_field_4_4','map_eden',
-    'map_castle_zarmo','map_castle_estoria','map_castle_deserta',
+    'map_castle_zarmo','map_castle_estoria','map_castle_deserta','map_castle_north',
     'map_town_nord','map_town_rosalia','map_town_coral','map_town_bazaar','map_town_estoria_city','map_town_oasis','map_town_south_port','map_town_frost','map_village_elfheim','map_town_salmon',
     'map_tower_magic_1f','map_tower_darkspire_1f','map_dharma_temple_north','map_demon_castle_left'];
 // アイテム/装備コンパクトIDテーブル（8ビット=256種、0=なし）
@@ -1837,6 +1837,7 @@ function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return ma
     if (mapId.includes('castle_zarmo')) return "北東の古城ザーモ";
     if (mapId.includes('castle_estoria')) return "東の王国城エストリア";
     if (mapId.includes('castle_deserta')) return "南の砂漠城デセルタ";
+    if (mapId.includes('castle_north')) return "北の廃城";
     if (mapId.includes('town_nord')) return "冒険者の港ノルド";
     if (mapId.includes('town_rosalia')) return "花の街ロザリーヒル";
     if (mapId.includes('town_coral')) return "海峡の街コーラル";
@@ -1860,7 +1861,7 @@ function getMapDisplayName(mapId, mapObj) { if (mapObj && mapObj.name) return ma
     if (mapId.includes('tower_magic')) return "魔法使いの塔";
     if (mapId.includes('tower_darkspire')) return "闇の尖塔";
     if (mapId.includes('town_01')) return "城下町グラマニア"; if (mapId.includes('castle_01')) return "グラマニア城"; if (mapId.includes('frontier_village')) return "ミーラ村"; if (mapId.includes('dungeon_1f')) return "試練の洞窟 1F"; if (mapId.includes('dungeon_b1f')) return "試練の洞窟 B1F"; if (mapId.includes('dungeon_b2f')) return "試練の洞窟 B2F"; if (mapId.includes('dungeon_b3f')) return "試練の洞窟 B3F"; if (mapId.includes('tower_1f')) return "天空の塔 1F"; if (mapId.includes('tower_2f')) return "天空の塔 2F"; if (mapId.includes('tower_3f')) return "天空の塔 3F"; if (mapId.includes('demon_castle_1f')) return "魔王城 1F"; if (mapId.includes('demon_castle_2f')) return "魔王城 2F"; if (mapId.includes('demon_castle_3f')) return "魔王城 3F"; if (mapId.includes('demon_castle_4f')) return "魔王城 4F"; if (mapId === 'map_dharma_temple_north') return "北のダーマ神殿"; if (mapId === 'map_dharma_temple') return "ダーマ神殿"; if (mapId.includes('shrine')) return "ほこら"; if (mapId.includes('town') || mapId.includes('village') || mapId.includes('market')) return "街・村"; if (mapId.includes('dungeon') || mapId.includes('cave')) return "ダンジョン"; if (mapId.includes('field')) return "フィールド"; return "未知の場所"; }
-function getCurrentWorldPos() { let m = partyData.pos.map; if (!m) return {x: 2, y: 2}; let wx = -1, wy = -1; if (m.startsWith('map_field_') && m.split('_').length >= 4) { wx = parseInt(m.split('_')[2]); wy = parseInt(m.split('_')[3]); } else if (m.startsWith('map_ocean_')) { if (partyData.last_field_pos && /^map_field_/.test(partyData.last_field_pos.map)) { const _pts = partyData.last_field_pos.map.split('_'); wx = parseInt(_pts[2]); wy = parseInt(_pts[3]); } else { wx = 2; wy = 2; } } else if (m.includes('town') || m.includes('castle')) { wx = 2; wy = 2; } else if (m.includes('dungeon') || m.includes('cave')) { wx = 2; wy = 0; } else if (m.includes('shrine')) { wx = 2; wy = 3; } else if (m.includes('nord') || m.includes('north')) { wx = 5; wy = 0; } else if (m.includes('south') || m.includes('south_port') || m.includes('coral')) { wx = 6; wy = 7; } else if (m.includes('east') || m.includes('estoria')) { wx = 7; wy = 4; } else if (m.includes('frost') || m.includes('west')) { wx = 1; wy = 6; } if (wx === -1 || wy === -1) { wx = 2; wy = 2; } return {x: wx, y: wy}; }
+function getCurrentWorldPos() { let m = partyData.pos.map; if (!m) return {x: 2, y: 2}; let wx = -1, wy = -1; if (m.startsWith('map_field_') && m.split('_').length >= 4) { wx = parseInt(m.split('_')[2]); wy = parseInt(m.split('_')[3]); } else if (m.startsWith('map_ocean_')) { if (partyData.last_field_pos && /^map_field_/.test(partyData.last_field_pos.map)) { const _pts = partyData.last_field_pos.map.split('_'); wx = parseInt(_pts[2]); wy = parseInt(_pts[3]); } else { wx = 2; wy = 2; } } else if (m.includes('castle_north')) { wx = 0; wy = 0; } else if (m.includes('town') || m.includes('castle')) { wx = 2; wy = 2; } else if (m.includes('dungeon') || m.includes('cave')) { wx = 2; wy = 0; } else if (m.includes('shrine')) { wx = 2; wy = 3; } else if (m.includes('nord') || m.includes('north')) { wx = 5; wy = 0; } else if (m.includes('south') || m.includes('south_port') || m.includes('coral')) { wx = 6; wy = 7; } else if (m.includes('east') || m.includes('estoria')) { wx = 7; wy = 4; } else if (m.includes('frost') || m.includes('west')) { wx = 1; wy = 6; } if (wx === -1 || wy === -1) { wx = 2; wy = 2; } return {x: wx, y: wy}; }
 async function showWorldMap() {
     if (!partyData.flags.visited_maps) partyData.flags.visited_maps = {};
     partyData.flags.visited_maps['map_field_2_2'] = true;
@@ -3100,9 +3101,50 @@ function buildGramanTown01() {
 function buildGramanCastle01() {
     const W = 68, H = 56;
     const tiles = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,9,9,9,15,15,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,15,15,9,9,9,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,9,5,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,5,9,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,9,5,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,5,9,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,9,5,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,9,9,9,9,9,9,9,9,5,9,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,9,5,9,15,15,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,9,9,9,9,9,15,15,9,5,9,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,9,5,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,9,9,9,9,9,9,9,9,5,9,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,9,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,9,9,9,9,9,9,9,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,17,17,11,11,17,17,11,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,17,17,11,11,17,17,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,11,11,11,11,11,11,11,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,5,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,11,11,11,11,11,11,11,10,11,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,11,11,11,11,11,11,11,10,11,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,5,1,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,1,1,0,11,11,11,11,11,11,11,10,11,5,5,5,5,5,1,1,1,1,1,1,5,5,5,5,5,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,1,1,0,11,11,11,11,11,11,11,10,11,5,5,5,5,5,1,1,1,1,1,1,5,5,5,5,5,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,5,1,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,1,1,0,11,11,11,11,11,11,11,10,11,5,5,5,5,5,1,1,1,1,1,1,5,5,5,5,5,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,11,11,11,11,11,11,11,10,11,5,5,5,5,5,1,1,1,1,1,1,5,5,5,5,5,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,5,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,11,11,11,11,11,11,11,10,11,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,11,11,11,11,11,11,11,10,11,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,11,10,11,11,11,11,11,11,11,0,1,1,0,0,0,0,0,0,0,0,0,0,0,5,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,17,17,11,11,17,17,11,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,17,17,11,11,17,17,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,11,11,11,11,11,11,11,11,11,11,11,11,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,11,17,11,11,11,11,17,11,11,11,17,11,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,15,15,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,15,15,10,10,10,1,1,11,11,11,11,11,11,11,11,11,11,11,11,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,11,11,11,11,11,11,11,11,11,11,11,11,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,11,11,11,11,11,11,11,11,11,11,11,11,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,11,11,11,11,11,11,11,11,11,11,11,11,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,11,11,11,11,11,11,11,11,11,11,11,11,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,15,15,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,15,15,10,10,10,1,1,11,17,11,11,11,11,17,11,11,11,17,11,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,0,0,11,11,11,11,11,11,11,11,11,11,11,11,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,10,10,1,1,1,1,1,1,1,1,1,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,10,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,22,10,10,10,10,10,10,10,10,10,10,10,10,10,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10,10,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
-    const exits = {"33,55":{"map":"map_town_01","x":7,"y":4},"34,55":{"map":"map_town_01","x":7,"y":4},"27,54":{"map":"map_field_0_0","x":16,"y":16}};
+    const exits = {"33,55":{"map":"map_town_01","x":7,"y":4},"34,55":{"map":"map_town_01","x":7,"y":4}};
     const npcs  = {"3,11":{"id":"obj_bookshelf","name":"本棚"},"8,11":{"id":"obj_bookshelf2","name":"本棚"},"3,16":{"id":"obj_bookshelf","name":"本棚"},"8,16":{"id":"obj_bookshelf2","name":"本棚"},"6,13":{"id":"npc_gar_woman_01","name":"城付きの学者"},"5,20":{"id":"obj_herb_pot","name":"薬草の入った壺"},"59,11":{"id":"npc_priest","name":"神父"},"59,18":{"id":"obj_counter","name":"礼拝台"},"23,28":{"id":"npc_advisor_hall_1","name":"宮廷賢者"},"33,28":{"id":"npc_advisor_hall_2","name":"宮廷賢者"},"44,28":{"id":"npc_advisor_hall_3","name":"宮廷賢者"},"19,25":{"id":"npc_castle_soldier_l","name":"兵士"},"48,25":{"id":"npc_castle_soldier_r","name":"兵士"},"4,25":{"id":"obj_counter","name":"武器展示"},"9,25":{"id":"obj_counter","name":"武器展示"},"4,29":{"id":"obj_counter","name":"鎧展示"},"9,29":{"id":"obj_counter","name":"鎧展示"},"6,31":{"id":"npc_castle_guard_a","name":"武器管理人"},"57,28":{"id":"obj_deco_flower_s","name":""},"62,28":{"id":"obj_deco_flower_s","name":""},"57,27":{"id":"obj_deco_flower_s","name":""},"62,27":{"id":"obj_deco_flower_s","name":""},"4,35":{"id":"obj_bed_inn","name":"兵士のベッド"},"9,35":{"id":"obj_bed_inn","name":"兵士のベッド"},"4,39":{"id":"obj_bed_inn","name":"兵士のベッド"},"9,39":{"id":"obj_bed_inn","name":"兵士のベッド"},"6,41":{"id":"npc_castle_guard_a","name":"休憩中の兵士"},"52,33":{"id":"npc_exit_guard","name":"衛兵"},"53,33":{"id":"npc_exit_guard","name":"衛兵"},"56,36":{"id":"obj_chest_king_gift_1","name":"王様の贈り物①"},"60,36":{"id":"obj_chest_king_gift_2","name":"王様の贈り物②"},"64,36":{"id":"obj_chest_king_gift_3","name":"王様の贈り物③"},"56,40":{"id":"obj_chest_king_gift_4","name":"王様の贈り物④"},"60,40":{"id":"obj_chest_king_gift_5","name":"王様の贈り物⑤"},"33,43":{"id":"npc_exit_guard","name":"衛兵"},"34,43":{"id":"npc_exit_guard","name":"衛兵"},"4,45":{"id":"obj_herb_pot","name":"調理鍋"},"9,45":{"id":"obj_herb_pot","name":"調理鍋"},"6,48":{"id":"obj_counter","name":"調理台"},"11,48":{"id":"obj_counter","name":"調理台"},"14,50":{"id":"npc_gar_woman_01","name":"料理人"},"28,46":{"id":"npc_gar_woman_01","name":"使用人"},"33,46":{"id":"npc_castle_guard_a","name":"執事"},"38,46":{"id":"npc_gar_woman_01","name":"使用人"},"30,50":{"id":"obj_counter","name":"作業台"},"47,46":{"id":"obj_counter","name":"食卓"},"47,49":{"id":"obj_counter","name":"食卓"},"53,46":{"id":"obj_counter","name":"食卓"},"53,49":{"id":"obj_counter","name":"食卓"},"59,46":{"id":"obj_counter","name":"食卓"},"59,49":{"id":"obj_counter","name":"食卓"},"55,45":{"id":"npc_gar_woman_01","name":"城の料理長"},"27,52":{"id":"npc_castle_soldier_l","name":"兵士"},"40,52":{"id":"npc_castle_soldier_r","name":"兵士"},"33,1":{"id":"npc_gramnia_king","name":"国王グラード"},"22,3":{"id":"npc_story_advisor","name":"宮廷賢者バルダック"},"44,3":{"id":"npc_court_noble_r","name":"宮廷書記官"},"18,1":{"id":"npc_throne_guard_l","name":"近衛兵"},"48,1":{"id":"npc_throne_guard_r","name":"近衛兵"},"4,3":{"id":"npc_court_noble_r","name":"貴族の令嬢"},"10,3":{"id":"npc_court_noble_l","name":"侍従"},"58,3":{"id":"npc_court_noble_r","name":"宮廷書記官"},"62,3":{"id":"npc_castle_guard_b","name":"衛兵"},"17,3":{"id":"obj_deco_statue_knight","name":"騎士の石像"},"17,4":{"id":"obj_statue_foot","name":""},"50,3":{"id":"obj_deco_statue_knight","name":"騎士の石像"},"50,4":{"id":"obj_statue_foot","name":""},"25,10":{"id":"obj_deco_statue_woman","name":"女神像"},"25,11":{"id":"obj_statue_foot","name":""},"42,10":{"id":"obj_deco_statue_woman","name":"女神像"},"42,11":{"id":"obj_statue_foot","name":""},"25,24":{"id":"obj_deco_statue_knight","name":"騎士の石像"},"25,25":{"id":"obj_statue_foot","name":""},"42,24":{"id":"obj_deco_statue_knight","name":"騎士の石像"},"42,25":{"id":"obj_statue_foot","name":""},"25,13":{"id":"obj_deco_flower_s","name":""},"42,13":{"id":"obj_deco_flower_s","name":""},"25,21":{"id":"obj_deco_flower_s","name":""},"42,21":{"id":"obj_deco_flower_s","name":""},"19,28":{"id":"obj_deco_flower_s","name":""},"48,28":{"id":"obj_deco_flower_s","name":""},"13,33":{"id":"obj_deco_statue_woman","name":"石像（女）"},"13,34":{"id":"obj_fill","name":""},"27,33":{"id":"obj_deco_statue_knight","name":"石像（騎士）"},"27,34":{"id":"obj_fill","name":""},"2,2":{"id":"npc_story_advisor","name":"宮廷賢者バルダック"},"16,24":{"id":"npc_story_veteran","name":"歴戦の兵士"},"42,43":{"id":"npc_town_elder","name":"お婆さん"},"16,34":{"id":"npc_town_merchant","name":"旅の商人"},"51,1":{"id":"obj_parents_relic","name":"古い肖像画"}};
     return {width:W,height:H,tiles,exits,npcs,name:"グラマニア城"};
+}
+function buildNorthAbandonedCastle() {
+    const W = 36, H = 32;
+    const t = new Array(W * H).fill(1);
+    const S = (x, y, v) => { if (x >= 0 && y >= 0 && x < W && y < H) t[y * W + x] = v; };
+    const R = (x1, y1, x2, y2, v) => { for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) S(x, y, v); };
+    // 上部：玉座の間（廃墟）
+    R(2, 2, W-3, 11, 0);
+    R(13, 3, 22, 8, 9);    // 玉座エリア（赤い石床）
+    R(16, 4, 19, 5, 5);    // 古い水溜まり
+    S(3, 3, 15); S(3, 4, 15); S(W-4, 3, 15); S(W-4, 4, 15); // 崩れた柱
+    // 仕切り壁（中央に通路）
+    R(0, 12, 13, 12, 1); R(14, 12, 21, 12, 0); R(22, 12, W-1, 12, 1);
+    // 下部：メインホール
+    R(2, 13, 12, 25, 0);    // 西の間
+    R(23, 13, W-3, 25, 0);  // 東の間
+    R(14, 13, 21, 25, 0);   // 中央通路
+    // 退出通路
+    R(0, 26, W-1, 26, 1); R(14, 26, 21, 26, 0);
+    R(14, 27, 21, 29, 10);
+    const exits = {
+        "15,29":{"map":"map_field_0_0","x":36,"y":43},
+        "16,29":{"map":"map_field_0_0","x":36,"y":43},
+        "17,29":{"map":"map_field_0_0","x":36,"y":43},
+        "18,29":{"map":"map_field_0_0","x":36,"y":43},
+        "19,29":{"map":"map_field_0_0","x":36,"y":43},
+        "20,29":{"map":"map_field_0_0","x":36,"y":43}
+    };
+    const npcs = {
+        "17,4":  {"id":"npc_north_ghost_1",      "name":"古城の亡霊"},
+        "6,18":  {"id":"npc_north_ghost_2",      "name":"さまよう霊"},
+        "29,18": {"id":"npc_north_sage_ghost",   "name":"賢者の残影"},
+        "17,20": {"id":"npc_north_castle_ghost", "name":"廃城の魔道士の霊"},
+        "3,8":   {"id":"obj_bookshelf",          "name":"古い書物"},
+        "32,8":  {"id":"obj_bookshelf2",         "name":"封じられた書物"},
+        "3,3":   {"id":"obj_deco_statue_knight", "name":"崩れかけた石像"},
+        "3,4":   {"id":"obj_statue_foot",        "name":""},
+        "32,3":  {"id":"obj_deco_statue_knight", "name":"崩れかけた石像"},
+        "32,4":  {"id":"obj_statue_foot",        "name":""}
+    };
+    return {width:W,height:H,tiles:t,exits,npcs,name:"北の廃城"};
 }
 function generateFieldMapsForGravityQuest() {
     // ワールドグリッド: 405x405タイル (9x9 x 45x45)
@@ -3381,6 +3423,8 @@ if(_bpx+1<x0+45&&world[_bpy*GW+_bpx+1]===5){world[_bpy*GW+_bpx+1]=12;mainComp.ad
     placeBuilding("map_field_7_0", 22, 18, 21, "map_castle_zarmo",    8, 13); // 北東の古城ザーモ
     placeBuilding("map_field_8_4", 22, 22, 21, "map_castle_estoria",  9, 14); // 東の王国城エストリア
     placeBuilding("map_field_3_7", 22, 22, 21, "map_castle_deserta",  8, 13); // 南の砂漠城デセルタ
+    externalMapData['map_castle_north'] = buildNorthAbandonedCastle();
+    placeBuilding("map_field_0_0", 36, 40, 21, "map_castle_north",   17, 27); // 北の廃城（左上島）
 
     // 【新街・村 10箇所】
     placeBuilding("map_field_5_0", 22, 28, 21, "map_town_nord",       10, 14); // 冒険者の港 ノルド
@@ -3455,28 +3499,6 @@ function fixExternalMapConnections() {
     if (!externalMapData) return;
     const _solid = [1,2,4,5,15,16,17,18,19,20];
 
-    // 1. 城 ↔ map_field_2_2 の双方向接続
-    const ck = Object.keys(externalMapData).find(k => k.includes('castle_01') && !k.includes('demon'));
-    const fmCastle = externalMapData['map_field_0_0'];
-    if (ck && fmCastle) {
-        const cm = externalMapData[ck];
-        const cFExits = Object.keys(cm.exits || {}).filter(k => { const m = cm.exits[k].map||''; return /^map_field_/.test(m)||m.startsWith('field_'); });
-        if (cFExits.length > 0) {
-            cm.exits[cFExits[0]].map = 'map_field_0_0'; cm.exits[cFExits[0]].x = 7; cm.exits[cFExits[0]].y = 7;
-            for (let i=1;i<cFExits.length;i++){const[kx,ky]=cFExits[i].split(',').map(Number);if(kx>=0&&ky>=0&&kx<cm.width&&ky<cm.height)cm.tiles[ky*cm.width+kx]=0;delete cm.exits[cFExits[i]];}
-        } else {
-            let ex=Math.floor(cm.width/2),ey=cm.height-2;
-            for(let y=cm.height-2;y>=2;y--){let f=false;for(let x=2;x<cm.width-2;x++){if(!_solid.includes(cm.tiles[y*cm.width+x])&&!cm.exits[`${x},${y}`]&&!cm.npcs[`${x},${y}`]){ex=x;ey=y;f=true;break;}}if(f)break;}
-            cm.tiles[ey*cm.width+ex]=22;
-            cm.exits[`${ex},${ey}`]={map:'map_field_0_0',x:7,y:7};
-        }
-        const hasCastle=Object.values(fmCastle.exits||{}).some(e=>(e.map||'').includes('castle')&&!(e.map||'').includes('demon'));
-        if(!hasCastle){
-            const cp=findLand('map_field_0_0',5,5);
-            if(cp){fmCastle.tiles[cp.y*(fmCastle.width||45)+cp.x]=22;fmCastle.exits[cp.k]={map:ck,x:Math.floor(cm.width/2),y:cm.height-2};}
-        }
-    }
-
     // 2. 町のフィールド出口を map_field_2_2 に修正
     const tk=Object.keys(externalMapData).find(k=>k.includes('town_01'));
     if(tk&&externalMapData[tk]){
@@ -3537,7 +3559,8 @@ function fixExternalMapConnections() {
 
     // 4. 外部JSONマップ（森・港など）のフィールド出口に対応するフィールド側の入口を保証
     // JSONから読み込んだマップ（プレフィックスなし）でcastle/town以外を対象とする
-    const _handled = new Set([ck, tk].filter(Boolean));
+    const _ck = Object.keys(externalMapData).find(k => k.includes('castle_01') && !k.includes('demon'));
+    const _handled = new Set([_ck, tk].filter(Boolean));
     for(const mapId of Object.keys(externalMapData)){
         if(/^map_/.test(mapId) || _handled.has(mapId)) continue; // 生成マップ・処理済みはスキップ
         const m = externalMapData[mapId];
@@ -4497,70 +4520,70 @@ function generateDQStyleMaps() {
     if (!externalMapData['map_town_nord']) {
         externalMapData['map_town_nord']=buildTown('冒険者の港ノルド',
             {'13,21':{map:'map_field_5_0',x:22,y:29},'12,21':{map:'map_field_5_0',x:22,y:29},'14,21':{map:'map_field_5_0',x:22,y:29}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_nord',name:'宿屋'},'4,10':{id:'npc_weapon_shop_nord',name:'武器屋'},'21,10':{id:'npc_item_shop_nord',name:'道具屋'},'13,5':{id:'npc_nord_captain',name:'港の船長'},'5,16':{id:'npc_nord_sailor',name:'老水夫'},'21,16':{id:'npc_nord_merchant',name:'旅商人'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_nord',name:'宿屋'},'4,10':{id:'npc_weapon_shop_nord',name:'武器屋'},'21,10':{id:'npc_item_shop_nord',name:'道具屋'},'13,5':{id:'npc_nord_captain',name:'港の船長'},'5,16':{id:'npc_nord_sailor',name:'老水夫'},'21,16':{id:'npc_nord_merchant',name:'旅商人'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''},'8,4':{id:'obj_chest_weapon',name:'宝箱（港の隠し武器）'}},
             []);
     }
     // 花の街 ロザリーヒル
     if (!externalMapData['map_town_rosalia']) {
         externalMapData['map_town_rosalia']=buildTown('花の街ロザリーヒル',
             {'13,21':{map:'map_field_6_1',x:22,y:23},'12,21':{map:'map_field_6_1',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_ros',name:'宿屋'},'4,10':{id:'npc_weapon_shop_ros',name:'武器屋'},'21,10':{id:'npc_item_shop_ros',name:'道具屋'},'13,5':{id:'npc_rosalia_bard',name:'吟遊詩人'},'6,16':{id:'npc_rosalia_girl',name:'花売りの少女'},'21,16':{id:'npc_rosalia_elder',name:'花街の長老'},'10,11':{id:'obj_flower_large',name:'大花壇'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_ros',name:'宿屋'},'4,10':{id:'npc_weapon_shop_ros',name:'武器屋'},'21,10':{id:'npc_item_shop_ros',name:'道具屋'},'13,5':{id:'npc_rosalia_bard',name:'吟遊詩人'},'6,16':{id:'npc_rosalia_girl',name:'花売りの少女'},'21,16':{id:'npc_rosalia_elder',name:'花街の長老'},'10,11':{id:'obj_flower_large',name:'大花壇'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''},'25,4':{id:'obj_chest_armor',name:'宝箱（花街の宝）'}},
             []);
     }
     // 海峡の街 コーラル
     if (!externalMapData['map_town_coral']) {
         externalMapData['map_town_coral']=buildTown('海峡の街コーラル',
             {'13,21':{map:'map_field_8_2',x:22,y:23},'12,21':{map:'map_field_8_2',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_coral',name:'宿屋'},'4,10':{id:'npc_weapon_shop_coral',name:'武器屋'},'21,10':{id:'npc_item_shop_coral',name:'道具屋'},'13,5':{id:'npc_coral_captain',name:'海峡の船長'},'5,16':{id:'npc_coral_diver',name:'潜水士'},'21,16':{id:'npc_coral_scholar',name:'海の学者'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_coral',name:'宿屋'},'4,10':{id:'npc_weapon_shop_coral',name:'武器屋'},'21,10':{id:'npc_item_shop_coral',name:'道具屋'},'13,5':{id:'npc_coral_captain',name:'海峡の船長'},'5,16':{id:'npc_coral_diver',name:'潜水士'},'21,16':{id:'npc_coral_scholar',name:'海の学者'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''},'8,12':{id:'obj_chest_item',name:'宝箱（海峡の秘品）'}},
             []);
     }
     // 商都 バザール
     if (!externalMapData['map_town_bazaar']) {
         externalMapData['map_town_bazaar']=buildTown('商都バザール',
             {'13,21':{map:'map_field_6_3',x:22,y:23},'12,21':{map:'map_field_6_3',x:22,y:23},'14,21':{map:'map_field_6_3',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_baz',name:'宿屋'},'4,10':{id:'npc_weapon_shop_baz',name:'武器屋'},'21,10':{id:'npc_item_shop_baz',name:'道具屋'},'13,5':{id:'npc_bazaar_chief',name:'商会長'},'7,5':{id:'npc_bazaar_merchant_a',name:'行商人A'},'19,5':{id:'npc_bazaar_merchant_b',name:'行商人B'},'5,16':{id:'npc_bazaar_thief',name:'怪しい商人'},'21,16':{id:'npc_bazaar_info',name:'情報屋'},'9,11':{id:'obj_statue',name:'バザールの石像'},'9,12':{id:'obj_statue_foot',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_baz',name:'宿屋'},'4,10':{id:'npc_weapon_shop_baz',name:'武器屋'},'21,10':{id:'npc_item_shop_baz',name:'道具屋'},'13,5':{id:'npc_bazaar_chief',name:'商会長'},'7,5':{id:'npc_bazaar_merchant_a',name:'行商人A'},'19,5':{id:'npc_bazaar_merchant_b',name:'行商人B'},'5,16':{id:'npc_bazaar_thief',name:'怪しい商人'},'21,16':{id:'npc_bazaar_info',name:'情報屋'},'9,11':{id:'obj_statue',name:'バザールの石像'},'9,12':{id:'obj_statue_foot',name:''},'25,12':{id:'obj_chest_item',name:'宝箱（商都の秘宝）'}},
             []);
     }
     // エストリア城下町
     if (!externalMapData['map_town_estoria_city']) {
         externalMapData['map_town_estoria_city']=buildTown('エストリア城下町',
             {'13,21':{map:'map_field_7_5',x:22,y:23},'12,21':{map:'map_field_7_5',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_est',name:'宿屋'},'4,10':{id:'npc_weapon_shop_est',name:'武器屋（最高品質）'},'21,10':{id:'npc_item_shop_est',name:'道具屋'},'13,5':{id:'npc_estoria_herald_city',name:'王国の伝令'},'6,16':{id:'npc_estoria_citizen_a',name:'市民'},'21,16':{id:'npc_estoria_soldier',name:'衛兵'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_est',name:'宿屋'},'4,10':{id:'npc_weapon_shop_est',name:'武器屋（最高品質）'},'21,10':{id:'npc_item_shop_est',name:'道具屋'},'13,5':{id:'npc_estoria_herald_city',name:'王国の伝令'},'6,16':{id:'npc_estoria_citizen_a',name:'市民'},'21,16':{id:'npc_estoria_soldier',name:'衛兵'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''},'3,17':{id:'obj_chest_weapon',name:'宝箱（王国の武具）'}},
             []);
     }
     // 砂漠の町 オアシス
     if (!externalMapData['map_town_oasis']) {
         externalMapData['map_town_oasis']=buildTown('砂漠の町オアシス',
             {'13,21':{map:'map_field_4_6',x:22,y:23},'12,21':{map:'map_field_4_6',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_oasis',name:'宿屋'},'4,10':{id:'npc_weapon_shop_oasis',name:'武器屋（砂漠装備）'},'21,10':{id:'npc_item_shop_oasis',name:'道具屋'},'13,5':{id:'npc_oasis_guide',name:'砂漠の案内人'},'5,16':{id:'npc_oasis_merchant',name:'砂漠の商人'},'21,16':{id:'npc_oasis_elder',name:'老砂漠人'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_oasis',name:'宿屋'},'4,10':{id:'npc_weapon_shop_oasis',name:'武器屋（砂漠装備）'},'21,10':{id:'npc_item_shop_oasis',name:'道具屋'},'13,5':{id:'npc_oasis_guide',name:'砂漠の案内人'},'5,16':{id:'npc_oasis_merchant',name:'砂漠の商人'},'21,16':{id:'npc_oasis_elder',name:'老砂漠人'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''},'25,4':{id:'obj_chest_armor',name:'宝箱（砂漠の財宝）'}},
             []);
     }
     // 南海の港 サンゴ礁
     if (!externalMapData['map_town_south_port']) {
         externalMapData['map_town_south_port']=buildTown('南海の港 サンゴ礁',
             {'13,21':{map:'map_field_6_7',x:22,y:23},'12,21':{map:'map_field_6_7',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_south',name:'宿屋'},'4,10':{id:'npc_weapon_shop_south',name:'武器屋'},'21,10':{id:'npc_item_shop_south',name:'道具屋'},'13,5':{id:'npc_south_captain',name:'南海の船長'},'5,16':{id:'npc_south_diver',name:'珊瑚の潜水士'},'21,16':{id:'npc_south_merchant',name:'南の商人'},'10,11':{id:'obj_flower_large',name:'大花壇'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_south',name:'宿屋'},'4,10':{id:'npc_weapon_shop_south',name:'武器屋'},'21,10':{id:'npc_item_shop_south',name:'道具屋'},'13,5':{id:'npc_south_captain',name:'南海の船長'},'5,16':{id:'npc_south_diver',name:'珊瑚の潜水士'},'21,16':{id:'npc_south_merchant',name:'南の商人'},'10,11':{id:'obj_flower_large',name:'大花壇'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''},'8,4':{id:'obj_chest_item',name:'宝箱（海底の宝）'}},
             []);
     }
     // フロストの雪の町
     if (!externalMapData['map_town_frost']) {
         externalMapData['map_town_frost']=buildTown('フロストの雪の町',
             {'13,21':{map:'map_field_1_6',x:22,y:23},'12,21':{map:'map_field_1_6',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_frost',name:'宿屋'},'4,10':{id:'npc_weapon_shop_frost',name:'武器屋（耐寒装備）'},'21,10':{id:'npc_item_shop_frost',name:'道具屋'},'13,5':{id:'npc_frost_chief',name:'雪の長老'},'5,16':{id:'npc_frost_hunter',name:'雪原の猟師'},'21,16':{id:'npc_frost_shaman',name:'氷の巫女'},'10,11':{id:'obj_statue',name:'雪の石像'},'10,12':{id:'obj_statue_foot',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_frost',name:'宿屋'},'4,10':{id:'npc_weapon_shop_frost',name:'武器屋（耐寒装備）'},'21,10':{id:'npc_item_shop_frost',name:'道具屋'},'13,5':{id:'npc_frost_chief',name:'雪の長老'},'5,16':{id:'npc_frost_hunter',name:'雪原の猟師'},'21,16':{id:'npc_frost_shaman',name:'氷の巫女'},'10,11':{id:'obj_statue',name:'雪の石像'},'10,12':{id:'obj_statue_foot',name:''},'25,12':{id:'obj_chest_weapon',name:'宝箱（雪原の宝箱）'}},
             []);
     }
     // エルフヘイムの村
     if (!externalMapData['map_village_elfheim']) {
         externalMapData['map_village_elfheim']=buildTown('エルフヘイムの村',
             {'13,21':{map:'map_field_0_7',x:22,y:23},'12,21':{map:'map_field_0_7',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_elf',name:'宿屋'},'4,10':{id:'npc_weapon_shop_elf',name:'武器屋（エルフ製）'},'21,10':{id:'npc_item_shop_elf',name:'道具屋'},'13,5':{id:'npc_elf_elder',name:'エルフの長老'},'5,16':{id:'npc_elf_archer',name:'エルフの射手'},'21,16':{id:'npc_elf_mage',name:'エルフの魔法使い'},'10,11':{id:'obj_flower_large',name:'大花壇'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_elf',name:'宿屋'},'4,10':{id:'npc_weapon_shop_elf',name:'武器屋（エルフ製）'},'21,10':{id:'npc_item_shop_elf',name:'道具屋'},'13,5':{id:'npc_elf_elder',name:'エルフの長老'},'5,16':{id:'npc_elf_archer',name:'エルフの射手'},'21,16':{id:'npc_elf_mage',name:'エルフの魔法使い'},'10,11':{id:'obj_flower_large',name:'大花壇'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''},'3,17':{id:'obj_chest_armor',name:'宝箱（妖精の贈り物）'}},
             []);
     }
     // サルモン漁村
     if (!externalMapData['map_town_salmon']) {
         externalMapData['map_town_salmon']=buildTown('サルモン漁村',
             {'13,21':{map:'map_field_2_8',x:22,y:23},'12,21':{map:'map_field_2_8',x:22,y:23}},
-            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_salmon',name:'宿屋'},'4,10':{id:'npc_weapon_shop_salmon',name:'武器屋'},'21,10':{id:'npc_item_shop_salmon',name:'道具屋'},'13,5':{id:'npc_salmon_chief',name:'漁村の長'},'5,16':{id:'npc_salmon_fisher',name:'漁師'},'21,16':{id:'npc_salmon_trader',name:'魚商人'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''}},
+            {'4,3':{id:'npc_priest',name:'神父'},'21,3':{id:'npc_inn_salmon',name:'宿屋'},'4,10':{id:'npc_weapon_shop_salmon',name:'武器屋'},'21,10':{id:'npc_item_shop_salmon',name:'道具屋'},'13,5':{id:'npc_salmon_chief',name:'漁村の長'},'5,16':{id:'npc_salmon_fisher',name:'漁師'},'21,16':{id:'npc_salmon_trader',name:'魚商人'},'10,11':{id:'obj_fountain_large',name:'大噴水'},'11,11':{id:'obj_fill',name:''},'12,11':{id:'obj_fill',name:''},'13,11':{id:'obj_fill',name:''},'24,17':{id:'obj_chest_item',name:'宝箱（漁村の隠し財）'}},
             []);
     }
 
@@ -5774,6 +5797,12 @@ async function loadExternalData(id) {
                 if(partyData.flags.flag_king_met && rawId.includes('castle_01') && !rawId.includes('demon')) {
                     Object.keys(mapCopy.npcs).forEach(k => { if(mapCopy.npcs[k]?.id === 'npc_exit_guard') delete mapCopy.npcs[k]; });
                 }
+                // 取得済み王様宝箱を非表示
+                if(rawId.includes('castle_01') && !rawId.includes('demon')) {
+                    for (let _gi = 1; _gi <= 5; _gi++) { if(partyData.flags[`treasure_king_${_gi}_taken`]) { const _gk=Object.keys(mapCopy.npcs).find(k=>mapCopy.npcs[k]?.id===`obj_chest_king_gift_${_gi}`); if(_gk) delete mapCopy.npcs[_gk]; } }
+                }
+                // 取得済み宝箱（座標フラグ）を非表示
+                Object.keys(mapCopy.npcs).forEach(k => { const _n=mapCopy.npcs[k]; if(_n&&_n.id&&_n.id.includes('chest')){ const [_cx,_cy]=k.split(',').map(Number); if(partyData.flags[`chest_${rawId}_${_cx}_${_cy}`]) delete mapCopy.npcs[k]; } });
                 // ── 天空の神殿 龍撃破後の旅の扉開通 ──
                 if(rawId.includes('tower_summit') && partyData.flags.flag_tower_cleared) {
                     // 天空の龍撃破済み → 旅の扉(1Fへ)を有効化
@@ -8602,7 +8631,7 @@ async function moveParty(dx, dy) {
     }
     const tile = currentMap.tiles[ny * currentMap.width + nx]; const _onField = partyData.pos.map && (/^map_field_/.test(partyData.pos.map) || /^map_ocean_/.test(partyData.pos.map)); const _hasShip = partyData.flags && partyData.flags.has_ship; const solidTiles = _onField ? (_hasShip ? [1, 2, 4, 15, 16, 17, 18, 25] : [1, 2, 4, 5, 15, 16, 17, 18, 25]) : [1, 2, 4, 5, 15, 16, 17, 18, 19, 20, 25]; // 高山(25)のみ不可・山(20)はフィールドで通行可
     if(solidTiles.includes(tile)) return;
-    const key = `${nx},${ny}`; if (currentMap.npcs && currentMap.npcs[key]) return;
+    const key = `${nx},${ny}`; const _npcHere = currentMap.npcs && currentMap.npcs[key]; if (_npcHere && !(['obj_deco_rug_red','obj_deco_rug_blue','deco_rug_gold','obj_deco_rug_yellow'].includes(_npcHere.id))) return;
     moveHistory.unshift({x: partyData.pos.x, y: partyData.pos.y, dir: partyData.dir}); if(moveHistory.length > 5) moveHistory.pop();
     _walkPhase = (_walkPhase + 1) % 8; _lastMoveTime = Date.now();
     partyData.pos.x = nx; partyData.pos.y = ny;
@@ -9725,6 +9754,34 @@ async function checkAction() {
                     await typeMessage("【引退した冒険者 ゴル】\nまずは その 洞窟を 制覇せよ。\n洞窟を 越えれば 船が 手に入るはずじゃ。\n船が あれば 世界中を 旅できるぞ！\nワシが 諦めた 続きを……頼む！");
                     if (!getSQ('sq_02')) { startSQ('sq_02'); await typeMessage("【引退した冒険者 ゴル】\nそうそう……一つ 頼みがある。\n試練の 洞窟の 最奥に\n百年前の 老騎士の 守護霊が いる。\nそいつを 倒したら……\n「王者のつるぎ」を 受け取ってきてくれ。\nあの剣は お前たちに こそ 相応しい！\n（ふしぎな台帳に 記録された）"); }
                 }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            // ★北の廃城 NPCs
+            if (npc.id === "npc_north_ghost_1") {
+                await typeMessage("【古城の亡霊】\n……ここは かつて\n大賢者 アーク様が 研究所として\n使っていた 城じゃ……\nもう 百年以上 前の 話だが……");
+                if (partyData.flags.flag_2nd_maou_cleared) {
+                    await typeMessage("【古城の亡霊】\nお前たちは……\nあの 王に 立ち向かったのか。\nアーク様が 最後に 言っていた……\n「いつか 誰かが 王の 嘘を 暴く」と。\n……ようやく その日が 来たのだな。");
+                } else {
+                    await typeMessage("【古城の亡霊】\nアーク様の 弟子 ラムダス様は\nここで 研究の 日々を 過ごした……\nだが ある日 突然\n「王の 命で」 この 城から\n追い出されてしまった……\nそれきり ラムダス様には 会っていない。");
+                }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_north_ghost_2") {
+                await typeMessage("【さまよう霊】\n……この 廃城に 何の 用じゃ……\nここには もう 何も ないぞ。\n宝も 魔法も……みんな\n百年前に 持ち去られた……");
+                await typeMessage("【さまよう霊】\nわしは かつて この 城で\nアーク様と ラムダス様に 仕えた 兵士じゃ。\n二人は とても 仲が 良かった……\nなのに 王は 二人を 引き離した。");
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_north_sage_ghost") {
+                if (partyData.flags.last_boss_defeated) {
+                    await typeMessage("【賢者の残影】\n……感じる……\n闇が 晴れた……！\nアーク様の 魂も きっと\n安らいでいることだろう……\nありがとう……旅人よ。");
+                } else {
+                    await typeMessage("【賢者の残影】\nわたしは アーク様の 気配が\nまだ この 城に 残っていることを 知っている……\nアーク様は 何かを 伝えようとして いた……\n断章に 書き記された 言葉を 集めよ……\nそれが この 世界の 真実へと 繋がる。");
+                }
+                state = 'FIELD'; hideAllWindows(); drawMap(); return;
+            }
+            if (npc.id === "npc_north_castle_ghost") {
+                await typeMessage("【廃城の魔道士の霊】\nフフ……よく ここまで 来た、旅人。\nこの 廃城は 百年前まで\n魔法研究の 聖地だった……\n今は 亡霊だけが 住む 廃墟じゃが……");
+                await typeMessage("【廃城の魔道士の霊】\n南の グラマニア城に 行けば\n王が お前たちを 待っているだろう。\nだが……その 王の 言葉を\nそのまま 信じるのは やめておけ。\n百年前の 我々が そうだったように……");
                 state = 'FIELD'; hideAllWindows(); drawMap(); return;
             }
             // ★傷ついた旅人（dungeon入口付近）
@@ -10865,7 +10922,7 @@ async function checkAction() {
                 }
                 else if (npc.id.includes('chest')) {
                     let _cf = `chest_${partyData.pos.map}_${tx}_${ty}`;
-                    if (partyData.flags[_cf]) { await typeMessage("たからばこは からっぽだ。"); }
+                    if (partyData.flags[_cf]) { delete currentMap.npcs[key]; state='FIELD'; hideAllWindows(); drawMap(); return; }
                     else {
                         partyData.flags[_cf] = true; AudioManager.playSE('item_get');
                         let _pool, _itemId = null;
