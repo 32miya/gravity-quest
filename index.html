@@ -2139,6 +2139,10 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
     else if (stype === 'field' || sid.includes('rula') || sid.includes('remi') || sid.includes('tohe')) etype = 'warp';
 
 
+    // Canvas サイズ（コズミック演出より先に定義が必要）
+    const gc = document.getElementById('game-container');
+    const W = gc.offsetWidth || 360, H = gc.offsetHeight || 560;
+
     // 最上位魔法(tier4/ultima): 戦闘背景を宇宙空間に差し替え
     const _isUltima = sid.includes('ultima') || sid.includes('mahyado') || sid.includes('bazuna');
     const _isCosmic = (tier >= 4) && (_atkTypes.includes(etype) || etype === 'dark' || etype === 'wind' || etype === 'explosion');
@@ -2180,8 +2184,6 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
     }
 
     // Canvas setup
-    const gc = document.getElementById('game-container');
-    const W = gc.offsetWidth || 360, H = gc.offsetHeight || 560;
     const cvs = document.createElement('canvas');
     cvs.width = W; cvs.height = H;
     Object.assign(cvs.style, {position:'absolute',top:'0',left:'0',width:'100%',height:'100%',pointerEvents:'none'});
