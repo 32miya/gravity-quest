@@ -2233,132 +2233,153 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
         clearGlow(); ctx.globalAlpha = 1;
     };
 
-    // ── 炎属性: 業火の龍/渦が螺旋突撃 → 足元マグマ噴出 → 黒煙と爆発
+    // ── 炎属性: 業火の龍が螺旋突撃 → 画面が深紅に染まる → マグマ噴出
     const drawFire = (t) => {
-        const F_LAVA=0.36, F_BOOM=0.56;
+        const F_LAVA=0.35, F_BOOM=0.58;
 
-        // 1. 暗い赤橙のバックグラウンド (業火の余熱)
-        const fBgA=t<0.42?t/0.42*(0.48+tier*0.1):t<0.78?(0.48+tier*0.1):Math.max(0,1-(t-0.78)/0.22)*(0.34+tier*0.07);
-        if(fBgA>0){
-            ctx.globalAlpha=fBgA;
-            const fBg=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,Math.max(W,H)*0.9);
-            fBg.addColorStop(0,'rgba(255,52,0,0.92)');fBg.addColorStop(0.38,'rgba(175,8,0,0.72)');fBg.addColorStop(0.78,'rgba(55,0,0,0.38)');fBg.addColorStop(1,'rgba(0,0,0,0)');
-            ctx.fillStyle=fBg;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;
+        // ★ 炎の特徴1: 画面全体を強烈なオレンジ/深紅で染める (雷との最大の違い)
+        const fEnv = t<0.4?t/0.4:t<0.78?1:Math.max(0,1-(t-0.78)/0.22);
+        // ベース — 画面全体を深紅で覆う
+        ctx.globalAlpha = fEnv*(0.72+tier*0.08);
+        ctx.fillStyle = 'rgba(180,25,0,0.68)';
+        ctx.fillRect(0,0,W,H);
+        // 中心からオレンジのグロー
+        ctx.globalAlpha = fEnv*0.55;
+        const fBg=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,Math.max(W,H)*0.85);
+        fBg.addColorStop(0,'rgba(255,140,0,0.88)');
+        fBg.addColorStop(0.35,'rgba(220,50,0,0.72)');
+        fBg.addColorStop(0.75,'rgba(100,5,0,0.45)');
+        fBg.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=fBg; ctx.fillRect(0,0,W,H);
+        ctx.globalAlpha=1;
+
+        // ★ 炎の特徴2: 黒煙が目立つ (白い要素を消す代わりに暗い煙)
+        const smokeN=tier>=4?22:tier>=3?15:tier>=2?10:6;
+        for(let si=0;si<smokeN;si++){
+            const sph=si/smokeN;
+            const smt=Math.max(0,t-sph*0.28); if(smt<=0) continue;
+            const smx=tcx+(rng(si*5+1)-0.5)*(W*0.75);
+            const smy=tcy+15-smt*(H*0.48+rng(si*5+2)*H*0.2);
+            const smR=(16+rng(si*5+3)*28+tier*7)*Math.min(smt*2.5,1);
+            const smA=Math.min(smt*2.2,1)*Math.max(0,1-smt*0.85)*(0.55+rng(si*5+4)*0.35);
+            if(smR<=0||smA<=0) continue;
+            ctx.globalAlpha=smA;
+            const smG=ctx.createRadialGradient(smx,smy,0,smx,smy,smR);
+            smG.addColorStop(0,`rgba(15,5,0,0.82)`);
+            smG.addColorStop(0.55,'rgba(6,2,0,0.45)');
+            smG.addColorStop(1,'rgba(0,0,0,0)');
+            ctx.fillStyle=smG; ctx.beginPath(); ctx.arc(smx,smy,smR,0,Math.PI*2); ctx.fill();
         }
+        ctx.globalAlpha=1;
 
-        // 2. 炎の龍/渦 — 画面外から螺旋を描いて敵に突撃
-        if(t<F_BOOM+0.12){
+        // ★ 炎の特徴3: 螺旋炎アーム — オレンジ/赤のみ、白を使わない
+        if(t<F_BOOM+0.1){
             const armN=tier>=4?6:tier>=3?5:tier>=2?3:2;
             for(let ai=0;ai<armN;ai++){
-                const aPh=ai/armN;
-                const aDelay=aPh*0.1;
-                const at=Math.max(0,t-aDelay); if(at<=0) continue;
-                const ap=Math.min(at/(F_BOOM-aDelay+0.08),1);
-                const aFade=t>=F_BOOM?Math.max(0,1-(t-F_BOOM)/0.14):1;
-                const startAng=aPh*Math.PI*2+(ai%2)*Math.PI*0.3;
-                const startDist=Math.max(W,H)*0.68;
-                const startX=tcx+Math.cos(startAng)*startDist;
-                const startY=tcy+Math.sin(startAng)*startDist*0.52;
-                const ppA=26+tier*8;
-                for(let pi=0;pi<ppA;pi++){
-                    const pf=pi/ppA;
-                    const localP=ap-pf*0.21; if(localP<=0) continue;
-                    const sp2=Math.min(localP,1);
-                    const ang4=startAng+sp2*Math.PI*(2.6+ai*0.38);
-                    const dist2=startDist*(1-sp2)*(0.38+pf*0.62);
-                    const px5=tcx+Math.cos(ang4)*dist2;
-                    const py5=tcy+Math.sin(ang4)*dist2*0.52;
-                    const sz9=(7+tier*5+rng(ai*55+pi*3)*11)*(1-pf*0.48)*aFade;
-                    const pA10=Math.min(sp2*2,1)*(1-pf*0.32)*aFade;
-                    if(sz9<=0||pA10<=0) continue;
-                    ctx.globalAlpha=pA10*0.93;
-                    ctx.shadowColor='#ff3300';ctx.shadowBlur=sz9*1.6;
-                    const hf=6+pf*28+rng(ai*55+pi*3+1)*16;
-                    const pGf=ctx.createRadialGradient(px5,py5,0,px5,py5,sz9);
-                    pGf.addColorStop(0,'#ffffff');pGf.addColorStop(0.22,`hsl(${62-pf*45},100%,72%)`);pGf.addColorStop(0.62,`hsl(${hf},100%,52%)`);pGf.addColorStop(1,`hsla(${hf-5},100%,22%,0)`);
-                    ctx.fillStyle=pGf;ctx.beginPath();ctx.arc(px5,py5,sz9,0,Math.PI*2);ctx.fill();clearGlow();
+                const aD=ai/armN*0.09;
+                const at=Math.max(0,t-aD); if(at<=0) continue;
+                const ap=Math.min(at/(F_BOOM-aD+0.08),1);
+                const aFd=t>=F_BOOM?Math.max(0,1-(t-F_BOOM)/0.12):1;
+                const sAng=(ai/armN)*Math.PI*2+(ai%2)*0.28;
+                const sDist=Math.max(W,H)*0.7;
+                const ppN=22+tier*7;
+                for(let pi=0;pi<ppN;pi++){
+                    const pf=pi/ppN;
+                    const lP=ap-pf*0.19; if(lP<=0) continue;
+                    const sp=Math.min(lP,1);
+                    const ang=sAng+sp*Math.PI*(2.8+ai*0.35);
+                    const dist=sDist*(1-sp)*(0.35+pf*0.65);
+                    const px=tcx+Math.cos(ang)*dist;
+                    const py=tcy+Math.sin(ang)*dist*0.52;
+                    const sz=(8+tier*5+rng(ai*55+pi*3)*12)*(1-pf*0.45)*aFd;
+                    const pA=Math.min(sp*2,1)*(1-pf*0.3)*aFd*0.95;
+                    if(sz<=0||pA<=0) continue;
+                    ctx.globalAlpha=pA;
+                    ctx.shadowColor='#dd2200'; ctx.shadowBlur=sz*1.8;
+                    // ★ 炎色のみ — 白なし、オレンジ→赤のグラデーション
+                    const hf=10+pf*22+rng(ai*55+pi*3+1)*12;  // hue 10-44 = 深オレンジ〜赤
+                    const bright=52+pf*-12;  // 手前ほど暗い
+                    const pGf=ctx.createRadialGradient(px,py,0,px,py,sz);
+                    pGf.addColorStop(0,`hsl(${40-pf*30},100%,${70-pf*20}%)`);  // 明るいオレンジ→暗い赤
+                    pGf.addColorStop(0.5,`hsl(${hf},100%,${bright}%)`);
+                    pGf.addColorStop(1,`hsla(${hf-8},100%,18%,0)`);
+                    ctx.fillStyle=pGf; ctx.beginPath(); ctx.arc(px,py,sz,0,Math.PI*2); ctx.fill();
+                    clearGlow();
                 }
             }
         }
 
-        // 3. 黒煙 — リアルな煙雲が上方に漂う
-        const smokeN=tier>=4?18:tier>=3?13:tier>=2?8:5;
-        for(let si=0;si<smokeN;si++){
-            const sph2=si/smokeN;
-            const smt=Math.max(0,t-sph2*0.32); if(smt<=0) continue;
-            const smx=tcx+(rng(si*5+1)-0.5)*(W*0.72);
-            const smy=tcy+18-smt*(H*0.44+rng(si*5+2)*H*0.24);
-            const smR=(13+rng(si*5+3)*24+tier*6)*Math.min(smt*3,1);
-            const smA=Math.min(smt*2.8,1)*Math.max(0,1-smt*0.92)*(0.48+rng(si*5+4)*0.34);
-            if(smR<=0||smA<=0) continue;
-            ctx.globalAlpha=smA;
-            ctx.shadowBlur=0;
-            const smG=ctx.createRadialGradient(smx,smy,0,smx,smy,smR);
-            smG.addColorStop(0,`rgba(${18+Math.floor(rng(si*5)*14)},${Math.floor(rng(si*5+1)*9)},0,0.75)`);smG.addColorStop(0.58,'rgba(9,4,0,0.42)');smG.addColorStop(1,'rgba(0,0,0,0)');
-            ctx.fillStyle=smG;ctx.beginPath();ctx.arc(smx,smy,smR,0,Math.PI*2);ctx.fill();
-        }
-        ctx.globalAlpha=1;
-
-        // 4. 足元マグマ/火柱が噴出
+        // ★ 炎の特徴4: 足元からマグマ火柱 (深紅〜橙、白くない)
         if(t>=F_LAVA){
-            const lt2=(t-F_LAVA)/(F_BOOM-F_LAVA+0.18);
+            const lt=(t-F_LAVA)/(F_BOOM-F_LAVA+0.2);
             const pilN=tier>=4?7:tier>=3?5:tier>=2?3:1;
             for(let pi=0;pi<pilN;pi++){
-                const poff2=(pi-(pilN-1)/2)*(17+tier*8);
-                const pd2=pi*0.055;
-                const pt9=Math.max(0,lt2-pd2); if(pt9<=0) continue;
-                const pH2=Math.sin(Math.min(pt9,0.92)*Math.PI)*(H*(0.3+tier*0.055));
-                const pW2=(11+tier*6)*(1-pt9*0.48);
-                const pA11=Math.sin(Math.min(pt9,0.92)*Math.PI)*0.94;
-                if(pH2<=0||pA11<=0) continue;
-                ctx.globalAlpha=pA11;ctx.shadowColor='#ff3300';ctx.shadowBlur=26+tier*7;
-                const pGp=ctx.createLinearGradient(tcx+poff2,tcy,tcx+poff2,tcy-pH2);
-                pGp.addColorStop(0,'#ffff88');pGp.addColorStop(0.18,'#ff8800');pGp.addColorStop(0.55,'#ff2200');pGp.addColorStop(0.85,'rgba(195,0,0,0.38)');pGp.addColorStop(1,'rgba(175,0,0,0)');
+                const poff=(pi-(pilN-1)/2)*(16+tier*8);
+                const pt=Math.max(0,lt-pi*0.052); if(pt<=0) continue;
+                const pH=Math.sin(Math.min(pt,0.92)*Math.PI)*(H*(0.3+tier*0.05));
+                const pW=(10+tier*6)*(1-pt*0.45);
+                const pA=Math.sin(Math.min(pt,0.92)*Math.PI)*0.95;
+                if(pH<=0||pA<=0) continue;
+                ctx.globalAlpha=pA; ctx.shadowColor='#cc2200'; ctx.shadowBlur=20+tier*6;
+                const pGp=ctx.createLinearGradient(tcx+poff,tcy,tcx+poff,tcy-pH);
+                pGp.addColorStop(0,'#ff9900');       // 根元: 明るいオレンジ
+                pGp.addColorStop(0.25,'#ff4400');    // 中段: 赤橙
+                pGp.addColorStop(0.6,'#cc1100');     // 上部: 深紅
+                pGp.addColorStop(1,'rgba(160,0,0,0)');
                 ctx.fillStyle=pGp;
-                ctx.beginPath();ctx.moveTo(tcx+poff2-pW2,tcy);ctx.quadraticCurveTo(tcx+poff2-pW2*0.28,tcy-pH2*0.5,tcx+poff2,tcy-pH2);ctx.quadraticCurveTo(tcx+poff2+pW2*0.28,tcy-pH2*0.5,tcx+poff2+pW2,tcy);ctx.closePath();ctx.fill();
-                ctx.globalAlpha=pA11*0.82;ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(tcx+poff2,tcy-pH2,3+tier*1.5,0,Math.PI*2);ctx.fill();clearGlow();
+                ctx.beginPath();
+                ctx.moveTo(tcx+poff-pW,tcy);
+                ctx.quadraticCurveTo(tcx+poff-pW*0.3,tcy-pH*0.5,tcx+poff,tcy-pH);
+                ctx.quadraticCurveTo(tcx+poff+pW*0.3,tcy-pH*0.5,tcx+poff+pW,tcy);
+                ctx.closePath(); ctx.fill(); clearGlow();
             }
-            // マグマ飛沫
-            const mgN=7+tier*4;
-            for(let mi=0;mi<mgN;mi++){
-                const md=mi*0.048; const mt2=Math.max(0,lt2-md); if(mt2<=0||mt2>=0.88) continue;
-                const mA3=Math.sin(mt2*Math.PI/0.88)*0.92;
-                const ma2=(mi/mgN)*Math.PI*2;
-                const ms2=32+rng(mi*4+1)*52+tier*14;
-                const mx2=tcx+Math.cos(ma2)*ms2*mt2,my2=tcy+Math.sin(ma2)*ms2*mt2*0.52+mt2*mt2*36;
-                const mR2=(4+rng(mi*4+2)*7+tier)*Math.max(0,1-mt2*1.22);
-                if(mR2<=0||mA3<=0) continue;
-                ctx.globalAlpha=mA3;ctx.shadowColor='#ff5500';ctx.shadowBlur=mR2*2;
-                ctx.fillStyle=`rgb(${195+Math.floor(rng(mi*4+3)*42)},${Math.floor(rng(mi*4)*58)},0)`;
-                ctx.beginPath();ctx.arc(mx2,my2,mR2,0,Math.PI*2);ctx.fill();clearGlow();
+            // マグマ飛沫 (赤橙)
+            for(let mi=0;mi<6+tier*4;mi++){
+                const mt=Math.max(0,lt-mi*0.048); if(mt<=0||mt>=0.88) continue;
+                const mA=Math.sin(mt*Math.PI/0.88)*0.9;
+                const ma=(mi/(6+tier*4))*Math.PI*2;
+                const ms=30+rng(mi*4+1)*50+tier*14;
+                const mx=tcx+Math.cos(ma)*ms*mt, my=tcy+Math.sin(ma)*ms*mt*0.5+mt*mt*35;
+                const mR=(4+rng(mi*4+2)*7+tier)*Math.max(0,1-mt*1.25);
+                if(mR<=0||mA<=0) continue;
+                ctx.globalAlpha=mA; ctx.shadowColor='#ff4400'; ctx.shadowBlur=mR*2;
+                // 赤橙のマグマ色
+                ctx.fillStyle=`hsl(${12+Math.floor(rng(mi*4+3)*18)},100%,${42+Math.floor(rng(mi*4)*18)}%)`;
+                ctx.beginPath(); ctx.arc(mx,my,mR,0,Math.PI*2); ctx.fill(); clearGlow();
             }
         }
 
-        // 5. 中心大爆発
+        // ★ 炎の特徴5: 爆発はオレンジ/深紅 (白くない)
         if(t>=F_BOOM){
             const fbt=(t-F_BOOM)/(1-F_BOOM);
-            dqFlash(t,F_BOOM,'rgba(255,115,18,0.97)');
-            const fExpR=fbt*(82+tier*58);const fExpA=Math.max(0,1-fbt*1.1);
+            // オレンジのフラッシュ (白ではなく橙)
+            const flashA=Math.max(0,0.88*(1-fbt/0.2));
+            if(flashA>0){ctx.globalAlpha=flashA;ctx.fillStyle='rgba(255,90,0,0.82)';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
+            const fExpR=fbt*(75+tier*55); const fExpA=Math.max(0,1-fbt*1.08);
             if(fExpA>0&&fExpR>0){
-                ctx.globalAlpha=fExpA;ctx.shadowColor='#ff5500';ctx.shadowBlur=fExpR*0.52;
+                ctx.globalAlpha=fExpA; ctx.shadowColor='#dd3300'; ctx.shadowBlur=fExpR*0.5;
                 const fEG=ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,fExpR);
-                fEG.addColorStop(0,'#ffffff');fEG.addColorStop(0.17,'#ffee44');fEG.addColorStop(0.5,'#ff4400');fEG.addColorStop(1,'rgba(175,0,0,0)');
-                ctx.fillStyle=fEG;ctx.beginPath();ctx.arc(tcx,tcy,fExpR,0,Math.PI*2);ctx.fill();clearGlow();
+                fEG.addColorStop(0,'#ffaa00');    // 中心: 明るいオレンジ (白でない)
+                fEG.addColorStop(0.25,'#ff5500');
+                fEG.addColorStop(0.6,'#cc1100');  // 外縁: 深紅
+                fEG.addColorStop(1,'rgba(120,0,0,0)');
+                ctx.fillStyle=fEG; ctx.beginPath(); ctx.arc(tcx,tcy,fExpR,0,Math.PI*2); ctx.fill(); clearGlow();
             }
-            dqRing(t,'#ffbb44',4.8,1.3);
+            dqRing(t,'#ff6600',5,1.3);
         }
 
-        // 6. 火の粉
+        // 火の粉 (オレンジ/赤)
         for(const p of parts){
             if(p.phase>0.72) continue;
-            const fpt=Math.max(0,(t-p.phase*0.52)/0.78); if(fpt<=0||fpt>=1) continue;
-            const fs=28+p.spd*82+tier*18;
-            const flx=tcx+Math.cos(p.angle)*fs*fpt,fly=tcy+Math.sin(p.angle)*fs*fpt+fpt*fpt*38;
-            const fsz=(1.5+p.size*4.2)*Math.max(0,1-fpt*1.28);
-            const fpA=Math.max(0,(1-fpt)*0.9); if(fsz<=0||fpA<=0) continue;
-            ctx.globalAlpha=fpA;ctx.shadowColor='#ff4400';ctx.shadowBlur=fsz*2;
-            ctx.fillStyle=fpt<0.33?'#ffffff':(fpt<0.62?'#ffcc44':'#ff2200');
-            ctx.beginPath();ctx.arc(flx,fly,fsz,0,Math.PI*2);ctx.fill();clearGlow();
+            const pt=Math.max(0,(t-p.phase*0.5)/0.78); if(pt<=0||pt>=1) continue;
+            const spd=28+p.spd*80+tier*18;
+            const lx=tcx+Math.cos(p.angle)*spd*pt, ly=tcy+Math.sin(p.angle)*spd*pt+pt*pt*36;
+            const sz=(1.5+p.size*4)*Math.max(0,1-pt*1.3);
+            const pA=Math.max(0,(1-pt)*0.9); if(sz<=0||pA<=0) continue;
+            ctx.globalAlpha=pA; ctx.shadowColor='#ff3300'; ctx.shadowBlur=sz*2;
+            // 白なし — オレンジ→赤→暗赤
+            ctx.fillStyle=pt<0.3?'#ff9900':(pt<0.6?'#ff4400':'#bb1100');
+            ctx.beginPath(); ctx.arc(lx,ly,sz,0,Math.PI*2); ctx.fill(); clearGlow();
         }
         ctx.globalAlpha=1;
     };
@@ -2465,144 +2486,153 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
         }
         ctx.globalAlpha=1;
     };
-    // ── 雷属性: 巨大魔法陣 → 極太青白雷撃が画面全体に降り注ぐ → 広域スパーク
+    // ── 雷属性: 帯電暗転 → 巨大魔法陣 → 極太青白雷撃が垂直に降り注ぐ
     const drawLightning = (t) => {
-        const LC_ST=0.0, LB_ST=0.22, LF_ST=0.27;
+        const LB_ST=0.2;
 
-        // 稲妻描画ヘルパー (再帰・分岐付き)
-        const drawBoltL=(x1,y1,x2,y2,sd,lw3,al3,dp3)=>{
-            if(dp3>(tier>=3?3:2)||al3<0.04) return;
-            const sg=9+dp3*2;const jg=(30-dp3*8)*(1+tier*0.22);
+        // ★ 雷の特徴1: 画面が暗くなる (炎と真逆 — 暗転させる)
+        const darkA=t<0.18?t/0.18*(0.75+tier*0.1):t<0.65?(0.75+tier*0.1):Math.max(0,1-(t-0.65)/0.35)*(0.55+tier*0.07);
+        ctx.globalAlpha=darkA;
+        ctx.fillStyle='rgba(2,2,22,0.82)';  // ★ 非常に暗い青黒
+        ctx.fillRect(0,0,W,H);
+        ctx.globalAlpha=1;
+
+        // 稲妻描画
+        const drawBoltL=(x1,y1,x2,y2,sd,lw,al,dp)=>{
+            if(dp>(tier>=3?3:2)||al<0.04) return;
+            const sg=9+dp*2; const jg=(30-dp*8)*(1+tier*0.22);
             const ps=[[x1,y1]];
             for(let i=1;i<sg;i++){const f=i/sg;ps.push([x1+(x2-x1)*f+(rng(sd*10+i)-0.5)*jg*(1-f*0.38),y1+(y2-y1)*f+(rng(sd*10+i+50)-0.5)*jg*0.32]);}
             ps.push([x2,y2]);
-            ctx.globalAlpha=al3;ctx.shadowColor='#3366ff';ctx.shadowBlur=(10-dp3*2.2)*(1+tier*0.22);
-            ctx.strokeStyle=dp3===0?'#ffffff':(dp3===1?'#cce2ff':'#aaaadd');
-            ctx.lineWidth=Math.max(0.5,lw3-dp3*1.3);
-            ctx.beginPath();ctx.moveTo(ps[0][0],ps[0][1]);
+            ctx.globalAlpha=al; ctx.shadowColor='#2244ff'; ctx.shadowBlur=(10-dp*2)*(1+tier*0.22);
+            ctx.strokeStyle=dp===0?'#eef4ff':(dp===1?'#99bbff':'#6688cc');
+            ctx.lineWidth=Math.max(0.5,lw-dp*1.2);
+            ctx.beginPath(); ctx.moveTo(ps[0][0],ps[0][1]);
             for(let i=1;i<ps.length;i++) ctx.lineTo(ps[i][0],ps[i][1]);
-            ctx.stroke();clearGlow();
-            if(dp3<(tier>=3?2:1)){
-                const brN2=2+Math.floor(rng(sd*100+dp3*10)*2);
-                for(let bi=0;bi<brN2;bi++){
-                    const bS=2+Math.floor(rng(sd*200+bi*7+dp3*30)*(sg-3));
+            ctx.stroke(); clearGlow();
+            if(dp<(tier>=3?2:1)){
+                const brN=2+Math.floor(rng(sd*100+dp*10)*2);
+                for(let bi=0;bi<brN;bi++){
+                    const bS=2+Math.floor(rng(sd*200+bi*7+dp*30)*(sg-3));
                     const bE=bS+2+Math.floor(rng(sd*300+bi*11)*4);
                     if(bE>=ps.length) continue;
-                    drawBoltL(ps[bS][0],ps[bS][1],ps[bE][0]+(rng(sd*400+bi*13)-0.5)*58,ps[bE][1]+rng(sd*500+bi*17)*46,sd*1000+bi,lw3*0.44,al3*0.52,dp3+1);
+                    drawBoltL(ps[bS][0],ps[bS][1],ps[bE][0]+(rng(sd*400+bi*13)-0.5)*55,ps[bE][1]+rng(sd*500+bi*17)*44,sd*1000+bi,lw*0.44,al*0.52,dp+1);
                 }
             }
         };
 
-        // 1. 空が暗くなる (帯電チャージ)
-        if(t<LF_ST+0.12){
-            const cA=t<0.16?t/0.16*(0.32+tier*0.09):(0.32+tier*0.09);
-            ctx.globalAlpha=cA;ctx.fillStyle='rgba(4,4,28,0.58)';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;
-        }
-
-        // 2. 巨大魔法陣が空中に出現 — ネオンのように輝く
-        if(t>=LC_ST&&t<LB_ST+0.18){
-            const cirA=t>=LB_ST?Math.max(0,1-(t-LB_ST)/0.18):Math.min(t/0.16,1);
-            const cirY=tcy-H*0.24;
-            const ringR2=(58+tier*28)*Math.min(t/0.16,1);
-            if(cirA>0&&ringR2>0){
-                // 外周リング (二重)
+        // ★ 雷の特徴2: 巨大魔法陣が空中に出現 (炎には絶対ない要素)
+        if(t<LB_ST+0.22){
+            const cirFade=t>=LB_ST?Math.max(0,1-(t-LB_ST)/0.22):Math.min(t/0.14,1);
+            const cirY=tcy-H*0.25;
+            const ringR=(55+tier*26)*Math.min(t/0.14,1);
+            if(cirFade>0&&ringR>0){
+                // 外周リング × 2
                 for(let ri=0;ri<2;ri++){
-                    const rr=ringR2*(1-ri*0.18);
-                    ctx.globalAlpha=cirA*(ri===0?0.95:0.62);
-                    ctx.shadowColor='#88aaff';ctx.shadowBlur=18+tier*3;
-                    ctx.strokeStyle=ri===0?'#aaccff':'#6688cc';ctx.lineWidth=2.2+tier*0.45-ri*0.8;
-                    ctx.beginPath();ctx.arc(tcx,cirY,rr,0,Math.PI*2);ctx.stroke();
+                    ctx.globalAlpha=cirFade*(ri===0?0.95:0.6);
+                    ctx.shadowColor='#4466ff'; ctx.shadowBlur=16+tier*3;
+                    ctx.strokeStyle=ri===0?'#88aaff':'#4466cc'; ctx.lineWidth=2+tier*0.4-ri*0.7;
+                    ctx.beginPath(); ctx.arc(tcx,cirY,ringR*(1-ri*0.16),0,Math.PI*2); ctx.stroke();
                 }
-                // 回転する幾何学ルーン線 (高速回転)
-                const rotN2=tier>=4?14:tier>=3?10:8;
-                for(let ri2=0;ri2<rotN2;ri2++){
-                    const ra2=(ri2/rotN2)*Math.PI*2+t*Math.PI*3.8;
-                    const rb2=((ri2+Math.floor(rotN2/2))%rotN2/rotN2)*Math.PI*2+t*Math.PI*3.8;
-                    ctx.globalAlpha=cirA*(0.45+0.55*Math.abs(Math.sin(t*Math.PI*9+ri2)));
-                    ctx.shadowColor='#7799ff';ctx.shadowBlur=10;
-                    ctx.strokeStyle='#88aaff';ctx.lineWidth=1.1;
-                    ctx.beginPath();ctx.moveTo(tcx+Math.cos(ra2)*ringR2*0.88,cirY+Math.sin(ra2)*ringR2*0.88);ctx.lineTo(tcx+Math.cos(rb2)*ringR2*0.88,cirY+Math.sin(rb2)*ringR2*0.88);ctx.stroke();
+                // 回転ルーン線 (高速)
+                const rotN=tier>=4?14:tier>=3?10:8;
+                for(let ri=0;ri<rotN;ri++){
+                    const ra=(ri/rotN)*Math.PI*2+t*Math.PI*4.2;
+                    const rb=((ri+Math.floor(rotN/2))%rotN/rotN)*Math.PI*2+t*Math.PI*4.2;
+                    ctx.globalAlpha=cirFade*(0.4+0.6*Math.abs(Math.sin(t*Math.PI*10+ri)));
+                    ctx.shadowColor='#5577ff'; ctx.shadowBlur=8;
+                    ctx.strokeStyle='#7799ff'; ctx.lineWidth=1.1;
+                    ctx.beginPath();
+                    ctx.moveTo(tcx+Math.cos(ra)*ringR*0.88,cirY+Math.sin(ra)*ringR*0.88);
+                    ctx.lineTo(tcx+Math.cos(rb)*ringR*0.88,cirY+Math.sin(rb)*ringR*0.88);
+                    ctx.stroke();
                 }
-                // 内側の星形(六芒星)
-                const starPoints=7;
-                ctx.globalAlpha=cirA*0.88;ctx.strokeStyle='#cce2ff';ctx.lineWidth=2;ctx.shadowColor='#aaccff';ctx.shadowBlur=20;
+                // 七芒星
+                ctx.globalAlpha=cirFade*0.88; ctx.strokeStyle='#aaccff'; ctx.lineWidth=2;
+                ctx.shadowColor='#8899ff'; ctx.shadowBlur=18;
                 ctx.beginPath();
-                for(let si2=0;si2<=starPoints;si2++){
-                    const sa2=(si2/starPoints)*Math.PI*2+t*Math.PI*1.8+Math.PI/7;
-                    const sr2=si2%2===0?ringR2*0.76:ringR2*0.34;
-                    si2===0?ctx.moveTo(tcx+Math.cos(sa2)*sr2,cirY+Math.sin(sa2)*sr2):ctx.lineTo(tcx+Math.cos(sa2)*sr2,cirY+Math.sin(sa2)*sr2);
+                for(let si=0;si<=7;si++){
+                    const sa=(si/7)*Math.PI*2+t*Math.PI*1.8+Math.PI/7;
+                    const sr=si%2===0?ringR*0.78:ringR*0.35;
+                    si===0?ctx.moveTo(tcx+Math.cos(sa)*sr,cirY+Math.sin(sa)*sr):ctx.lineTo(tcx+Math.cos(sa)*sr,cirY+Math.sin(sa)*sr);
                 }
-                ctx.closePath();ctx.stroke();
-                // 中心コア脈動
-                const coreP2=0.72+0.28*Math.sin(t*Math.PI*14);
-                ctx.globalAlpha=cirA*coreP2;ctx.shadowColor='#ffffff';ctx.shadowBlur=38;
-                const lCorG=ctx.createRadialGradient(tcx,cirY,0,tcx,cirY,ringR2*0.32);
-                lCorG.addColorStop(0,'#ffffff');lCorG.addColorStop(0.38,'#aaccff');lCorG.addColorStop(1,'rgba(70,90,255,0)');
-                ctx.fillStyle=lCorG;ctx.beginPath();ctx.arc(tcx,cirY,ringR2*0.32,0,Math.PI*2);ctx.fill();clearGlow();
+                ctx.closePath(); ctx.stroke();
+                // 中心コア (青白く脈動)
+                ctx.globalAlpha=cirFade*(0.7+0.3*Math.sin(t*Math.PI*14));
+                ctx.shadowColor='#aabbff'; ctx.shadowBlur=35;
+                const lCG=ctx.createRadialGradient(tcx,cirY,0,tcx,cirY,ringR*0.3);
+                lCG.addColorStop(0,'#ddeeff'); lCG.addColorStop(0.4,'#6688ff'); lCG.addColorStop(1,'rgba(40,60,200,0)');
+                ctx.fillStyle=lCG; ctx.beginPath(); ctx.arc(tcx,cirY,ringR*0.3,0,Math.PI*2); ctx.fill();
+                clearGlow();
             }
         }
 
-        // 3. 極太青白雷撃が画面全体に降り注ぐ
+        // ★ 雷の特徴3: 極太の青白い雷撃が垂直に降り注ぐ (水平には広がらない)
         if(t>=LB_ST){
-            const boltN2=tier>=4?9:tier>=3?7:tier>=2?5:3;
-            const waveN3=tier>=3?2:1;
-            const cirY2=tcy-H*0.24;
-            for(let gi=0;gi<waveN3;gi++){
-                for(let bi=0;bi<boltN2;bi++){
-                    const bd=bi*0.032+gi*0.16;
-                    const bt7=Math.max(0,t-LB_ST-bd); if(bt7<=0||bt7>0.58) continue;
-                    const bP2=Math.min(bt7/0.055,1);
-                    const bFade2=bt7>0.4?Math.max(0,1-(bt7-0.4)/0.18):1;
-                    const bA4=bP2*bFade2; if(bA4<=0) continue;
-                    // 着地点は画面全体に分散
-                    const tX=tcx+(rng(bi*19+gi*110+1)-0.5)*W*1.15;
-                    const tY=tcy+(rng(bi*19+gi*110+2))*(H-tcy)*0.85;
-                    const sX2=tcx+(rng(bi*19+gi*110+3)-0.5)*(58+tier*28)*2.2;
-                    const lw4=4+tier*1.8;
-                    // 外側グロー (太く柔らかく)
-                    ctx.globalAlpha=bA4*0.52;ctx.shadowColor='#1133ff';ctx.shadowBlur=lw4*6;
-                    ctx.strokeStyle='rgba(88,128,255,0.48)';ctx.lineWidth=lw4*3.5;
-                    ctx.beginPath();ctx.moveTo(sX2,cirY2);ctx.lineTo(tX,tY);ctx.stroke();clearGlow();
-                    // メインボルト (ジグザグ)
-                    ctx.globalAlpha=bA4;
-                    drawBoltL(sX2,cirY2,tX,tY,bi*33+gi*220+7,lw4,bA4,0);
-                    // 着弾グロー
-                    const iR2=(20+tier*11)*bA4;
-                    ctx.globalAlpha=bA4*0.9;ctx.shadowColor='#3355ff';ctx.shadowBlur=iR2*2.2;
-                    const iG2=ctx.createRadialGradient(tX,tY,0,tX,tY,iR2);
-                    iG2.addColorStop(0,'rgba(255,255,255,0.96)');iG2.addColorStop(0.38,'rgba(115,162,255,0.82)');iG2.addColorStop(1,'rgba(52,72,255,0)');
-                    ctx.fillStyle=iG2;ctx.beginPath();ctx.arc(tX,tY,iR2,0,Math.PI*2);ctx.fill();clearGlow();
+            const boltN=tier>=4?9:tier>=3?7:tier>=2?5:3;
+            const waveN=tier>=3?2:1;
+            const cirY=tcy-H*0.25;
+            for(let gi=0;gi<waveN;gi++){
+                for(let bi=0;bi<boltN;bi++){
+                    const bd=bi*0.03+gi*0.14;
+                    const bt=Math.max(0,t-LB_ST-bd); if(bt<=0||bt>0.55) continue;
+                    const bP=Math.min(bt/0.05,1);
+                    const bFd=bt>0.38?Math.max(0,1-(bt-0.38)/0.17):1;
+                    const bA=bP*bFd; if(bA<=0) continue;
+                    // ★ 着地点: 横に広がる (画面全体に分散)
+                    const tX=tcx+(rng(bi*19+gi*110+1)-0.5)*W*1.12;
+                    const tY=tcy+(rng(bi*19+gi*110+2))*(H-tcy)*0.88;
+                    // 発射源: 魔法陣付近
+                    const sX=tcx+(rng(bi*19+gi*110+3)-0.5)*(55+tier*26)*2;
+                    const lw=4.5+tier*1.8;
+                    // 外側の太いグロー (blue)
+                    ctx.globalAlpha=bA*0.48; ctx.strokeStyle='rgba(60,100,255,0.45)';
+                    ctx.lineWidth=lw*4; ctx.shadowColor='#1133dd'; ctx.shadowBlur=lw*7;
+                    ctx.beginPath(); ctx.moveTo(sX,cirY); ctx.lineTo(tX,tY); ctx.stroke(); clearGlow();
+                    // メイン稲妻
+                    ctx.globalAlpha=bA;
+                    drawBoltL(sX,cirY,tX,tY,bi*33+gi*220+7,lw,bA,0);
+                    // 着弾グロー (青白)
+                    const iR=(18+tier*10)*bA;
+                    ctx.globalAlpha=bA*0.92; ctx.shadowColor='#2244ff'; ctx.shadowBlur=iR*2.5;
+                    const iG=ctx.createRadialGradient(tX,tY,0,tX,tY,iR);
+                    iG.addColorStop(0,'#cce0ff'); iG.addColorStop(0.4,'rgba(80,120,255,0.82)'); iG.addColorStop(1,'rgba(30,50,200,0)');
+                    ctx.fillStyle=iG; ctx.beginPath(); ctx.arc(tX,tY,iR,0,Math.PI*2); ctx.fill(); clearGlow();
                 }
             }
         }
 
-        // 4. 連続明滅フラッシュ (画面が引き裂かれる)
-        if(t>=LF_ST){
-            const fc=Math.sin(t*Math.PI*(9+tier*3.5));
-            if(fc>0.35){const fA2=(fc-0.35)/0.65*(0.48+tier*0.12);ctx.globalAlpha=fA2;ctx.fillStyle='rgba(165,195,255,0.88)';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
+        // ★ 雷の特徴4: 画面が青白く明滅 (炎と真逆の色)
+        if(t>=LB_ST-0.02){
+            const fc=Math.sin(t*Math.PI*(10+tier*3.5));
+            if(fc>0.3){
+                const fA=(fc-0.3)/0.7*(0.52+tier*0.14);
+                ctx.globalAlpha=fA; ctx.fillStyle='rgba(80,110,255,0.72)';  // ★ 青い閃光
+                ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+            }
         }
 
-        // 5. 広域スパーク — 画面全体を埋め尽くす
+        // ★ 雷の特徴5: 青白いスパークが画面全体に (炎の火の粉とは色が真逆)
         if(t>=LB_ST){
             const lSt=(t-LB_ST)/(1-LB_ST);
-            const spN=tier>=4?62:tier>=3?44:tier>=2?28:16;
+            const spN=tier>=4?65:tier>=3?46:tier>=2?30:16;
             for(let si=0;si<spN;si++){
-                const sph3=si/spN;const spt2=(lSt*1.4+sph3)%1.0;
-                const lsx=rng(si*5+1)*W,lsy=rng(si*5+2)*H;
-                const lsA=Math.sin(spt2*Math.PI)*(0.58+rng(si*5+3)*0.42);
-                const lssz=0.9+rng(si*5+4)*3.2+tier*0.48;
+                const sph=si/spN; const spt=(lSt*1.4+sph)%1.0;
+                const lsx=rng(si*5+1)*W, lsy=rng(si*5+2)*H;
+                const lsA=Math.sin(spt*Math.PI)*(0.6+rng(si*5+3)*0.42);
+                const lssz=0.8+rng(si*5+4)*3+tier*0.45;
                 if(lsA<=0) continue;
-                ctx.globalAlpha=lsA;ctx.shadowColor='#99aaff';ctx.shadowBlur=lssz*3.2;
-                ctx.fillStyle=rng(si*5+5)>0.52?'#ffffff':'#88aaff';
-                ctx.beginPath();ctx.arc(lsx,lsy,lssz,0,Math.PI*2);ctx.fill();
+                ctx.globalAlpha=lsA; ctx.shadowColor='#88aaff'; ctx.shadowBlur=lssz*3;
+                // ★ 青白い — オレンジ/赤を一切使わない
+                ctx.fillStyle=rng(si*5+5)>0.45?'#cce0ff':'#5577ff';
+                ctx.beginPath(); ctx.arc(lsx,lsy,lssz,0,Math.PI*2); ctx.fill();
             }
             clearGlow();
         }
 
-        // 6. 青白い環境光
-        const lEnvT=t<0.42?t/0.42:Math.max(0,1-(t-0.42)/0.52);
-        const lEnvA=lEnvT*(0.32+tier*0.13);
-        if(lEnvA>0){ctx.globalAlpha=lEnvA;ctx.fillStyle='rgba(52,72,255,0.44)';ctx.fillRect(0,0,W,H);}
+        // ★ 雷の特徴6: 環境光は青紫 (炎の橙と真逆)
+        const lEnv=t<0.4?t/0.4:Math.max(0,1-(t-0.4)/0.5);
+        if(lEnv>0){ctx.globalAlpha=lEnv*(0.38+tier*0.12);ctx.fillStyle='rgba(40,55,220,0.48)';ctx.fillRect(0,0,W,H);}
         ctx.globalAlpha=1;
     };
     const drawWind = (t) => {
