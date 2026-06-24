@@ -3160,6 +3160,10 @@ function buildNorthAbandonedCastle() {
     R(2, 13, 12, 25, 0);    // 西の間
     R(23, 13, W-3, 25, 0);  // 東の間
     R(14, 13, 21, 25, 0);   // 中央通路
+    // 中央通路 → 西の間 通路（x=13を3タイル開く）
+    S(13, 17, 0); S(13, 18, 0); S(13, 19, 0);
+    // 中央通路 → 東の間 通路（x=22を3タイル開く）
+    S(22, 17, 0); S(22, 18, 0); S(22, 19, 0);
     // 退出通路
     R(0, 26, W-1, 26, 1); R(14, 26, 21, 26, 0);
     R(14, 27, 21, 29, 10);
@@ -8315,6 +8319,73 @@ function drawMap() {
                     else ctx.filter = 'hue-rotate(210deg) saturate(1.4) brightness(0.95)';
                     drawSpriteLocal(ctx, _sSprite, px, py, 48); ctx.restore();
                 }
+            } else if (npc.id.includes('north_ghost') || npc.id === 'npc_north_sage_ghost' || npc.id === 'npc_north_castle_ghost') {
+                // 北の廃城 亡霊グラフィック（浮遊アニメーション付き）
+                const _gT=TILE_SIZE, _gcx=px+_gT/2, _gt=Date.now();
+                const _gfy=Math.sin(_gt/900)*3;
+                const _ga=Math.sin(_gt/600)*0.15+0.75;
+                ctx.save(); ctx.globalAlpha=_ga;
+                if (npc.id==='npc_north_castle_ghost') {
+                    // 廃城の魔道士の霊: 紫のウィザードゴースト
+                    const _cy=py+_gT*0.45+_gfy;
+                    const _rg=ctx.createLinearGradient(_gcx,_cy-10,_gcx,_cy+18);
+                    _rg.addColorStop(0,'rgba(140,80,255,0.95)'); _rg.addColorStop(0.65,'rgba(100,50,200,0.7)'); _rg.addColorStop(1,'rgba(80,40,180,0)');
+                    ctx.fillStyle=_rg; ctx.beginPath(); ctx.moveTo(_gcx-9,_cy-4); ctx.quadraticCurveTo(_gcx-12,_cy+7,_gcx-7,_cy+17); ctx.quadraticCurveTo(_gcx,_cy+21,_gcx+7,_cy+17); ctx.quadraticCurveTo(_gcx+12,_cy+7,_gcx+9,_cy-4); ctx.fill();
+                    ctx.strokeStyle='rgba(120,70,220,0.8)'; ctx.lineWidth=3;
+                    ctx.beginPath(); ctx.moveTo(_gcx-8,_cy); ctx.quadraticCurveTo(_gcx-15,_cy+5,_gcx-17,_cy+2); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(_gcx+8,_cy); ctx.quadraticCurveTo(_gcx+15,_cy+5,_gcx+17,_cy+2); ctx.stroke();
+                    ctx.fillStyle='rgba(195,170,255,0.92)'; ctx.beginPath(); ctx.ellipse(_gcx,_cy-14,7,8,0,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle='rgba(70,0,130,0.95)'; ctx.beginPath(); ctx.moveTo(_gcx-9,_cy-12); ctx.lineTo(_gcx,_cy-29); ctx.lineTo(_gcx+9,_cy-12); ctx.closePath(); ctx.fill();
+                    ctx.fillStyle='rgba(55,0,100,0.9)'; ctx.beginPath(); ctx.ellipse(_gcx,_cy-12,11,3.5,0,0,Math.PI*2); ctx.fill();
+                    ctx.shadowColor='#bb88ff'; ctx.shadowBlur=8; ctx.fillStyle='rgba(220,170,255,1)';
+                    ctx.beginPath(); ctx.ellipse(_gcx-3,_cy-14,2,2.5,0,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(_gcx+3,_cy-14,2,2.5,0,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+                    ctx.strokeStyle='rgba(160,110,255,0.9)'; ctx.lineWidth=2;
+                    ctx.beginPath(); ctx.moveTo(_gcx+15,_cy-7); ctx.lineTo(_gcx+15,_cy+13); ctx.stroke();
+                    ctx.fillStyle='rgba(230,190,255,0.92)'; ctx.shadowColor='#cc99ff'; ctx.shadowBlur=10;
+                    ctx.beginPath(); ctx.arc(_gcx+15,_cy-10,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+                } else if (npc.id==='npc_north_sage_ghost') {
+                    // 賢者の残影: 白いローブで本を持つゴースト
+                    const _cy=py+_gT*0.45+_gfy;
+                    const _rg2=ctx.createLinearGradient(_gcx,_cy-8,_gcx,_cy+18);
+                    _rg2.addColorStop(0,'rgba(230,220,255,0.95)'); _rg2.addColorStop(0.6,'rgba(200,190,240,0.7)'); _rg2.addColorStop(1,'rgba(180,170,220,0)');
+                    ctx.fillStyle=_rg2; ctx.beginPath(); ctx.moveTo(_gcx-9,_cy-2); ctx.quadraticCurveTo(_gcx-12,_cy+8,_gcx-8,_cy+18); ctx.quadraticCurveTo(_gcx,_cy+22,_gcx+8,_cy+18); ctx.quadraticCurveTo(_gcx+12,_cy+8,_gcx+9,_cy-2); ctx.fill();
+                    ctx.fillStyle='rgba(220,215,250,0.9)'; ctx.beginPath(); ctx.ellipse(_gcx,_cy-14,7,8,0,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle='rgba(210,205,240,0.8)'; ctx.beginPath(); ctx.arc(_gcx,_cy-17,10,Math.PI,0); ctx.fill();
+                    ctx.fillStyle='rgba(255,255,200,0.9)'; ctx.shadowColor='#ffffaa'; ctx.shadowBlur=6;
+                    ctx.beginPath(); ctx.ellipse(_gcx-2.5,_cy-14,1.8,2.2,0,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(_gcx+2.5,_cy-14,1.8,2.2,0,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+                    ctx.fillStyle='rgba(255,240,180,0.85)'; ctx.shadowColor='#ffee88'; ctx.shadowBlur=8;
+                    ctx.fillRect(_gcx-5,_cy-4,11,8); ctx.shadowBlur=0;
+                    ctx.strokeStyle='rgba(200,180,100,0.7)'; ctx.lineWidth=0.8; ctx.strokeRect(_gcx-5,_cy-4,11,8);
+                    ctx.beginPath(); ctx.moveTo(_gcx,_cy-4); ctx.lineTo(_gcx,_cy+4); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(_gcx-5,_cy-1); ctx.lineTo(_gcx+6,_cy-1); ctx.stroke();
+                } else if (npc.id==='npc_north_ghost_2') {
+                    // さまよう霊: 青い漂うゴースト
+                    const _cy=py+_gT*0.45+_gfy;
+                    const _rg3=ctx.createLinearGradient(_gcx,_cy-12,_gcx,_cy+18);
+                    _rg3.addColorStop(0,'rgba(100,180,255,0.9)'); _rg3.addColorStop(0.65,'rgba(60,140,230,0.65)'); _rg3.addColorStop(1,'rgba(40,100,200,0)');
+                    ctx.fillStyle=_rg3; ctx.beginPath(); ctx.moveTo(_gcx-10,_cy-4); ctx.quadraticCurveTo(_gcx-14,_cy+6,_gcx-10,_cy+16); ctx.quadraticCurveTo(_gcx-5,_cy+22,_gcx,_cy+20); ctx.quadraticCurveTo(_gcx+5,_cy+22,_gcx+10,_cy+16); ctx.quadraticCurveTo(_gcx+14,_cy+6,_gcx+10,_cy-4); ctx.fill();
+                    ctx.strokeStyle='rgba(80,160,240,0.8)'; ctx.lineWidth=3;
+                    ctx.beginPath(); ctx.moveTo(_gcx-8,_cy); ctx.quadraticCurveTo(_gcx-18,_cy-3,_gcx-20,_cy-1); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(_gcx+8,_cy); ctx.quadraticCurveTo(_gcx+18,_cy-3,_gcx+20,_cy-1); ctx.stroke();
+                    ctx.fillStyle='rgba(180,220,255,0.92)'; ctx.beginPath(); ctx.arc(_gcx,_cy-13,9,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle='rgba(0,40,100,0.85)';
+                    ctx.beginPath(); ctx.ellipse(_gcx-3,_cy-14,2.5,3,0,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(_gcx+3,_cy-14,2.5,3,0,0,Math.PI*2); ctx.fill();
+                } else {
+                    // npc_north_ghost_1: 古城の亡霊: 白い古典的ゴースト
+                    const _cy=py+_gT*0.45+_gfy;
+                    const _rg4=ctx.createLinearGradient(_gcx,_cy-12,_gcx,_cy+16);
+                    _rg4.addColorStop(0,'rgba(240,235,255,0.95)'); _rg4.addColorStop(0.6,'rgba(210,205,240,0.75)'); _rg4.addColorStop(1,'rgba(190,185,230,0)');
+                    ctx.fillStyle=_rg4; ctx.beginPath(); ctx.moveTo(_gcx-10,_cy-5); ctx.quadraticCurveTo(_gcx-12,_cy+8,_gcx-7,_cy+15); ctx.lineTo(_gcx-3,_cy+12); ctx.lineTo(_gcx,_cy+16); ctx.lineTo(_gcx+3,_cy+12); ctx.lineTo(_gcx+7,_cy+15); ctx.quadraticCurveTo(_gcx+12,_cy+8,_gcx+10,_cy-5); ctx.fill();
+                    ctx.fillStyle='rgba(245,240,255,0.97)'; ctx.beginPath(); ctx.arc(_gcx,_cy-13,9.5,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle='rgba(20,10,60,0.9)';
+                    ctx.beginPath(); ctx.ellipse(_gcx-3.5,_cy-14,2.5,3.5,0.1,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(_gcx+3.5,_cy-14,2.5,3.5,-0.1,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(_gcx,_cy-11,2.5,0,Math.PI); ctx.fillStyle='rgba(20,10,60,0.7)'; ctx.fill();
+                }
+                ctx.restore();
             } else if (npc.id.startsWith('deco_')) {
                 // エディタの npc.scale を使ってサイズを再現
                 const _dsc = npc.scale || 1.0;
