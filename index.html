@@ -2127,16 +2127,20 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
     const dur = [900, 1200, 1550, 2000][tier - 1];
     const N = [40, 70, 110, 160][tier - 1];
 
-    // Screen shake — tier2+ for all attack types
+    // Screen shake — 属性ごとに爆発タイミングで揺らす
     const _atkTypes = ['fire','ice','lightning','wind','explosion','dark','generic'];
     if (tier >= 2 && _atkTypes.includes(etype)) {
-        const _maxSk = [0,0,6,12,18][tier], _mx = [0,0,6,12,18][tier], _my = [0,0,4,8,13][tier];
-        let _sk = 0;
-        const iv = setInterval(() => {
-            _sk++;
-            gc.style.transform = _sk % 2 === 0 ? `translate(${(Math.random()-0.5)*_mx}px,${(Math.random()-0.5)*_my}px)` : 'none';
-            if (_sk >= _maxSk) { clearInterval(iv); gc.style.transform = 'none'; }
-        }, 50);
+        // 火は爆発タイミング(52%)、氷は砕け散り(48%)、雷は即時、他は即時
+        const _shakeDelay = etype==='fire' ? dur*0.50 : etype==='ice' ? dur*0.45 : 0;
+        const _maxSk = [0,0,8,16,24][tier], _mx = [0,0,7,15,22][tier], _my = [0,0,5,10,16][tier];
+        setTimeout(() => {
+            let _sk = 0;
+            const iv = setInterval(() => {
+                _sk++;
+                gc.style.transform = _sk % 2 === 0 ? `translate(${(Math.random()-0.5)*_mx}px,${(Math.random()-0.5)*_my}px)` : 'none';
+                if (_sk >= _maxSk) { clearInterval(iv); gc.style.transform = 'none'; }
+            }, 48);
+        }, _shakeDelay);
     }
 
     // Deterministic per-particle RNG (stable across frames)
@@ -2190,197 +2194,310 @@ async function playSpellEffect(spellData, targetObj, screenPos) {
 
     // ── メラ系（炎）: DQ6風 炎弾が飛来 → 着弾 → 炎柱 ──────────────
     const drawFire = (t) => {
-        // 炎弾の数はtierで決まる（メラ=1, メラミ=2, メラゾーマ=3）
-        const ballN = tier >= 3 ? 3 : tier >= 2 ? 2 : 1;
+        // FF7ファイガ風: 炎の渦が画面を覆い爆発 / tier4=マグマ噴出
+        const VORTEX_ST = 0.18, BOOM_ST = 0.52;
+
+        // 1. 背景オレンジ環境光
+        const bgA = t < 0.35 ? t/0.35*(0.38+tier*0.1) : t < 0.72 ? (0.38+tier*0.1) : Math.max(0,1-(t-0.72)/0.28)*(0.28+tier*0.07);
+        if (bgA > 0) {
+            ctx.globalAlpha = bgA;
+            const bgG = ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,Math.max(W,H)*0.85);
+            bgG.addColorStop(0,'rgba(255,90,0,0.75)'); bgG.addColorStop(0.55,'rgba(180,20,0,0.5)'); bgG.addColorStop(1,'rgba(80,0,0,0)');
+            ctx.fillStyle = bgG; ctx.fillRect(0,0,W,H); ctx.globalAlpha = 1;
+        }
+
+        // 2. 炎弾が下から上昇 (FF7風)
+        const ballN = tier >= 4 ? 7 : tier >= 3 ? 5 : tier >= 2 ? 3 : 1;
         for (let bi = 0; bi < ballN; bi++) {
-            const bOff = (bi-(ballN-1)/2) * (28+tier*10);
-            const delay = bi * 0.2;
+            const delay = bi * 0.07;
             const bt = Math.max(0, t - delay);
-            if (bt <= 0) continue;
+            if (bt <= 0 || bt > 0.6) continue;
+            const flyP = Math.min(bt/0.32, 1);
+            const fadeA = flyP < 1 ? Math.min(flyP*2,1) : Math.max(0,1-(bt-0.32)/0.28);
+            if (fadeA <= 0) continue;
+            const ang = (bi/ballN)*Math.PI*2;
+            const spreadR = tier >= 3 ? 55 : tier >= 2 ? 32 : 0;
+            const bx = tcx + Math.cos(ang)*spreadR*flyP;
+            const by = H*0.92 - flyP*(H*0.92 - tcy);
+            const br = (14+tier*9)*(0.35+flyP*0.65);
+            ctx.globalAlpha = fadeA;
+            ctx.shadowColor = '#ff4400'; ctx.shadowBlur = br*2.2;
+            const bG = ctx.createRadialGradient(bx,by,0,bx,by,br);
+            bG.addColorStop(0,'#ffffff'); bG.addColorStop(0.22,'#ffee44'); bG.addColorStop(0.6,'#ff5500'); bG.addColorStop(1,'rgba(180,0,0,0)');
+            ctx.fillStyle = bG; ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill(); clearGlow();
+        }
 
-            // フェーズA: 炎弾が上から飛来（0.0→0.3）
-            const flyP  = Math.min(bt / 0.28, 1);
-            // フェーズB: 着弾爆発（0.28→0.6）
-            const impP  = Math.max(0, Math.min((bt-0.28)/0.22, 1));
-            // フェーズC: 炎柱（0.4→0.85）
-            const flamP = Math.max(0, Math.min((bt-0.38)/0.45, 1));
-
-            // 飛来中の炎弾
-            if (flyP < 1) {
-                const bx = tcx + bOff - (1-flyP)*60;
-                const by = tcy - (1-flyP)*(H*0.38);
-                const br = (14+tier*8) * (0.6+flyP*0.4);
-                ctx.globalAlpha = flyP;
-                ctx.shadowColor = '#ff6600'; ctx.shadowBlur = br*2;
-                const bg = ctx.createRadialGradient(bx,by,0,bx,by,br);
-                bg.addColorStop(0,'#ffffff'); bg.addColorStop(0.3,'#ffee44');
-                bg.addColorStop(0.65,'#ff6600'); bg.addColorStop(1,'rgba(200,0,0,0)');
-                ctx.fillStyle = bg;
-                ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill();
-                clearGlow();
-            }
-
-            // 着弾フラッシュ
-            dqFlash(bt, 0.26, 'rgba(255,120,0,0.85)');
-
-            // 着弾爆発リング
-            if (impP > 0) {
-                const ir = impP * (35+tier*22);
-                const ia = Math.max(0, 1-impP);
-                ctx.globalAlpha = ia * 0.9;
-                ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 4-impP*3;
-                ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 16;
-                ctx.beginPath(); ctx.arc(tcx+bOff,tcy,ir,0,Math.PI*2); ctx.stroke();
-                clearGlow();
-            }
-
-            // 炎柱（DQ6のメラ特有の上昇炎）
-            if (flamP > 0 && flamP < 1) {
-                const fH = Math.sin(flamP * Math.PI) * (55+tier*32);
-                const fW = (14+tier*7) * (1 - flamP*0.6);
-                const fA = Math.sin(flamP * Math.PI) * 0.92;
-                if (fH > 0 && fA > 0) {
-                    ctx.globalAlpha = fA;
-                    ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 20+tier*6;
-                    const flg = ctx.createLinearGradient(tcx+bOff, tcy, tcx+bOff, tcy-fH);
-                    flg.addColorStop(0,'#ffff88'); flg.addColorStop(0.35,'#ff8800');
-                    flg.addColorStop(0.7,'#ff3300'); flg.addColorStop(1,'rgba(255,0,0,0)');
-                    ctx.fillStyle = flg;
-                    ctx.beginPath();
-                    ctx.moveTo(tcx+bOff-fW, tcy);
-                    ctx.quadraticCurveTo(tcx+bOff, tcy-fH*0.6, tcx+bOff, tcy-fH);
-                    ctx.quadraticCurveTo(tcx+bOff, tcy-fH*0.6, tcx+bOff+fW, tcy);
-                    ctx.closePath(); ctx.fill();
-                    // 先端の火花
-                    ctx.globalAlpha = fA * 0.7;
-                    ctx.fillStyle = '#ffff00';
-                    ctx.beginPath(); ctx.arc(tcx+bOff, tcy-fH, 4+tier*2, 0, Math.PI*2); ctx.fill();
-                    clearGlow();
-                }
+        // 3. 炎の渦 — 画面全体を螺旋状に巻く (FF7ファイガの核心)
+        if (t >= VORTEX_ST && tier >= 2) {
+            const vt = Math.min((t-VORTEX_ST)/0.62, 1);
+            const vA = vt < 0.38 ? vt/0.38 : (vt < 0.82 ? 1 : Math.max(0,1-(vt-0.82)/0.18));
+            const pN = tier >= 4 ? 36 : tier >= 3 ? 24 : 14;
+            for (let pi = 0; pi < pN; pi++) {
+                const ph = pi/pN;
+                const pt2 = (vt*1.2 + ph) % 1.0;
+                const ang2 = ph*Math.PI*2 + vt*Math.PI*(tier>=3?5:3.5);
+                const rad = pt2 * (W*(0.42+tier*0.06));
+                const px2 = tcx + Math.cos(ang2)*rad;
+                const py2 = tcy + Math.sin(ang2)*rad*0.62 - pt2*50;
+                const pSz = (9+rng(pi*3+1)*18+tier*5)*(1-pt2*0.45);
+                const pA2 = vA*Math.sin(pt2*Math.PI)*0.92;
+                if (pSz<=0||pA2<=0) continue;
+                ctx.globalAlpha = pA2;
+                ctx.shadowColor = '#ff3300'; ctx.shadowBlur = pSz*1.2;
+                const hue2 = 18+rng(pi*3+2)*18;
+                const pG = ctx.createRadialGradient(px2,py2,0,px2,py2,pSz);
+                pG.addColorStop(0,`hsla(${55+rng(pi*3)*15},100%,92%,1)`); pG.addColorStop(0.38,`hsla(${hue2},100%,58%,1)`); pG.addColorStop(1,`hsla(${hue2-8},100%,28%,0)`);
+                ctx.fillStyle=pG; ctx.beginPath(); ctx.arc(px2,py2,pSz,0,Math.PI*2); ctx.fill(); clearGlow();
             }
         }
-        // 画面全体のオレンジ環境光
-        const envA = Math.sin(t*Math.PI) * (0.12+tier*0.06);
-        ctx.globalAlpha = envA; ctx.fillStyle='rgba(255,80,0,0.35)'; ctx.fillRect(0,0,W,H);
-        ctx.globalAlpha = 1;
-    };
 
-    // ── ヒャド系（氷）: DQ6風 氷柱が上から降下 ────────────────────
+        // 4. 中心大爆発 (FF7クライマックス)
+        if (t >= BOOM_ST) {
+            const bt2 = (t-BOOM_ST)/(1-BOOM_ST);
+            dqFlash(t, BOOM_ST, 'rgba(255,140,30,0.96)');
+            const expR = bt2*(75+tier*55);
+            const expA = Math.max(0,1-bt2*1.08);
+            if (expA>0&&expR>0) {
+                ctx.globalAlpha=expA; ctx.shadowColor='#ff7700'; ctx.shadowBlur=expR*0.6;
+                const expG = ctx.createRadialGradient(tcx,tcy,0,tcx,tcy,expR);
+                expG.addColorStop(0,'#ffffff'); expG.addColorStop(0.18,'#ffee44'); expG.addColorStop(0.5,'#ff5500'); expG.addColorStop(1,'rgba(180,0,0,0)');
+                ctx.fillStyle=expG; ctx.beginPath(); ctx.arc(tcx,tcy,expR,0,Math.PI*2); ctx.fill(); clearGlow();
+            }
+            dqRing(t, '#ffcc44', 4.5, 1.25);
+        }
+
+        // 5. 飛び散る火の粉
+        for (const p of parts) {
+            if (p.phase>0.72) continue;
+            const pt3=Math.max(0,(t-p.phase*0.55)/0.78); if(pt3<=0||pt3>=1) continue;
+            const spd2=32+p.spd*85+tier*22;
+            const lx=tcx+Math.cos(p.angle)*spd2*pt3, ly=tcy+Math.sin(p.angle)*spd2*pt3+pt3*pt3*40;
+            const sz2=(2+p.size*4.5)*Math.max(0,1-pt3*1.2);
+            const pA3=Math.max(0,(1-pt3)*0.88); if(sz2<=0||pA3<=0) continue;
+            ctx.globalAlpha=pA3; ctx.shadowColor='#ff5500'; ctx.shadowBlur=sz2*2;
+            ctx.fillStyle=pt3<0.38?'#ffffff':(pt3<0.65?'#ffcc44':'#ff3300');
+            ctx.beginPath(); ctx.arc(lx,ly,sz2,0,Math.PI*2); ctx.fill(); clearGlow();
+        }
+
+        // 6. tier4: マグマ岩石が飛散
+        if (tier >= 4) {
+            for (let ri=0; ri<10; ri++) {
+                const rph=ri/10, rt=Math.max(0,(t-rph*0.28)/0.72); if(rt<=0||rt>=1) continue;
+                const ra2=(ri/10)*Math.PI*2;
+                const rx=tcx+Math.cos(ra2)*rt*(W*0.48), ry=tcy+Math.sin(ra2)*rt*(W*0.38)*0.6+rt*rt*65;
+                const rsz=(9+rng(ri*5+1)*13)*Math.max(0,1-rt);
+                const rA2=Math.sin(rt*Math.PI)*0.88; if(rsz<=0||rA2<=0) continue;
+                ctx.globalAlpha=rA2; ctx.shadowColor='#ff3300'; ctx.shadowBlur=rsz;
+                ctx.fillStyle=`rgb(${170+Math.floor(rng(ri*5+2)*45)},${Math.floor(rng(ri*5+3)*35)},0)`;
+                ctx.beginPath(); ctx.arc(rx,ry,rsz,0,Math.PI*2); ctx.fill(); clearGlow();
+            }
+        }
+        ctx.globalAlpha=1;
+    };
+    // ── ヒャド系（氷）: FFXブリザガ風 巨大氷晶→砕け散る→ダイヤモンドダスト
     const drawIce = (t) => {
-        // 画面全体の青染め
-        ctx.globalAlpha = Math.sin(t*Math.PI) * (0.18+tier*0.07);
-        ctx.fillStyle='rgba(30,120,255,0.3)'; ctx.fillRect(0,0,W,H);
+        const BURST_T = 0.48, DUST_ST = 0.38;
 
-        // 着弾フラッシュ（薄い水色）
-        dqFlash(t, 0, 'rgba(200,240,255,0.7)');
+        // 1. 画面の青白フリーズ
+        const bgA2 = t < 0.42 ? t/0.42*(0.3+tier*0.08) : t < 0.78 ? (0.3+tier*0.08) : Math.max(0,1-(t-0.78)/0.22)*(0.22+tier*0.06);
+        if (bgA2 > 0) { ctx.globalAlpha=bgA2; ctx.fillStyle='rgba(28,95,200,0.32)'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1; }
 
-        // 氷柱が上空から落ちてくる（DQ6ヒャドの特徴的な動き）
-        const icicleN = tier>=3 ? 5 : tier>=2 ? 3 : 1;
-        const spacing = 22 + tier * 8;
-        for (let ii = 0; ii < icicleN; ii++) {
-            const delay = ii * 0.14;
-            const it = Math.max(0, t - delay); if (it <= 0) continue;
-            const ix = tcx + (ii-(icicleN-1)/2) * spacing;
+        // 着弾フラッシュ
+        dqFlash(t, BURST_T-0.05, 'rgba(200,240,255,0.92)');
 
-            // 落下フェーズ（0→0.4）: 上から降りてくる
-            const fallP = Math.min(it / 0.38, 1);
-            const iy = -30 + fallP * (tcy + 30);
-
-            // 停止後のキラキラ（0.38→1.0）
-            const sparkP = Math.max(0, (it-0.38) / 0.6);
-
-            // 氷柱本体（長い三角形）
-            if (fallP < 1 || sparkP < 0.4) {
-                const iH = 32 + tier*16;
-                const iW = 8 + tier*4;
-                const iA = fallP < 1 ? fallP : Math.max(0, 1-sparkP*2);
-                ctx.globalAlpha = iA * 0.95;
-                ctx.shadowColor = '#88ddff'; ctx.shadowBlur = 14;
-                const lig = ctx.createLinearGradient(ix, iy, ix, iy+iH);
-                lig.addColorStop(0,'rgba(255,255,255,0.95)');
-                lig.addColorStop(0.4,'rgba(160,220,255,0.9)');
-                lig.addColorStop(1,'rgba(80,180,255,0)');
-                ctx.fillStyle = lig;
-                ctx.beginPath();
-                ctx.moveTo(ix, iy);
-                ctx.lineTo(ix-iW, iy+iH); ctx.lineTo(ix+iW, iy+iH);
-                ctx.closePath(); ctx.fill();
-                clearGlow();
-            }
-
-            // 着弾時のキラキラ（★形に4方向へ光の粒）
-            if (sparkP > 0 && sparkP < 0.8) {
-                const spkA = Math.max(0, 1-sparkP/0.8);
-                for (let si=0; si<4; si++) {
-                    const sa = (si/4)*Math.PI*2 + Math.PI/4;
-                    const sr = sparkP * (18+tier*8);
-                    ctx.globalAlpha = spkA * 0.85;
-                    ctx.fillStyle = '#aaeeff';
-                    ctx.beginPath();
-                    ctx.arc(ix+Math.cos(sa)*sr, tcy+Math.sin(sa)*sr*0.5, 2.5+tier, 0, Math.PI*2);
-                    ctx.fill();
-                }
+        // 2. 氷の槍が空から降り注ぐ (tier2+)
+        if (tier >= 2) {
+            const spearN = tier >= 4 ? 9 : tier >= 3 ? 7 : 4;
+            for (let si=0; si<spearN; si++) {
+                const delay = si*0.065;
+                const st2 = Math.max(0, t-delay);
+                if (st2<=0 || st2>0.52) continue;
+                const fallP = Math.min(st2/0.28, 1);
+                const fadeP = st2>0.32 ? Math.min((st2-0.32)/0.18,1) : 0;
+                const sA2 = fadeP>0 ? Math.max(0,1-fadeP) : Math.min(fallP*2.5,1);
+                if (sA2<=0) continue;
+                const sx2 = tcx + (si-(spearN-1)/2)*(18+tier*7);
+                const by2 = -55 + fallP*(tcy+55);
+                const spH = 42+tier*18, spW = 7+tier*3;
+                ctx.globalAlpha = sA2*0.93;
+                ctx.shadowColor = '#aaddff'; ctx.shadowBlur = 14;
+                const spG = ctx.createLinearGradient(sx2, by2-spH, sx2, by2);
+                spG.addColorStop(0,'rgba(255,255,255,0.96)'); spG.addColorStop(0.28,'rgba(160,220,255,0.92)'); spG.addColorStop(0.7,'rgba(80,160,255,0.85)'); spG.addColorStop(1,'rgba(40,100,220,0.45)');
+                ctx.fillStyle = spG;
+                ctx.beginPath(); ctx.moveTo(sx2, by2);
+                ctx.lineTo(sx2-spW, by2-spH*0.72); ctx.lineTo(sx2-spW*0.4, by2-spH);
+                ctx.lineTo(sx2+spW*0.4, by2-spH); ctx.lineTo(sx2+spW, by2-spH*0.72);
+                ctx.closePath(); ctx.fill(); clearGlow();
             }
         }
 
-        // 着弾時の衝撃波リング（水色）
-        dqRing(t, 'rgba(120,220,255,0.9)', 3, 0.75);
-        ctx.globalAlpha = 1;
-    };
+        // 3. 巨大氷結晶が中心から出現 (FFXブリザガ)
+        if (t >= 0.08 && t < BURST_T+0.12) {
+            const ct2 = (t-0.08)/(BURST_T-0.08+0.12);
+            const riseP = Math.min(ct2*1.5, 1);
+            const burstP = t>=BURST_T ? (t-BURST_T)/0.14 : 0;
+            const crystA = burstP>0 ? Math.max(0,1-burstP*1.6) : Math.min(riseP*2,1);
+            if (crystA > 0) {
+                const cH = (72+tier*38)*Math.min(riseP*1.6,1);
+                const cW = 16+tier*11;
+                ctx.globalAlpha = crystA;
+                ctx.shadowColor = '#88ccff'; ctx.shadowBlur = 22+tier*8;
+                // 外側ファセット
+                const cG = ctx.createLinearGradient(tcx-cW, tcy, tcx+cW, tcy);
+                cG.addColorStop(0,'rgba(95,195,255,0.72)'); cG.addColorStop(0.28,'rgba(220,245,255,0.96)'); cG.addColorStop(0.5,'rgba(255,255,255,1)'); cG.addColorStop(0.72,'rgba(175,228,255,0.92)'); cG.addColorStop(1,'rgba(75,155,240,0.72)');
+                ctx.fillStyle = cG;
+                ctx.beginPath(); ctx.moveTo(tcx, tcy-cH);
+                ctx.lineTo(tcx-cW*0.62, tcy-cH*0.52); ctx.lineTo(tcx-cW, tcy-cH*0.08);
+                ctx.lineTo(tcx-cW*0.5, tcy+cH*0.22); ctx.lineTo(tcx, tcy+cH*0.38);
+                ctx.lineTo(tcx+cW*0.5, tcy+cH*0.22); ctx.lineTo(tcx+cW, tcy-cH*0.08);
+                ctx.lineTo(tcx+cW*0.62, tcy-cH*0.52); ctx.closePath(); ctx.fill();
+                // 内側ハイライト線
+                ctx.globalAlpha = crystA*0.72;
+                ctx.strokeStyle='rgba(255,255,255,0.92)'; ctx.lineWidth=1.5;
+                ctx.beginPath(); ctx.moveTo(tcx, tcy-cH*0.95); ctx.lineTo(tcx-cW*0.3, tcy-cH*0.28); ctx.lineTo(tcx-cW*0.1, tcy+cH*0.22); ctx.stroke();
+                clearGlow();
+            }
+        }
 
-    // ── ギラ系（閃光）: DQ6風 眩しい十字光が炸裂 ──────────────────
+        // 4. 氷晶が砕け散る — 破片が全方向へ
+        if (t >= BURST_T) {
+            const bt3 = (t-BURST_T)/(1-BURST_T);
+            dqRing(t, 'rgba(155,218,255,0.95)', 4.5, 1.12);
+            const shardN = 10+tier*7;
+            for (let shi=0; shi<shardN; shi++) {
+                const sha2 = (shi/shardN)*Math.PI*2;
+                const shSpd = 48+rng(shi*4+1)*85+tier*28;
+                const shR2 = bt3*shSpd;
+                const shx2 = tcx+Math.cos(sha2)*shR2, shy2 = tcy+Math.sin(sha2)*shR2*0.7;
+                const shSz2 = (4+rng(shi*4+2)*11+tier*3)*Math.max(0,1-bt3*1.12);
+                const shA2 = Math.max(0,1-bt3*1.22); if(shSz2<=0||shA2<=0) continue;
+                ctx.globalAlpha=shA2; ctx.shadowColor='#aaddff'; ctx.shadowBlur=shSz2;
+                ctx.fillStyle=rng(shi*4+3)>0.5?'#e0f4ff':'#aaddff';
+                ctx.save(); ctx.translate(shx2,shy2); ctx.rotate(sha2+bt3*Math.PI);
+                ctx.fillRect(-shSz2/3,-shSz2,shSz2*0.67,shSz2*2); ctx.restore(); clearGlow();
+            }
+        }
+
+        // 5. ダイヤモンドダスト — 画面全体に細かい氷粒が舞う
+        if (t >= DUST_ST) {
+            const dt2 = (t-DUST_ST)/(1-DUST_ST);
+            const dustN = tier >= 4 ? 50 : tier >= 3 ? 32 : tier >= 2 ? 20 : 11;
+            for (let di=0; di<dustN; di++) {
+                const dph = di/dustN;
+                const dpt2 = (dt2*1.1 + dph) % 1.0;
+                const dx2 = rng(di*4+1)*W*0.92 + W*0.04;
+                const dy2 = -22 + dpt2*(H+44);
+                const dsz2 = 1+rng(di*4+2)*3.2+tier*0.45;
+                const dA2 = Math.sin(dpt2*Math.PI)*0.82; if(dA2<=0) continue;
+                ctx.globalAlpha=dA2; ctx.shadowColor='#ffffff'; ctx.shadowBlur=dsz2*2.2;
+                ctx.fillStyle=rng(di*4+3)>0.55?'#ffffff':'#c5ecff';
+                ctx.beginPath(); ctx.arc(dx2,dy2,dsz2,0,Math.PI*2); ctx.fill();
+            }
+            clearGlow();
+        }
+        ctx.globalAlpha=1;
+    };
+    // ── ギラ系（雷）: FF9サンダガ風 無数の雷撃+画面を貫く巨大雷
     const drawLightning = (t) => {
-        // DQ6ギラ系の特徴: 眩い白・黄色フラッシュ + 十字・星形の光の放射
-        const starN = tier >= 3 ? 3 : tier >= 2 ? 2 : 1;
-        for (let si=0; si<starN; si++) {
-            const delay = si * 0.22;
-            const st = Math.max(0, t - delay); if (st <= 0) continue;
-            const soff = (si-(starN-1)/2) * (24+tier*12);
+        const BOLT_ST = 0.04, FLASH_T = 0.28, DISC_ST = 0.22;
 
-            // 着弾フラッシュ（白→黄）
-            dqFlash(st, 0, 'rgba(255,255,200,0.95)');
-
-            // 中心の眩いコア（白い球）
-            const coreP = st < 0.4 ? st/0.4 : Math.max(0, 1-(st-0.4)/0.4);
-            if (coreP > 0) {
-                const cr = coreP * (22+tier*14);
-                ctx.globalAlpha = coreP * 0.95;
-                ctx.shadowColor = '#ffffcc'; ctx.shadowBlur = cr*3;
-                const cg = ctx.createRadialGradient(tcx+soff,tcy,0,tcx+soff,tcy,cr);
-                cg.addColorStop(0,'#ffffff'); cg.addColorStop(0.5,'#ffffaa');
-                cg.addColorStop(1,'rgba(255,255,0,0)');
-                ctx.fillStyle = cg;
-                ctx.beginPath(); ctx.arc(tcx+soff,tcy,cr,0,Math.PI*2); ctx.fill();
-                clearGlow();
+        // 稲妻の折れ線を再帰的に描く
+        const drawBolt = (x1,y1,x2,y2,seed2,lw2,alpha2,depth2) => {
+            if (depth2 > (tier>=3?3:2) || alpha2<0.05) return;
+            const segs = 8+depth2*2;
+            const jag2 = (22-depth2*6)*(1+tier*0.28);
+            const pts = [[x1,y1]];
+            for (let i=1; i<segs; i++) {
+                const f=i/segs;
+                pts.push([x1+(x2-x1)*f+(rng(seed2*10+i)-0.5)*jag2*(1-f*0.45), y1+(y2-y1)*f+(rng(seed2*10+i+50)-0.5)*jag2*0.38]);
             }
-
-            // 8方向への光の放射（ギラ特有の十字・斜め光線）
-            const rayP = st < 0.15 ? st/0.15 : Math.max(0, 1-(st-0.15)/0.55);
-            if (rayP > 0) {
-                const rayL = rayP * (48+tier*28);
-                const rayW = Math.max(0.5, (3+tier*1.5) * (1-st*1.2));
-                for (let ri=0; ri<8; ri++) {
-                    const ra = (ri/8)*Math.PI*2;
-                    const isDiag = ri%2===1;
-                    ctx.globalAlpha = rayP * (isDiag ? 0.7 : 0.95);
-                    ctx.strokeStyle = isDiag ? '#ffff44' : '#ffffff';
-                    ctx.lineWidth = isDiag ? rayW*0.65 : rayW;
-                    ctx.shadowColor = '#ffff88'; ctx.shadowBlur = 12;
-                    ctx.beginPath();
-                    ctx.moveTo(tcx+soff, tcy);
-                    ctx.lineTo(tcx+soff+Math.cos(ra)*rayL, tcy+Math.sin(ra)*rayL);
-                    ctx.stroke();
+            pts.push([x2,y2]);
+            ctx.globalAlpha=alpha2; ctx.shadowColor='#88aaff'; ctx.shadowBlur=(7-depth2*1.8)*(1+tier*0.28);
+            ctx.strokeStyle=depth2===0?'#ffffff':(depth2===1?'#dde0ff':'#aaaaee');
+            ctx.lineWidth=Math.max(0.5,lw2-depth2*0.65);
+            ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+            for (let i2=1; i2<pts.length; i2++) ctx.lineTo(pts[i2][0],pts[i2][1]);
+            ctx.stroke(); clearGlow();
+            if (depth2 < (tier>=3?2:1)) {
+                const brN = 2+Math.floor(rng(seed2*100+depth2*10)*2);
+                for (let bi3=0; bi3<brN; bi3++) {
+                    const bSeg=2+Math.floor(rng(seed2*200+bi3*7+depth2*30)*(segs-3));
+                    const bEnd=bSeg+2+Math.floor(rng(seed2*300+bi3*11)*4);
+                    if(bEnd>=pts.length) continue;
+                    drawBolt(pts[bSeg][0],pts[bSeg][1],pts[bEnd][0]+(rng(seed2*400+bi3*13)-0.5)*42,pts[bEnd][1]+rng(seed2*500+bi3*17)*32,seed2*1000+bi3,lw2*0.48,alpha2*0.58,depth2+1);
                 }
-                clearGlow();
+            }
+        };
+
+        // 1. 帯電 — 空が暗くなる
+        if (t < FLASH_T+0.12) {
+            const chargeA2 = t<0.16 ? t/0.16*(0.22+tier*0.06) : (0.22+tier*0.06);
+            ctx.globalAlpha=chargeA2; ctx.fillStyle='rgba(8,8,38,0.55)'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+        }
+
+        // 2. 主雷撃 — 空から敵へ複数の稲妻が落下
+        if (t >= BOLT_ST) {
+            const boltN = tier>=4?6:tier>=3?4:tier>=2?2:1;
+            for (let bi4=0; bi4<boltN; bi4++) {
+                const delay2=bi4*0.09;
+                const bt4=Math.max(0,t-delay2);
+                if(bt4<=0||bt4>0.55) continue;
+                const bP=Math.min(bt4/0.08,1);
+                const bF=bt4>0.38?Math.max(0,1-(bt4-0.38)/0.18):1;
+                const bA3=bP*bF; if(bA3<=0) continue;
+                const boff3=(bi4-(boltN-1)/2)*(20+tier*9);
+                const startX2 = tier>=4&&bi4===0 ? tcx : tcx+boff3+(rng(bi4*77+1)-0.5)*28;
+                ctx.globalAlpha=bA3;
+                drawBolt(startX2, 0, tcx+boff3, tcy, bi4*13+7, 2.5+tier*0.8, bA3, 0);
+                // 着弾グロー
+                const impR2=(13+tier*8)*bA3;
+                ctx.globalAlpha=bA3*0.88; ctx.shadowColor='#4466ff'; ctx.shadowBlur=impR2*2.2;
+                const impG2=ctx.createRadialGradient(tcx+boff3,tcy,0,tcx+boff3,tcy,impR2);
+                impG2.addColorStop(0,'rgba(255,255,255,0.96)'); impG2.addColorStop(0.4,'rgba(145,175,255,0.8)'); impG2.addColorStop(1,'rgba(75,95,255,0)');
+                ctx.fillStyle=impG2; ctx.beginPath(); ctx.arc(tcx+boff3,tcy,impR2,0,Math.PI*2); ctx.fill(); clearGlow();
             }
         }
 
-        // 画面全体の黄白フラッシュ
-        const envA = t < 0.18 ? t/0.18 * (0.3+tier*0.1) : Math.max(0, 1-(t-0.18)/0.25) * (0.15+tier*0.08);
-        if (envA > 0) { ctx.globalAlpha = envA; ctx.fillStyle='rgba(255,255,200,0.8)'; ctx.fillRect(0,0,W,H); }
-        ctx.globalAlpha = 1;
-    };
+        // 3. 着弾フラッシュ (FF9らしい眩い白閃光)
+        dqFlash(t, FLASH_T-0.04, 'rgba(215,225,255,0.98)');
 
+        // 4. 電撃放電 — 着弾点から電気が全方向へ走る
+        if (t >= DISC_ST) {
+            const dt3=Math.min((t-DISC_ST)/0.52, 1);
+            const arcN2=8+tier*5;
+            for (let ai=0; ai<arcN2; ai++) {
+                const apa=(ai/arcN2)*Math.PI*2;
+                const aspd2=22+rng(ai*4+1)*55+tier*16;
+                const aLen=dt3*aspd2;
+                const aA2=Math.max(0,1-dt3*1.18)*0.88; if(aA2<=0) continue;
+                const ax1=tcx+Math.cos(apa)*aLen*0.28, ay1=tcy+Math.sin(apa)*aLen*0.28*0.62;
+                const ax2=tcx+Math.cos(apa)*aLen, ay2=tcy+Math.sin(apa)*aLen*0.62;
+                ctx.globalAlpha=aA2;
+                drawBolt(ax1,ay1,ax2,ay2,ai*51+3,1.5,aA2,1);
+            }
+        }
+
+        // 5. 衝撃波リング
+        dqRing(t, 'rgba(95,145,255,0.9)', 3.2, 1.02);
+
+        // 6. 環境光 (青白い雷光)
+        const envT2 = t<0.36 ? t/0.36 : Math.max(0,1-(t-0.36)/0.42);
+        const envA2 = envT2*(0.24+tier*0.1);
+        if (envA2>0) { ctx.globalAlpha=envA2; ctx.fillStyle='rgba(70,95,255,0.4)'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1; }
+
+        // 7. 残留スパーク
+        for (const p of parts) {
+            const pt4=Math.max(0,(t-p.phase*0.5)/0.82); if(pt4<=0||pt4>=1) continue;
+            const spd3=18+p.spd*52+tier*14;
+            const lx2=tcx+Math.cos(p.angle)*spd3*pt4, ly2=tcy+Math.sin(p.angle)*spd3*pt4*0.62;
+            const sz3=(1.5+p.size*3)*Math.max(0,1-pt4*1.32);
+            const pA4=Math.max(0,(1-pt4)*0.76); if(sz3<=0||pA4<=0) continue;
+            ctx.globalAlpha=pA4; ctx.shadowColor='#6688ff'; ctx.shadowBlur=sz3*2;
+            ctx.fillStyle=p.hue>0.5?'#aabbff':'#ffffff';
+            ctx.beginPath(); ctx.arc(lx2,ly2,sz3,0,Math.PI*2); ctx.fill();
+        }
+        clearGlow(); ctx.globalAlpha=1;
+    };
     // ── バギ系（風）: DQ6風 三日月形の風刃が斜めに飛ぶ ────────────
     const drawWind = (t) => {
         // DQ6バギ系の特徴: 緑のトリミングした三日月形が斜め上から敵へ飛ぶ
