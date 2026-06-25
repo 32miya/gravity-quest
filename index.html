@@ -13208,6 +13208,22 @@ ${act.actor.name}の ちからが すいとられた！`); }
                         else{const _duld=Math.max(1,Math.floor(act.actor.atk*1.4*(0.85+Math.random()*0.3)-_t.def*0.45));_t.hp=Math.max(0,_t.hp-_duld);await typeMessage(`${_t.name}に ${_duld}の ダメージ！`);if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}}
                         updatePartyStatus();
 
+                    } else if (_eId==='cyclops' && _alive.length>0) {
+                        // ── 岩投げ（全体物理）or 巨大な一撃（単体・スタン）
+                        if(Math.random()<0.5){
+                            await typeMessage(`${act.actor.displayName}の 岩投げ！！`);
+                            playEnemyAttackEffect(1.5); AudioManager.playSE('damage_hero');
+                            for(const _m of _alive){const _d=Math.max(1,Math.floor(act.actor.atk*1.1*(0.8+Math.random()*0.4)-_m.def*0.3));_m.hp=Math.max(0,_m.hp-_d);await typeMessage(`${_m.name}に ${_d}の ダメージ！`);if(_m.hp<=0){_m.isPoisoned=false;await typeMessage(`${_m.name}は しんでしまった！`);}}
+                        } else {
+                            await typeMessage(`${act.actor.displayName}の 巨大な一撃！！`);
+                            playCriticalEffect('#886600'); playEnemyAttackEffect(2.0); AudioManager.playSE('attack_crit');
+                            const _cyd=Math.max(1,Math.floor(act.actor.atk*1.6*(0.85+Math.random()*0.3)-_t.def*0.4));
+                            _t.hp=Math.max(0,_t.hp-_cyd);await typeMessage(`${_t.name}に ${_cyd}の ダメージ！`);
+                            if(Math.random()<0.30&&(_t.tmpSleep||0)<=0){_t.tmpSleep=1;await typeMessage(`${_t.name}は ふっとばされて 行動できない！`);}
+                            if(_t.hp<=0){_t.isPoisoned=false;await typeMessage(`${_t.name}は しんでしまった！`);}
+                        }
+                        updatePartyStatus();
+
                     } else if (_eId==='chimera' && _alive.length>0) {
                         // ── 毒の爪 or 炎のブレス（キメラは複合）
                         if(Math.random()<0.5){
