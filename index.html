@@ -3604,7 +3604,92 @@ function buildNorthAbandonedCastle() {
         "32,3":  {"id":"obj_deco_statue_knight", "name":"崩れかけた石像"},
         "32,4":  {"id":"obj_statue_foot",        "name":""}
     };
-    return {width:W,height:H,tiles:t,exits,npcs,name:"北の廃城"};
+    return {width:W,height:H,tiles:t,exits,npcs,encounters:[],name:"北の廃城"};
+}
+function buildEstoriaCastle() {
+    const W=20,H=18;
+    const t=new Array(W*H).fill(1);
+    const S=(x,y,v)=>{if(x>=0&&y>=0&&x<W&&y<H)t[y*W+x]=v;};
+    const R=(x1,y1,x2,y2,v)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)S(x,y,v);};
+    R(1,1,18,5,9);   // 玉座の間（石床）
+    R(7,6,12,15,0);  // 中央ホール
+    R(2,7,7,13,0);   // 左の間
+    R(12,7,17,13,0); // 右の間（x=12で中央ホールと接続）
+    S(3,3,16);S(16,3,16);S(3,9,16);S(16,9,16); // 柱
+    S(9,16,22);S(10,16,22);
+    const exits={'9,16':{map:'map_field_8_4',x:22,y:23},'10,16':{map:'map_field_8_4',x:22,y:23}};
+    const npcs={'9,2':{id:'npc_estoria_king',name:'エストリア王'},'3,9':{id:'npc_estoria_knight',name:'近衛騎士'},'16,9':{id:'npc_estoria_herald',name:'伝令の使者'},'9,9':{id:'npc_estoria_queen',name:'王妃'},'3,3':{id:'npc_priest',name:'神父'},'16,3':{id:'npc_estoria_sage',name:'宮廷賢者'}};
+    return {width:W,height:H,tiles:t,exits,npcs,encounters:[],name:'東の王国城エストリア'};
+}
+function buildDesertaCastle() {
+    const W=18,H=16;
+    const t=new Array(W*H).fill(1);
+    const S=(x,y,v)=>{if(x>=0&&y>=0&&x<W&&y<H)t[y*W+x]=v;};
+    const R=(x1,y1,x2,y2,v)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)S(x,y,v);};
+    R(1,1,16,4,9);   // 玉座の間（石床）
+    R(6,5,11,13,0);  // 中央通路
+    R(2,6,6,11,0);   // 左の間（x=6で中央通路と接続）
+    R(11,6,15,11,0); // 右の間（x=11で中央通路と接続）
+    S(8,14,22);S(9,14,22);
+    const exits={'8,14':{map:'map_field_3_7',x:22,y:23},'9,14':{map:'map_field_3_7',x:22,y:23}};
+    const npcs={'8,2':{id:'npc_deserta_king',name:'デセルタ王'},'3,8':{id:'npc_deserta_oracle',name:'砂漠の預言者'},'14,8':{id:'npc_deserta_soldier',name:'砂漠の衛兵'},'3,3':{id:'npc_priest',name:'神父'},'12,8':{id:'obj_chest_deserta_seal',name:'砂漠の宝箱'}};
+    return {width:W,height:H,tiles:t,exits,npcs,encounters:[],name:'南の砂漠城デセルタ'};
+}
+function buildShrineWarp() {
+    const W=12,H=12;
+    const t=new Array(W*H).fill(1);
+    const S=(x,y,v)=>{if(x>=0&&y>=0&&x<W&&y<H)t[y*W+x]=v;};
+    const R=(x1,y1,x2,y2,v)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)S(x,y,v);};
+    R(1,1,10,9,9);  // 内部（石床）、エントリ(6,9)を含む
+    S(6,2,3);       // 祭壇
+    S(5,10,22);S(6,10,22);
+    const exits={'6,10':{map:'map_field_2_3',x:7,y:7},'5,10':{map:'map_field_2_3',x:7,y:7}};
+    const npcs={'6,3':{id:'npc_priest',name:'神父'},'5,5':{id:'obj_chest_item',name:'祠の宝箱'}};
+    return {width:W,height:H,tiles:t,exits,npcs,encounters:[],name:'ほこら'};
+}
+function buildZarmoCastle() {
+    const W = 22, H = 20;
+    const t = new Array(W * H).fill(1);
+    const S = (x, y, v) => { if (x >= 0 && y >= 0 && x < W && y < H) t[y * W + x] = v; };
+    const R = (x1, y1, x2, y2, v) => { for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) S(x, y, v); };
+    // 玉座の間（上部 y=1..4）
+    R(1, 1, 20, 4, 9);
+    S(10, 1, 3); S(11, 1, 3);        // 玉座
+    S(2, 2, 16); S(19, 2, 16);       // 柱（左右）
+    S(2, 3, 16); S(19, 3, 16);       // 柱（左右）
+    // 仕切り壁 y=5（玉座↔上部ホール）開口部のみ床
+    S(3, 5, 9); S(4, 5, 9);          // 左開口
+    S(10, 5, 9); S(11, 5, 9);        // 中央開口
+    S(17, 5, 9); S(18, 5, 9);        // 右開口
+    // 上部ホール（y=6..9）
+    R(1, 6, 20, 9, 9);
+    S(3, 7, 16); S(18, 7, 16);       // 柱
+    S(3, 8, 16); S(18, 8, 16);       // 柱
+    // 仕切り壁 y=10（上部ホール↔下部大広間）開口部のみ床
+    S(2, 10, 9); S(3, 10, 9);        // 左開口
+    S(9, 10, 9); S(10, 10, 9); S(11, 10, 9); S(12, 10, 9); // 中央開口
+    S(18, 10, 9); S(19, 10, 9);      // 右開口
+    // 下部大広間（y=11..14）
+    R(1, 11, 20, 14, 9);
+    // 仕切り壁 y=15（大広間↔入口通路）中央のみ開口
+    S(9, 15, 9); S(10, 15, 9); S(11, 15, 9); S(12, 15, 9);
+    // 入口通路（y=16）
+    R(8, 16, 13, 16, 9);
+    // 入口タイル（y=17）— ここを踏むとフィールドへ戻る
+    S(10, 17, 22); S(11, 17, 22);
+    const exits = {
+        "10,17": {map: "map_field_7_0", x: 22, y: 19},
+        "11,17": {map: "map_field_7_0", x: 22, y: 19}
+    };
+    const npcs = {
+        "10,2":  {id: "npc_zarmo_king_spirit", name: "ザーモ王の霊"},
+        "4,3":   {id: "npc_priest",            name: "神父"},
+        "3,12":  {id: "npc_zarmo_knight",      name: "古城の衛兵"},
+        "18,12": {id: "npc_zarmo_sorceress",   name: "闇の魔女"},
+        "10,12": {id: "boss_zarmo_lich",       name: "暗黒公リッチ"},
+        "14,12": {id: "obj_chest_zarmo_key",   name: "古びた宝箱"}
+    };
+    return {width: W, height: H, tiles: t, exits, npcs, encounters: [], name: "北東の古城ザーモ"};
 }
 function generateFieldMapsForGravityQuest() {
     // ワールドグリッド: 405x405タイル (9x9 x 45x45)
@@ -3880,7 +3965,7 @@ if(_bpx+1<x0+45&&world[_bpy*GW+_bpx+1]===5){world[_bpy*GW+_bpx+1]=12;mainComp.ad
 
     // === 拡張世界: 新規目的地配置 (9x9グリッド) ===
     // 【新お城3箇所】
-    placeBuilding("map_field_7_0", 22, 18, 21, "map_castle_zarmo",    8, 13); // 北東の古城ザーモ
+    placeBuilding("map_field_7_0", 22, 18, 21, "map_castle_zarmo",   10, 16); // 北東の古城ザーモ
     placeBuilding("map_field_8_4", 22, 22, 21, "map_castle_estoria",  9, 14); // 東の王国城エストリア
     placeBuilding("map_field_3_7", 22, 22, 21, "map_castle_deserta",  8, 13); // 南の砂漠城デセルタ
     externalMapData['map_castle_north'] = buildNorthAbandonedCastle();
@@ -4746,18 +4831,7 @@ function generateDQStyleMaps() {
     }
 
     // ===== ほこら (12x12) =====
-    if(!externalMapData['map_shrine_warp']){
-        const m = mkMap(12,12,
-            [[1,1,10,9]],
-            [],
-            [],[[6,10],[5,10]],
-            {'6,10':{map:'map_field_2_3',x:7,y:7},'5,10':{map:'map_field_2_3',x:7,y:7}},
-            {'6,3':{id:'npc_priest',name:'神父'},'5,5':{id:'obj_chest_item',name:'祠の宝箱'}},
-            [],'ほこら');
-        for(let y=1;y<10;y++) for(let x=1;x<11;x++) if(m.tiles[y*12+x]===0) m.tiles[y*12+x]=9;
-        m.tiles[2*12+6]=3; m.tiles[11*12+6]=22; m.tiles[11*12+5]=22;
-        externalMapData['map_shrine_warp']=m;
-    }
+    externalMapData['map_shrine_warp'] = buildShrineWarp();
 
     // ===== 竜霊の島 (12x12) =====
     if(!externalMapData['map_dragon_shrine']){
@@ -4793,45 +4867,13 @@ function generateDQStyleMaps() {
     // ===== 3新城 (mkMap DQ4城風) =====
 
     // 北東の古城ザーモ (18x16)
-    if(!externalMapData['map_castle_zarmo']){
-        const m=mkMap(18,16,
-            [[1,1,16,4],[2,6,5,6],[11,6,5,6],[6,4,6,10]],
-            [[7,4,7,13],[8,4,8,13]],
-            [],[[8,14],[9,14]],
-            {'8,14':{map:'map_field_7_0',x:22,y:19},'9,14':{map:'map_field_7_0',x:22,y:19}},
-            {'8,2':{id:'npc_zarmo_king_spirit',name:'ザーモ王の霊'},'3,8':{id:'npc_zarmo_knight',name:'古城の衛兵'},'14,8':{id:'npc_zarmo_sorceress',name:'闇の魔女'},'7,10':{id:'boss_zarmo_lich',name:'暗黒公リッチ'},'12,10':{id:'obj_chest_zarmo_key',name:'古びた宝箱'},'3,3':{id:'npc_priest',name:'神父'}},
-            [],'北東の古城ザーモ');
-        for(let y=1;y<5;y++) for(let x=1;x<17;x++) if(m.tiles[y*18+x]===0) m.tiles[y*18+x]=9;
-        [[3,3],[14,3]].forEach(([px,py])=>{m.tiles[py*18+px]=16;});
-        externalMapData['map_castle_zarmo']=m;
-    }
+    externalMapData['map_castle_zarmo'] = buildZarmoCastle();
 
     // 東の王国城エストリア (20x18)
-    if(!externalMapData['map_castle_estoria']){
-        const m=mkMap(20,18,
-            [[1,1,18,5],[2,7,6,7],[13,7,5,7],[7,5,6,11]],
-            [[8,5,8,15],[9,5,9,15]],
-            [],[[9,16],[10,16]],
-            {'9,16':{map:'map_field_8_4',x:22,y:23},'10,16':{map:'map_field_8_4',x:22,y:23}},
-            {'9,2':{id:'npc_estoria_king',name:'エストリア王'},'3,9':{id:'npc_estoria_knight',name:'近衛騎士'},'16,9':{id:'npc_estoria_herald',name:'伝令の使者'},'9,9':{id:'npc_estoria_queen',name:'王妃'},'3,3':{id:'npc_priest',name:'神父'},'16,3':{id:'npc_estoria_sage',name:'宮廷賢者'}},
-            [],'東の王国城エストリア');
-        for(let y=1;y<6;y++) for(let x=1;x<19;x++) if(m.tiles[y*20+x]===0) m.tiles[y*20+x]=9;
-        [[3,3],[16,3],[3,9],[16,9]].forEach(([px,py])=>{m.tiles[py*20+px]=16;});
-        externalMapData['map_castle_estoria']=m;
-    }
+    externalMapData['map_castle_estoria'] = buildEstoriaCastle();
 
     // 南の砂漠城デセルタ (18x16)
-    if(!externalMapData['map_castle_deserta']){
-        const m=mkMap(18,16,
-            [[1,1,16,4],[2,6,5,6],[11,6,5,6],[6,4,6,10]],
-            [[7,4,7,13],[8,4,8,13]],
-            [],[[8,14],[9,14]],
-            {'8,14':{map:'map_field_3_7',x:22,y:23},'9,14':{map:'map_field_3_7',x:22,y:23}},
-            {'8,2':{id:'npc_deserta_king',name:'デセルタ王'},'3,8':{id:'npc_deserta_oracle',name:'砂漠の預言者'},'14,8':{id:'npc_deserta_soldier',name:'砂漠の衛兵'},'3,3':{id:'npc_priest',name:'神父'},'12,8':{id:'obj_chest_deserta_seal',name:'砂漠の宝箱'}},
-            [],'南の砂漠城デセルタ');
-        for(let y=1;y<5;y++) for(let x=1;x<17;x++) if(m.tiles[y*18+x]===0) m.tiles[y*18+x]=9;
-        externalMapData['map_castle_deserta']=m;
-    }
+    externalMapData['map_castle_deserta'] = buildDesertaCastle();
 
     // ===== 新ダンジョン 10箇所 (mkMap 2F構成) =====
 
@@ -5167,7 +5209,7 @@ function generateDQStyleMaps() {
     }
 
     // 北海の古代遺跡 (20x18, 1F)
-    if (!externalMapData['map_ruin_ancient_1f']) {
+    {
         let _ra = buildQMap([
             '####################',
             '#.P....A......P....#',
@@ -5247,7 +5289,7 @@ function generateDQStyleMaps() {
     }
 
     // 砂漠の遺跡 (20x18, 1F)
-    if (!externalMapData['map_ruin_desert_1f']) {
+    {
         let _rd = buildQMap([
             '####################',
             '#.P....A......P....#',
@@ -5355,28 +5397,28 @@ function generateDQStyleMaps() {
     }
 
     // 深淵の迷宮 (20x18, 1F)
-    if (!externalMapData['map_dungeon_abyss_1f']) {
+    {
         let _da = buildQMap([
             '####################',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~PPP~~~~PPP~~#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~boss~~~~~~~~#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...####..####......#',
-            '#...#chest.chest#...#',
-            '#...####..####......#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~~~~~~~~~~~~~#',
-            '#...~~~~~~~~~~~~~~~~#',
+            '#.P....A......P....#',
+            '#..................#',
+            '#..####..####......#',
+            '#..#chaos.lich#....#',
+            '#..####..####......#',
+            '#..................#',
+            '#..................#',
+            '#..................#',
+            '#.P..........P.....#',
+            '#..####..####......#',
+            '#..#abyss..deep#...#',
+            '#..####..####......#',
+            '#..................#',
+            '#..................#',
+            '#..................#',
+            '#..................#',
             '#########@##########',
         ], {'9,17':{map:'map_field_8_8',x:22,y:23},'10,17':{map:'map_field_8_8',x:22,y:23}},
-           {'7,6':{id:'boss_chaos_dragon',name:'混沌竜カオスドレイク'},'4,10':{id:'obj_chest_abyss_a',name:'深淵の宝箱'},'12,10':{id:'obj_chest_abyss_b',name:'深淵の祭壇'}},
+           {'7,4':{id:'boss_chaos_dragon',name:'混沌竜カオスドレイク'},'4,11':{id:'obj_chest_abyss_a',name:'深淵の宝箱'},'12,11':{id:'obj_chest_abyss_b',name:'深淵の祭壇'}},
            encM2,'深淵の迷宮');
         externalMapData['map_dungeon_abyss_1f']=_da;
     }
@@ -6208,6 +6250,9 @@ async function fetchExternalMap(url) { const loading = document.getElementById('
             const _bEk = Object.keys(_em.exits).find(k => { const m=_em.exits[k].map||''; return m.includes('bazaar')||m.includes('market'); });
             if (_bEk) { const [_ex,_ey]=_bEk.split(',').map(Number); const _ney=Math.min(_ey+3,_em.height-2); if (!_em.exits[`${_ex},${_ney}`]) { if (_em.tiles[_ey*_em.width+_ex]===22) { _em.tiles[_ey*_em.width+_ex]=11; _em.tiles[_ney*_em.width+_ex]=22; } _em.exits[`${_ex},${_ney}`]=_em.exits[_bEk]; delete _em.exits[_bEk]; } }
         } }
+        // 西・北の果てマップ: CDNのキャラクターNPCを除去（obj_以外はすべて削除）
+        { const _wm = externalMapData && externalMapData["map_field_west_2"]; if (_wm) { Object.keys(_wm.npcs).forEach(k => { if (!(_wm.npcs[k].id||'').startsWith('obj_')) delete _wm.npcs[k]; }); } }
+        { const _nm2 = externalMapData && externalMapData["map_field_north_2"]; if (_nm2) { Object.keys(_nm2.npcs).forEach(k => { if (!(_nm2.npcs[k].id||'').startsWith('obj_')) delete _nm2.npcs[k]; }); } }
         loading.style.display = 'none'; return true; } } throw new Error("JSONデータなし"); } catch(e) { console.error(e); loading.innerText = '読み込み失敗'; setTimeout(() => { loading.style.display = 'none'; }, 2000); return false; } }
 
 async function loadExternalData(id) {
@@ -6850,7 +6895,7 @@ function _drawFieldBuilding(ctx, bType, px, py) {
     const T = TILE_SIZE, fl = Math.floor;
     ctx.save();
     // 画像が読み込み済みならそれを使用（白抜き済みPNG）
-    const _fbImgKey = bType === 'dungeon' || bType === 'shrine' ? 'fb_dungeon' : 'fb_' + bType;
+    const _fbImgKey = 'fb_' + bType;
     const _fbImg = externalImages[_fbImgKey];
     if (_fbImg && _fbImg.complete && _fbImg.naturalHeight > 0) {
         // 建物種別ごとの拡大倍率（画像版）
@@ -7080,6 +7125,9 @@ function _drawFieldBuilding(ctx, bType, px, py) {
         ctx.fillStyle='#b81010'; ctx.fillRect(tX+fl(tW*0.04),shimaY-3,tW-fl(tW*0.08),3);
         // 貫（柱を貫く横木）
         ctx.fillStyle='#a01010'; ctx.fillRect(tX+fl(tW*0.02),shimaY+1,tW-fl(tW*0.04),2);
+        // ラベル
+        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('社',px+T/2,py+T-5);
+        ctx.fillStyle='#ffd0a0'; ctx.fillText('社',px+T/2-1,py+T-6);
     } else if (bType === 'tower') {
         // DQ4風 石造りの魔法塔（3倍拡大）
         ctx.save();
@@ -8157,8 +8205,8 @@ function drawMap() {
                 else if (_dm3.includes('shrine')) _bt3 = 'shrine';
                 else if (_dm3.includes('tower') && !_dm3.includes('demon')) _bt3 = 'tower';
                 else if (_dm3.includes('castle') && !_dm3.includes('demon') && !_dm3.includes('death')) _bt3 = 'castle';
-                else if (_dm3.includes('dungeon') || _dm3.includes('cave') || _dm3.includes('ruin') || _dm3.includes('temple') || _dm3.includes('fortress') || _dm3.includes('darkspire')) _bt3 = 'dungeon';
-                else if (_dm3.includes('dharma')) _bt3 = 'dharma';
+                else if (_dm3.includes('dharma') || _dm3.includes('temple')) _bt3 = 'dharma';
+                else if (_dm3.includes('dungeon') || _dm3.includes('cave') || _dm3.includes('ruin') || _dm3.includes('fortress') || _dm3.includes('darkspire')) _bt3 = 'dungeon';
                 else if (_dm3.includes('demon') || _dm3.includes('death') || _dm3.includes('maou')) _bt3 = 'demon';
                 if (_bt3) { _drawFieldBuilding(ctx, _bt3, _epx3, _epy3); _drawnDests3.add(_dm3); }
             }
@@ -10730,6 +10778,19 @@ async function checkAction() {
                     await typeMessage("（ふしぎな台帳に 記録された）\nザーモ王の 霊に 報告しよう。");
                     delete currentMap.npcs[key];
                 } else { return; }
+                state='FIELD'; hideAllWindows(); drawMap(); return;
+            }
+
+            if (npc.id === "npc_zarmo_knight") {
+                if (isSQDone('sq_11')) {
+                    await typeMessage("【古城の衛兵】\n……ようやく 城に 光が 戻った。\nあなたが 倒してくれたのですね。\n心から 感謝します。");
+                } else if (getSQ('sq_11') >= 2) {
+                    await typeMessage("【古城の衛兵】\nリッチは 地の底の 間に います。\n封印の鍵を 持っているなら……\n今こそ 立ち向かう 時です！");
+                } else if (getSQ('sq_11') === 1) {
+                    await typeMessage("【古城の衛兵】\nここは 古城ザーモ……\n暗黒公リッチに 支配された 呪われた 城です。\n宝箱に 封印の鍵が あるはずです。");
+                } else {
+                    await typeMessage("【古城の衛兵】\nここには 近づかない 方が いい……\n暗黒公リッチが この 城を 支配しているのだ。");
+                }
                 state='FIELD'; hideAllWindows(); drawMap(); return;
             }
 
@@ -13927,6 +13988,14 @@ async function showTitleScreen() {
                 });
             });
         }
+    }
+    // maps_override.js/CDNデータを局所的な正確なマップで強制上書き（常に最後に適用）
+    if (externalMapData) {
+        externalMapData['map_castle_zarmo']   = buildZarmoCastle();
+        externalMapData['map_castle_estoria'] = buildEstoriaCastle();
+        externalMapData['map_castle_deserta'] = buildDesertaCastle();
+        externalMapData['map_castle_north']   = buildNorthAbandonedCastle();
+        externalMapData['map_shrine_warp']    = buildShrineWarp();
     }
     _loadPct = 60;
     await loadExternalGrowthDatabase("https://www.gravity.place/share/ugcGame?id=38430");
